@@ -84,6 +84,12 @@ export default function App() {
     if (splashDone) sessionStorage.setItem('splashed', '1')
   }, [splashDone])
 
+  // 整页高度的页面(聊天)不让文档本身滚动:iOS 网页容器会在聚焦输入框/弹层时把整页往上带
+  useEffect(() => {
+    document.documentElement.classList.toggle('no-scroll', view === 'chat')
+    if (view === 'chat') window.scrollTo(0, 0)
+  }, [view])
+
   // 用户外观偏好:背景强度/玻璃透明度
   useEffect(() => {
     const dim = localStorage.getItem('bg-dim')

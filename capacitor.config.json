@@ -4,7 +4,10 @@
   "webDir": "dist",
   "server": {
     "url": "https://entangledforever.com",
-    "allowNavigation": ["entangledforever.com", "*.entangledforever.com"]
+    "allowNavigation": [
+      "entangledforever.com",
+      "*.entangledforever.com"
+    ]
   },
   "ios": {
     "contentInset": "never",
@@ -12,5 +15,11 @@
     "backgroundColor": "#f1f1f0",
     "scrollEnabled": true,
     "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
+    }
   }
 }
