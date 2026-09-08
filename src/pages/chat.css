@@ -730,11 +730,12 @@
 
 /* 思考链:半屏定高(内容少也留白),可全屏 */
 .sheet.thought {
-  height: 56vh;
+  /* App 里视口含刘海和底部安全区,按"可视区"算高度,底部安全区已在 padding 里,不再叠加 */
+  height: calc(56vh - env(safe-area-inset-bottom, 0) * 0.56);
   max-height: none;
   transition: height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.sheet.thought.full { height: 96dvh; }
+.sheet.thought.full { height: calc(100dvh - env(safe-area-inset-top, 0) - 6px); padding-top: calc(10px + env(safe-area-inset-top, 0) * 0.3); }
 .thought-head {
   display: flex; align-items: center; justify-content: space-between;
   padding-bottom: 12px;
