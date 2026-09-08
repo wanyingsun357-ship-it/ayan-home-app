@@ -7,7 +7,7 @@
     "allowNavigation": ["entangledforever.com", "*.entangledforever.com"]
   },
   "ios": {
-    "contentInset": "automatic",
+    "contentInset": "never",
     "allowsLinkPreview": false,
     "backgroundColor": "#f1f1f0",
     "scrollEnabled": true,

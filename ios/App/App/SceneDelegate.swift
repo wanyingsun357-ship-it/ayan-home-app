@@ -10,6 +10,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = CAPBridgeViewController()
         window?.makeKeyAndVisible()
+        // 网页层自己管滚动;关掉 WKWebView 的橡皮筋,不然上滑整页跟着乱跑
+        DispatchQueue.main.async {
+            if let vc = self.window?.rootViewController as? CAPBridgeViewController, let sv = vc.webView?.scrollView {
+                sv.bounces = false
+                sv.contentInsetAdjustmentBehavior = .never
+            }
+        }
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
     }
