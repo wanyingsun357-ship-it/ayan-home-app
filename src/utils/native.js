@@ -1,6 +1,12 @@
 // 原生能力的薄封装:在 App 里走 Capacitor 插件,在网页里退回浏览器能力(或什么都不做)
-const P = () => (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.Plugins) || {}
-export const isApp = () => !!(typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+import { Capacitor } from '@capacitor/core'
+import { PushNotifications } from '@capacitor/push-notifications'
+import { Haptics } from '@capacitor/haptics'
+import { Keyboard } from '@capacitor/keyboard'
+export const isApp = () => { try { return Capacitor.isNativePlatform() } catch { return false } }
+// 壳加载的是线上网页,插件的 JS 半边必须打进前端包里,不然 Capacitor.Plugins 里没有它们
+const P = () => (isApp() ? { Haptics, PushNotifications, Keyboard } : {})
+export { Keyboard }
 
 // 震动:iPhone 网页不支持 navigator.vibrate,App 里用 Haptics
 // kind: 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error' | number[](旧的 vibrate 花样)

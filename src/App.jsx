@@ -13,7 +13,7 @@ import Settings from './pages/Settings.jsx'
 import Together from './pages/Together.jsx'
 import CommandWidget from './components/CommandWidget.jsx'
 import CallOverlay from './components/CallOverlay.jsx'
-import { setupPush } from './utils/native.js'
+import { setupPush, isApp, Keyboard } from './utils/native.js'
 
 const PAGES = {
 }
@@ -98,8 +98,8 @@ export default function App() {
 
   // App 里键盘由我们自己让位:原生插件在键盘动画开始那一刻就报高度,写进 --kb,页面立刻缩,不等系统慢半拍
   useEffect(() => {
-    const K = window.Capacitor?.Plugins?.Keyboard
-    if (!K) return
+    if (!isApp()) return
+    const K = Keyboard
     const setKb = (h) => { document.documentElement.style.setProperty('--kb', h + 'px'); window.dispatchEvent(new CustomEvent('kb', { detail: h })) }
     const hs = [K.addListener('keyboardWillShow', (e) => setKb(e.keyboardHeight || 0)), K.addListener('keyboardWillHide', () => setKb(0))]
     return () => { hs.forEach((p) => p.then?.((h) => h.remove())) }
