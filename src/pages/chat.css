@@ -1,5 +1,6 @@
 .chat {
-  height: 100dvh;
+  height: calc(100dvh - var(--kb, 0px)); /* App 里键盘高度由 --kb 让位 */
+  transition: height .22s ease;
   max-width: 480px; margin: 0 auto;
   display: flex; flex-direction: column;
 }

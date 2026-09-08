@@ -90,6 +90,15 @@ export default function App() {
     if (view === 'chat') window.scrollTo(0, 0)
   }, [view])
 
+  // App 里键盘由我们自己让位:原生插件在键盘动画开始那一刻就报高度,写进 --kb,页面立刻缩,不等系统慢半拍
+  useEffect(() => {
+    const K = window.Capacitor?.Plugins?.Keyboard
+    if (!K) return
+    const setKb = (h) => { document.documentElement.style.setProperty('--kb', h + 'px'); window.dispatchEvent(new CustomEvent('kb', { detail: h })) }
+    const hs = [K.addListener('keyboardWillShow', (e) => setKb(e.keyboardHeight || 0)), K.addListener('keyboardWillHide', () => setKb(0))]
+    return () => { hs.forEach((p) => p.then?.((h) => h.remove())) }
+  }, [])
+
   // 记住整屏高度(只增不减):键盘弹起时 App 容器会变矮,背景图不能跟着缩
   useEffect(() => {
     let maxH = 0
