@@ -20,10 +20,19 @@ platform :ios do
       key_id: ENV.fetch('ASC_KEY_ID'), issuer_id: ENV.fetch('ASC_ISSUER_ID'), key: ENV.fetch('ASC_KEY_P8')
     )
     app_name = ENV.fetch('APP_STORE_NAME', 'Entangled Home')
-    unless Spaceship::ConnectAPI::BundleId.find(APP_ID)
+    bid = Spaceship::ConnectAPI::BundleId.find(APP_ID)
+    unless bid
       UI.message("注册 Bundle ID #{APP_ID}")
-      Spaceship::ConnectAPI::BundleId.create(name: app_name, platform: Spaceship::ConnectAPI::BundleIdPlatform::IOS, identifier: APP_ID)
+      bid = Spaceship::ConnectAPI::BundleId.create(name: app_name, platform: Spaceship::ConnectAPI::BundleIdPlatform::IOS, identifier: APP_ID)
       sleep(8)
+    end
+    # 推送能力(描述文件里才会有 aps-environment)
+    caps = (bid.bundle_id_capabilities || []).map(&:capability_type)
+    unless caps.include?(Spaceship::ConnectAPI::BundleIdCapability::Type::PUSH_NOTIFICATIONS)
+      UI.message('给 Bundle ID 开推送能力')
+      bid.create_capability(Spaceship::ConnectAPI::BundleIdCapability::Type::PUSH_NOTIFICATIONS)
+      ENV['MATCH_FORCE'] = 'true' # 能力变了,描述文件要重做
+      sleep(5)
     end
     # App 记录苹果不让用 API 建(apps 不允许 CREATE),要在 App Store Connect 网页手动建一次
     UI.user_error!("App Store Connect 里还没有 #{APP_ID} 的 App 记录,请先在网页新建 App") unless Spaceship::ConnectAPI::App.find(APP_ID)
@@ -37,7 +46,8 @@ platform :ios do
       git_url: ENV.fetch('MATCH_GIT_URL'),
       git_branch: 'certs',
       git_basic_authorization: Base64.strict_encode64("x-access-token:#{ENV.fetch('GITHUB_TOKEN')}"),
-      readonly: false
+      readonly: false,
+      force: ENV['MATCH_FORCE'] == 'true'
     )
 
     team_id = ENV["sigh_#{APP_ID}_appstore_team-id"]
@@ -48,7 +58,8 @@ platform :ios do
       team_id: team_id,
       code_sign_identity: 'Apple Distribution',
       profile_name: profile,
-      bundle_identifier: APP_ID
+      bundle_identifier: APP_ID,
+      entitlements_file_path: 'App/App.entitlements'
     )
     increment_build_number(build_number: ENV.fetch('GITHUB_RUN_NUMBER', '1'), xcodeproj: PROJECT)
 
