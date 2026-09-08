@@ -14,9 +14,25 @@ export default function Home({ go, openSidebar }) {
   const [moments, setMoments] = useState([])
   const [adding, setAdding] = useState(null)   // 'today' | 'upcoming'
   const [tg, setTg] = useState(null) // Together 概览(三餐/睡眠/奶茶/花销)
-  useEffect(() => { fetch('/api/together').then((r) => r.json()).then(setTg).catch(() => {}) }, [])
   const [wdOv, setWdOv] = useState(null)
-  useEffect(() => { fetch('/api/words').then((r) => r.json()).then(setWdOv).catch(() => {}) }, [])
+  // Together/单词概览:进页拉一次,之后每 60 秒、App 从后台回来、拉失败 3 秒后重试都会再拉;先显示上次缓存
+  useEffect(() => {
+    let stopped = false, retry = null
+    try { const c = JSON.parse(localStorage.getItem('hm-tg-cache') || 'null'); if (c) setTg(c) } catch {}
+    const load = async () => {
+      try {
+        const r = await fetch('/api/together', { cache: 'no-store' }); if (!r.ok) throw new Error(r.status)
+        const d = await r.json(); if (stopped) return
+        setTg(d); try { localStorage.setItem('hm-tg-cache', JSON.stringify(d)) } catch {}
+      } catch { if (!stopped) { clearTimeout(retry); retry = setTimeout(load, 3000) } }
+      try { const w = await (await fetch('/api/words', { cache: 'no-store' })).json(); if (!stopped) setWdOv(w) } catch {}
+    }
+    load()
+    const t = setInterval(load, 60000)
+    const onVis = () => { if (!document.hidden) load() }
+    document.addEventListener('visibilitychange', onVis); window.addEventListener('focus', onVis)
+    return () => { stopped = true; clearInterval(t); clearTimeout(retry); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('focus', onVis) }
+  }, [])
   const [text, setText] = useState('')
   const [date, setDate] = useState('')
   const [cal, setCal] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
