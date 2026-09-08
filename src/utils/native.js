@@ -23,19 +23,25 @@ export async function buzz(kind = 'light') {
 }
 
 // 推送:App 启动时申请权限、拿设备令牌交给桥;点通知进来时回调
+const plog = (o) => { try { fetch('/api/clientlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag: 'push', ...o }) }).catch(() => {}) } catch {} }
 export async function setupPush({ onOpen } = {}) {
-  const PN = P().PushNotifications
-  if (!PN) return false
+  let native = false, plat = ''
+  try { native = Capacitor.isNativePlatform(); plat = Capacitor.getPlatform() } catch (e) { plog({ step: 'core-err', err: String(e) }) }
+  plog({ step: 'start', native, plat, hasWin: !!window.Capacitor, plugins: Object.keys(window.Capacitor?.Plugins || {}).slice(0, 12) })
+  if (!native) return false
   try {
-    let perm = await PN.checkPermissions()
-    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PN.requestPermissions()
-    if (perm.receive !== 'granted') return false
-    PN.addListener('registration', (t) => {
-      fetch('/api/push/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t.value, platform: 'ios' }) }).catch(() => {})
+    let perm = await PushNotifications.checkPermissions()
+    plog({ step: 'perm', perm })
+    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PushNotifications.requestPermissions()
+    if (perm.receive !== 'granted') { plog({ step: 'denied', perm }); return false }
+    await PushNotifications.addListener('registration', (t) => {
+      plog({ step: 'token', head: String(t.value).slice(0, 8) })
+      fetch('/api/push/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t.value, platform: plat }) }).catch((e) => plog({ step: 'post-fail', err: String(e) }))
     })
-    PN.addListener('registrationError', (e) => { try { fetch('/api/clientlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag: 'push', step: 'reg-error', err: JSON.stringify(e).slice(0, 200) }) }) } catch {} })
-    PN.addListener('pushNotificationActionPerformed', (a) => { try { onOpen && onOpen(a.notification?.data || {}) } catch {} })
-    await PN.register()
+    await PushNotifications.addListener('registrationError', (e) => plog({ step: 'reg-error', err: JSON.stringify(e).slice(0, 200) }))
+    await PushNotifications.addListener('pushNotificationActionPerformed', (a) => { try { onOpen && onOpen(a.notification?.data || {}) } catch {} })
+    await PushNotifications.register()
+    plog({ step: 'register-called' })
     return true
-  } catch { return false }
+  } catch (e) { plog({ step: 'setup-err', err: String(e && e.message || e) }); return false }
 }
