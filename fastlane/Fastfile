@@ -17,8 +17,8 @@ platform :ios do
 
     # App Store Connect 里建 App 记录 + 注册 Bundle ID(已存在就跳过)
     begin
+      # produce 没有 api_key 参数,它自动用上面 app_store_connect_api_key 放进 lane_context 的令牌
       produce(
-        api_key: api_key,
         app_identifier: APP_ID,
         app_name: ENV.fetch('APP_STORE_NAME', 'Entangled Home'),
         language: 'zh-Hans',
