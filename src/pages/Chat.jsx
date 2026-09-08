@@ -3,6 +3,7 @@ import { NAMES } from '../config.js'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import PixelCat from '../components/PixelCat.jsx'
 import { compressImage, postUpload } from '../utils/compressImage.js'
+import { buzz } from '../utils/native.js'
 import './chat.css'
 
 // Chat:和阿晏说话
@@ -328,14 +329,14 @@ export default function Chat({ back }) {
           }
           else if (d.type === 'done') endStream()
           else if (d.type === 'compact') { try { compactDoneRef.current?.(JSON.parse(d.content)) } catch {} }
-          else if (d.type === 'quiz') { try { const z = JSON.parse(d.content); setQuizzes((qs) => (qs.some((x) => x.id === z.id) ? qs : [...qs, z])); if (navigator.vibrate) navigator.vibrate(20) } catch {} }
+          else if (d.type === 'quiz') { try { const z = JSON.parse(d.content); setQuizzes((qs) => (qs.some((x) => x.id === z.id) ? qs : [...qs, z])); buzz(20) } catch {} }
           else if (d.type === 'quiz_done') { try { const z = JSON.parse(d.content); setQuizzes((qs) => qs.filter((x) => x.id !== z.id)) } catch {} }
           else if (d.type === 'gift') {
             try {
               const g = JSON.parse(d.content)
               setMessages((ms) => [...ms, newMsg('assistant', g.note || '', { gift: g })])
               setGiftOpen({ ...g, phase: 'closed' })
-              if (navigator.vibrate) navigator.vibrate([30, 60, 30])
+              buzz([30, 60, 30])
               scrollBottom()
             } catch {}
           }

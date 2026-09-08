@@ -13,6 +13,7 @@ import Settings from './pages/Settings.jsx'
 import Together from './pages/Together.jsx'
 import CommandWidget from './components/CommandWidget.jsx'
 import CallOverlay from './components/CallOverlay.jsx'
+import { setupPush } from './utils/native.js'
 
 const PAGES = {
 }
@@ -89,6 +90,11 @@ export default function App() {
     document.documentElement.classList.toggle('no-scroll', view === 'chat')
     if (view === 'chat') window.scrollTo(0, 0)
   }, [view])
+
+  // App 里注册推送:他回话/指令/答题/礼物 锁屏也能收到;点通知进聊天
+  useEffect(() => {
+    setupPush({ onOpen: (d) => { const k = (d && d.kind) || ''; go(k === 'test' ? 'home' : 'chat') } })
+  }, [])
 
   // App 里键盘由我们自己让位:原生插件在键盘动画开始那一刻就报高度,写进 --kb,页面立刻缩,不等系统慢半拍
   useEffect(() => {

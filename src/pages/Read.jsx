@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { buzz } from '../utils/native.js'
 import './read.css'
 
 // Read · 一起看书(晋江式阅读器)
@@ -170,7 +171,7 @@ export default function Read({ back }) {
     pressT.current = setTimeout(() => {
       suppressClick.current = true
       setAnnOpen({ para: i })
-      if (navigator.vibrate) navigator.vibrate(10)
+      buzz(10)
     }, 450)
   }
   const cancelPara = () => clearTimeout(pressT.current)

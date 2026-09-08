@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { buzz } from '../utils/native.js'
 import './command.css'
 
 // 指令浮窗:他下任务 → 右侧贴边药丸(倒计时+细线) → 点开卡片 → 左滑完成 / 长按取消
@@ -32,7 +33,7 @@ export default function CommandWidget() {
       es.addEventListener('u', (e) => {
         try {
           const d = JSON.parse(e.data)
-          if (d.type === 'command') { const c = JSON.parse(d.content); setQueue((q) => (q.some((x) => x.id === c.id) ? q : [...q, c])); if (navigator.vibrate) navigator.vibrate([20, 40, 20]) }
+          if (d.type === 'command') { const c = JSON.parse(d.content); setQueue((q) => (q.some((x) => x.id === c.id) ? q : [...q, c])); buzz([20, 40, 20]) }
           else if (d.type === 'command_done') { const c = JSON.parse(d.content); setQueue((q) => q.filter((x) => x.id !== c.id)) }
         } catch {}
       })
@@ -67,7 +68,7 @@ export default function CommandWidget() {
     setQueue((q) => q.filter((x) => x.id !== c.id))
     const used = Math.max(0, Math.round((Date.now() - ((c.startedAt || c.createdAt) + offsetRef.current)) / 1000))
     setFlash({ kind, text: kind === 'done' ? `已完成 · 用时 ${fmt(used)}` : '已取消' })
-    if (navigator.vibrate) navigator.vibrate(kind === 'done' ? [15, 30, 15] : 30)
+    buzz(kind === 'done' ? [15, 30, 15] : 30)
     setTimeout(() => setFlash(null), 3200)
   }
 
