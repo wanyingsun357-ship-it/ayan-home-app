@@ -25,14 +25,8 @@ platform :ios do
       Spaceship::ConnectAPI::BundleId.create(name: app_name, platform: Spaceship::ConnectAPI::BundleIdPlatform::IOS, identifier: APP_ID)
       sleep(8)
     end
-    unless Spaceship::ConnectAPI::App.find(APP_ID)
-      UI.message("建 App 记录 #{app_name}")
-      begin
-        Spaceship::ConnectAPI::App.create(name: app_name, version_string: '1.0', sku: 'entangled-home-1', primary_locale: 'zh-Hans', bundle_id: APP_ID, platforms: [Spaceship::ConnectAPI::Platform::IOS])
-      rescue => e
-        UI.important("建 App 记录没成(可能名字被占): #{e.message[0, 300]}")
-      end
-    end
+    # App 记录苹果不让用 API 建(apps 不允许 CREATE),要在 App Store Connect 网页手动建一次
+    UI.user_error!("App Store Connect 里还没有 #{APP_ID} 的 App 记录,请先在网页新建 App") unless Spaceship::ConnectAPI::App.find(APP_ID)
 
     setup_ci
     ENV['MATCH_READONLY'] = 'false' # setup_ci 会把 match 切成只读,这里要它能建证书
