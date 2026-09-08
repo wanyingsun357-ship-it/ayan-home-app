@@ -90,6 +90,14 @@ export default function App() {
     if (view === 'chat') window.scrollTo(0, 0)
   }, [view])
 
+  // 记住整屏高度(只增不减):键盘弹起时 App 容器会变矮,背景图不能跟着缩
+  useEffect(() => {
+    let maxH = 0
+    const set = () => { const h = window.innerHeight; if (h > maxH) { maxH = h; document.documentElement.style.setProperty('--full-h', h + 'px') } }
+    set(); window.addEventListener('resize', set); window.addEventListener('orientationchange', () => { maxH = 0; setTimeout(set, 300) })
+    return () => window.removeEventListener('resize', set)
+  }, [])
+
   // 用户外观偏好:背景强度/玻璃透明度
   useEffect(() => {
     const dim = localStorage.getItem('bg-dim')

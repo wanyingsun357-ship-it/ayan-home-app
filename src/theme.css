@@ -92,7 +92,8 @@ body {
 
 /* 湿玻璃背景层(固定,不随滚动) */
 .wetglass-bg {
-  position: fixed; inset: 0; z-index: -1;
+  position: fixed; left: 0; right: 0; top: 0; z-index: -1;
+  height: var(--full-h, 100dvh); /* 键盘弹起时容器变矮,背景保持整屏高度不跟着缩 */
   background-image: var(--bg-img);
   background-size: cover;
   background-position: center;

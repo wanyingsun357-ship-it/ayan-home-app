@@ -371,6 +371,13 @@ export default function Chat({ back }) {
       .finally(() => setHistLoading(false))
   }
   useEffect(() => { loadHistory(); loadSessions(); loadCtx() }, [])
+  // 键盘弹起/收起(App 里是容器缩放)时,消息列表贴住最后一条
+  useEffect(() => {
+    const onResize = () => { if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') scrollBottom() }
+    window.addEventListener('resize', onResize)
+    window.visualViewport?.addEventListener('resize', onResize)
+    return () => { window.removeEventListener('resize', onResize); window.visualViewport?.removeEventListener('resize', onResize) }
+  }, [])
 
   // ---- 往上翻:加载更早的历史(接口一次最多500条) ----
   const [histMoreBusy, setHistMoreBusy] = useState(false)
@@ -1188,6 +1195,7 @@ export default function Chat({ back }) {
           placeholder={recording ? '在听…' : 'Message…'}
           value={input}
           onChange={onInput}
+          onFocus={() => { setTimeout(scrollBottom, 120); setTimeout(scrollBottom, 400) }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
           }}
