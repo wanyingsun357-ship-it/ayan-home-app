@@ -1,0 +1,159 @@
+/* Together:共同生活空间 — 沿用湿玻璃三级卡片,记录者色点:她暖粉 / 他冷银 */
+.tg { min-height: 100vh; display: flex; flex-direction: column; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0)); }
+.tg-head { display: flex; align-items: center; gap: 12px; padding: calc(14px + env(safe-area-inset-top, 0)) 16px 8px; }
+.tg-back { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--card-border); background: var(--card); color: var(--text-soft); font-size: 20px; padding-bottom: 3px; }
+.tg-title { font-size: 24px; color: var(--text); letter-spacing: 1px; }
+.tg-sub { font-size: 12px; color: var(--text-dim); font-style: italic; margin-top: -2px; }
+.tg-mods { display: flex; gap: 8px; overflow-x: auto; padding: 6px 16px 10px; scrollbar-width: none; }
+.tg-mods::-webkit-scrollbar { display: none; }
+.tg-mod { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--text-soft); font-size: 13px; font-family: inherit; }
+.tg-mod.on { color: var(--text); border-color: var(--accent, #8e3b46); background: var(--card-strong, var(--card)); }
+.tg-mod.soon { opacity: .55; }
+.tg-mod-ico { font-size: 13px; }
+.tg-body { padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+.tg-card { border-radius: 18px; padding: 14px; }
+.tg-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 17px; color: var(--text); margin-bottom: 8px; }
+.tg-card-meta { font-size: 12px; color: var(--text-dim); }
+.tg-nav { border: 1px solid var(--card-border); background: var(--card); color: var(--text-soft); border-radius: 999px; padding: 4px 10px; font-size: 13px; font-family: inherit; }
+.tg-empty { text-align: center; color: var(--text-dim); padding: 22px 0; font-style: italic; }
+.tg-hint { font-style: normal; font-size: 12px; margin-top: 6px; }
+.tg-toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; font-size: 13px; color: var(--text); z-index: 20; }
+.dim { color: var(--text-dim); }
+
+/* 记录者 */
+.tg-who { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+.tg-who i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.tg-who.her i { background: #d9a1a8; }
+.tg-who.him i { background: #a9b3bd; }
+
+/* 周条 */
+.tg-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.tg-wd { border: 1px solid var(--card-border); background: var(--card); border-radius: 12px; padding: 7px 0; display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: inherit; color: var(--text-soft); }
+.tg-wd.on { border-color: var(--accent, #8e3b46); color: var(--text); }
+.tg-wd-d { font-size: 12px; }
+.tg-wd-dots { font-size: 8px; letter-spacing: 1px; color: var(--text-dim); }
+.tg-wd-dots.n3 { color: var(--accent-text, #8e3b46); }
+.tg-wd-sub { font-size: 10px; color: var(--text-dim); }
+
+/* 行 */
+.tg-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-top: 1px solid var(--card-border); }
+.tg-row:first-of-type { border-top: 0; }
+.tg-check { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--card-border); background: transparent; color: #fff; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+.tg-check.on { background: var(--accent, #8e3b46); border-color: var(--accent, #8e3b46); }
+.tg-row-main { flex: 1; min-width: 0; }
+.tg-row-title { font-size: 15px; color: var(--text); }
+.tg-row-note { font-size: 13px; color: var(--text-soft); margin-top: 2px; }
+.tg-inline { display: flex; gap: 6px; margin-top: 4px; }
+.tg-inline input { flex: 1; padding: 6px 9px; border-radius: 9px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-family: inherit; font-size: 13px; }
+.tg-inline button { padding: 6px 10px; border-radius: 9px; border: 0; background: var(--accent, #8e3b46); color: #fff; font-family: inherit; font-size: 13px; }
+
+/* 睡眠 */
+.tg-sleep-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+.tg-sleep-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
+.tg-sleep-grid input { padding: 7px 9px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-family: inherit; font-size: 15px; }
+.tg-sleep-dur { font-size: 22px; color: var(--text); padding-bottom: 4px; }
+.tg-textarea { width: 100%; box-sizing: border-box; margin-top: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-family: inherit; font-size: 13px; resize: vertical; }
+.tg-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.tg-actions .tg-who { margin-right: auto; }
+.tg-btn { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--accent, #8e3b46); background: var(--accent, #8e3b46); color: #fff; font-family: inherit; font-size: 13px; }
+.tg-btn.ghost { background: transparent; color: var(--accent-text, #8e3b46); }
+.tg-btn.danger { background: transparent; color: #b0454f; border-color: rgba(176,69,79,.4); }
+
+/* 记账 */
+.tg-total { font-size: 30px; color: var(--text); margin: 2px 0 10px; }
+.tg-cats { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.tg-cat { display: grid; grid-template-columns: 44px 1fr 56px; align-items: center; gap: 8px; font-size: 13px; color: var(--text-soft); }
+.tg-cat i { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--accent, #8e3b46), #c8878c); display: block; }
+.tg-cat b { text-align: right; font-weight: 500; color: var(--text); }
+.tg-form { display: flex; flex-direction: column; gap: 8px; }
+.tg-form input { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-family: inherit; font-size: 14px; width: 100%; box-sizing: border-box; }
+.tg-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tg-chip { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--text-soft); font-size: 12px; font-family: inherit; }
+.tg-chip.on { border-color: var(--accent, #8e3b46); color: var(--text); }
+.tg-ledger-row { align-items: center; cursor: pointer; }
+.tg-ledger-cat { font-size: 12px; color: var(--text-dim); width: 40px; flex-shrink: 0; }
+.tg-ledger-note { flex: 1; font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tg-ledger-amt { font-size: 14px; color: var(--text); }
+.tg-detail { padding: 8px 0 2px 50px; font-size: 13px; color: var(--text-soft); display: flex; flex-direction: column; gap: 3px; }
+.tg-summary-text { white-space: pre-wrap; font-size: 13.5px; line-height: 1.7; color: var(--text); }
+
+/* 奶茶 */
+.tg-tea-ring { text-align: center; padding: 8px 0 12px; }
+.tg-tea-num { font-size: 42px; color: var(--text); }
+.tg-tea-num span { font-size: 18px; color: var(--text-dim); }
+.tg-tea-label { font-size: 13px; color: var(--text-soft); }
+.tg-tea-row { align-items: center; }
+.tg-tea-date { width: 40px; font-size: 12px; color: var(--text-dim); flex-shrink: 0; }
+.tg-tea-main { flex: 1; font-size: 14px; color: var(--text); }
+.tg-switch { font-size: 13px; color: var(--text-soft); display: flex; align-items: center; gap: 6px; }
+.tg-x { border: 0; background: transparent; color: var(--text-dim); font-size: 16px; }
+
+/* 模块头:蓝猫 + 标语 + 月亮 */
+.tg-modhead { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; border-radius: 18px; }
+.tg-cat { width: 54px; height: 54px; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: center; }
+.tg-cat img { image-rendering: pixelated; }
+.tg-slogan { flex: 1; font-size: 14px; color: var(--text); line-height: 1.5; font-style: italic; letter-spacing: .3px; }
+.tg-moon { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--card-border); background: var(--card); color: var(--text-soft); font-size: 16px; flex-shrink: 0; }
+.tg-moon.on { color: var(--text); border-color: var(--accent, #8e3b46); }
+/* 日历弹卡 */
+.tg-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.tg-cal-head button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--card-border); background: var(--card); color: var(--text-soft); font-size: 16px; }
+.tg-cal-title { font-size: 16px; color: var(--text); letter-spacing: 1px; }
+.tg-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.tg-cal-wd { text-align: center; font-size: 11px; color: var(--text-dim); padding: 2px 0 4px; }
+.tg-cal-day { position: relative; height: 36px; border-radius: 10px; border: 0; background: transparent; color: var(--text); font-size: 13px; font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.tg-cal-day.today { border: 1px solid var(--card-border); }
+.tg-cal-day.sel { background: var(--g1, var(--card)); }
+.tg-cal-day.future { color: var(--text-dim); }
+.tg-cal-mark { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+.tg-cal-mark.full { background: var(--accent, #8e3b46); }
+.tg-cal-mark.part { background: #d9a1a8; }
+/* 月总结 */
+.tg-sum { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--card-border); }
+.tg-sum-title { font-size: 14px; color: var(--text-soft); margin-bottom: 6px; }
+.tg-sum-body { display: flex; flex-direction: column; gap: 4px; }
+.tg-sum-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-soft); }
+.tg-sum-row b { font-weight: 500; color: var(--text); text-align: right; }
+.tg-sum-note { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.6; }
+/* 奶茶"算超额"不再挤出卡片 */
+.tg-switch { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-soft); width: 100%; box-sizing: border-box; }
+.tg-switch input { width: auto; margin: 0; }
+
+.tg-beddate { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+.tg-beddate input { padding: 5px 8px; border-radius: 9px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-family: inherit; font-size: 13px; }
+
+/* 单词 */
+.tg-wstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 8px; }
+.tg-wstats div { display: flex; flex-direction: column; align-items: center; padding: 8px 0; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); }
+.tg-wstats b { font-size: 22px; font-weight: 500; color: var(--text); }
+.tg-wstats span { font-size: 11px; color: var(--text-dim); }
+.tg-grow { display: block; width: 100%; text-align: left; padding: 10px 4px; border: 0; border-top: 1px solid var(--card-border); background: transparent; font-family: inherit; color: var(--text); }
+.tg-grow:first-child { border-top: 0; }
+.tg-grow.cur .serif { color: var(--accent-text, #8e3b46); }
+.tg-grow-top { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
+.tg-gbar { height: 5px; border-radius: 3px; background: var(--card-border); margin-top: 6px; display: flex; overflow: hidden; }
+.tg-gbar i { display: block; height: 100%; background: var(--accent, #8e3b46); }
+.tg-gbar b { display: block; height: 100%; background: #d9a1a8; }
+.tg-wrow { align-items: center; cursor: pointer; }
+.tg-wdot { width: 8px; height: 8px; border-radius: 50%; background: var(--card-border); flex-shrink: 0; }
+.st-learning .tg-wdot { background: #d9a1a8; }
+.st-mastered .tg-wdot { background: var(--accent, #8e3b46); }
+.tg-wword { font-size: 15px; color: var(--text); min-width: 96px; }
+.tg-wword i { display: block; font-style: normal; font-size: 11px; color: var(--text-dim); }
+.tg-wmean { flex: 1; font-size: 12.5px; color: var(--text-soft); line-height: 1.4; }
+.tg-wtag { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+.tg-wbig { font-size: 22px; color: var(--text); margin-bottom: 6px; }
+.tg-wbig i { font-style: normal; font-size: 13px; color: var(--text-dim); margin-left: 6px; }
+.tg-whist { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.tg-timeline { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tg-timeline span { font-size: 11px; padding: 3px 7px; border-radius: 999px; border: 1px solid var(--card-border); color: var(--text-soft); }
+.tg-timeline span.no { color: #b0454f; border-color: rgba(176,69,79,.4); }
+.tg-timeline span.ok { color: var(--accent-text, #8e3b46); }
+/* 错词 */
+.tg-mrow { flex-wrap: wrap; cursor: pointer; }
+.tg-mmain { flex: 1; min-width: 0; }
+.tg-mmeta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.tg-mdue { font-size: 12px; color: var(--text-dim); flex-shrink: 0; }
+.tg-mdue.due { color: var(--accent-text, #8e3b46); }
+.tg-mdetail { width: 100%; padding-top: 6px; }

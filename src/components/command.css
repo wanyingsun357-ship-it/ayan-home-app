@@ -1,0 +1,36 @@
+/* 指令浮窗:药丸(贴右边) + 卡片。数字用等宽数字,进度用 transform 走 GPU */
+.cmd-pill { position: fixed; right: 0; top: calc(112px + env(safe-area-inset-top, 0)); z-index: 55; display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px 8px 10px; border-radius: 14px 0 0 14px; border: 1px solid var(--card-border); border-right: 0; color: var(--text); font-family: inherit; cursor: pointer; }
+.cmd-pill-ico { color: var(--silver, #a9b3bd); font-size: 13px; }
+.cmd-pill-num { font-variant-numeric: tabular-nums; font-size: 15px; letter-spacing: .5px; }
+.cmd-pill-more { font-size: 10px; color: var(--text-dim); }
+.cmd-line { position: absolute; right: 0; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: var(--card-border); overflow: hidden; }
+.cmd-line b { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--text-soft); transform-origin: bottom; display: block; }
+.cmd-pill.over .cmd-line b { background: var(--accent, #8e3b46); }
+.cmd-pill.over .cmd-pill-num { color: var(--accent-text, #8e3b46); }
+
+.cmd-card { position: fixed; right: 12px; top: calc(96px + env(safe-area-inset-top, 0)); z-index: 56; width: min(78vw, 320px); padding: 12px 14px 10px; border-radius: 18px; border: 1px solid var(--card-border); color: var(--text); animation: cmd-in .22s ease; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+@keyframes cmd-in { from { opacity: 0; transform: translateX(16px) } to { opacity: 1; transform: none } }
+.cmd-card-top { display: flex; align-items: center; justify-content: space-between; }
+.cmd-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--accent-text, #8e3b46); letter-spacing: 1px; }
+.cmd-tag i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent, #8e3b46); }
+.cmd-fold { border: 0; background: transparent; color: var(--text-dim); font-size: 16px; cursor: pointer; }
+.cmd-title { font-size: 17px; margin: 6px 0 8px; line-height: 1.4; }
+.cmd-big-row { display: flex; align-items: baseline; gap: 8px; }
+.cmd-big { font-size: 40px; font-variant-numeric: tabular-nums; letter-spacing: 1px; line-height: 1; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.cmd-big-sub { font-size: 13px; color: var(--text-soft); }
+.cmd-since { margin-left: auto; font-size: 12px; color: var(--text-dim); }
+.cmd-card.over .cmd-big, .cmd-card.over .cmd-big-sub { color: var(--accent-text, #8e3b46); }
+.cmd-bar { height: 4px; border-radius: 2px; background: var(--card-border); margin: 10px 0 8px; overflow: hidden; }
+.cmd-bar b { display: block; height: 100%; width: 100%; background: var(--text-soft); transform-origin: left; }
+.cmd-card.over .cmd-bar b { background: var(--accent, #8e3b46); }
+.cmd-hint { display: flex; gap: 14px; }
+.cmd-act { position: relative; border: 0; background: transparent; color: var(--text-dim); font-size: 12.5px; font-family: inherit; padding: 4px 0; cursor: pointer; }
+.cmd-act.cancel { margin-left: auto; padding-right: 22px; }
+.cmd-ring { position: absolute; right: 0; top: 50%; width: 18px; height: 18px; transform: translateY(-50%) rotate(-90deg); }
+.cmd-ring circle { fill: none; stroke: var(--accent, #8e3b46); stroke-width: 3; }
+.cmd-queue { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+
+.cmd-flash { position: fixed; right: 12px; top: calc(112px + env(safe-area-inset-top, 0)); z-index: 55; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--card-border); font-size: 13px; color: var(--text); animation: cmd-in .2s ease; }
+.cmd-flash.done { color: #4f8a5a; }
+.cmd-flash.cancel { color: #b0454f; }

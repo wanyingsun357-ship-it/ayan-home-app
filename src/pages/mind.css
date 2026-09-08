@@ -1,0 +1,296 @@
+/* Mind v2 · 黑暗中的内在星图 */
+.mind { padding-left: 18px; padding-right: 18px; position: relative; }
+
+/* 专属背景:月亮附近略亮,四周渐暗;日间雾白+极淡蓝紫 */
+.mind-veil {
+  position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(196, 200, 214, 0.16), transparent 45%),
+    radial-gradient(circle at 50% 30%, rgba(236, 237, 240, 0.92), rgba(228, 229, 233, 0.96) 70%);
+}
+:root[data-theme='night'] .mind-veil {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(120, 130, 150, 0.10), transparent 42%),
+    radial-gradient(circle at 50% 30%, rgba(13, 15, 19, 0.88), rgba(4, 5, 7, 0.96) 75%);
+}
+
+/* 月亮质感色阶 */
+:root {
+  --moon-hi: #e8eaee; --moon-mid: #c2c7cf; --moon-lo: #9aa0aa;
+}
+:root[data-theme='night'] {
+  --moon-hi: #eef0f4; --moon-mid: #cfd4dc; --moon-lo: #8f96a2;
+}
+
+.mind-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0)) 0 4px;
+}
+.mind-head > div { flex: 1; }
+.mind-title { font-size: 21px; color: var(--text); }
+.mind-sub { font-size: 11.5px; color: var(--text-dim); }
+.mind-empty {
+  text-align: center; color: var(--text-dim);
+  font-size: 17px; padding-top: 30vh;
+}
+.mind-quiet { color: var(--text-dim); font-size: 13px; padding: 8px 0; display: block; }
+
+/* ---- 星图 ---- */
+.mind-graph-wrap { display: flex; justify-content: center; padding: 0 0 4px; }
+.mind-graph { width: 100%; max-width: 380px; }
+
+/* 入场:月亮先来 → 线生长 → 星最后亮 */
+.mind-center { opacity: 0; transition: opacity 0.45s ease 0.05s; }
+.entered .mind-center { opacity: 1; }
+
+.mind-line {
+  stroke: var(--silver);
+  stroke-dasharray: 200; stroke-dashoffset: 200;
+}
+.entered .mind-line { animation: line-grow 0.5s ease forwards; }
+@keyframes line-grow { to { stroke-dashoffset: 0; } }
+.mind-line.lo { opacity: 0.14; stroke-width: 0.8; }
+.mind-line.mid { opacity: 0.26; stroke-width: 1; }
+.mind-line.hi { opacity: 0.42; stroke-width: 1.2; }
+.mind-line.red {
+  stroke: url(#redReach);
+  stroke-width: 1.5; opacity: 0.95;
+}
+
+.mind-node {
+  opacity: 0; transition: opacity 0.5s ease;
+  cursor: pointer;
+}
+.entered .mind-node { opacity: 1; }
+.mind-node.lo { opacity: 0.55; }
+.entered .mind-node.lo { opacity: 0.55; }
+.mind-node.mid, .entered .mind-node.mid { opacity: 0.8; }
+.mind-node.hi, .entered .mind-node.hi { opacity: 1; }
+
+/* 轻薄玻璃星 */
+.mind-node-c {
+  fill: rgba(255, 255, 255, 0.34);
+  stroke: rgba(140, 146, 156, 0.6); stroke-width: 1;
+  transition: r 0.8s;
+}
+:root[data-theme='night'] .mind-node-c {
+  fill: rgba(28, 30, 34, 0.5);
+  stroke: rgba(216, 220, 226, 0.35);
+}
+.mind-node.active .mind-node-c { stroke: #7e3035; }
+.mind-node.fatigue .mind-node-c { stroke-dasharray: 3 3; }
+.mind-node-t {
+  font-size: 12.5px; fill: var(--text);
+  user-select: none;
+}
+
+/* 点击:选中放大,其他降透明 */
+.mind-node { transform-box: fill-box; transform-origin: center; }
+.mind-node.sel { transform: scale(1.14); }
+.has-sel .mind-node:not(.sel) { opacity: 0.3; }
+.has-sel .mind-line:not(.red) { opacity: 0.08; }
+
+/* 月亮 */
+.mind-moon-body {
+  animation: moon-breath 6s ease-in-out infinite;
+}
+.mind-moon-rim {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55); stroke-width: 0.8;
+  opacity: 0.6;
+}
+:root[data-theme='night'] .mind-moon-rim { stroke: rgba(238, 240, 244, 0.4); }
+@keyframes moon-breath {
+  0%, 100% { opacity: 0.92; }
+  50% { opacity: 1; }
+}
+.mind-center-name { font-size: 12.5px; fill: var(--text-soft); }
+
+/* 三层轨道公转(极慢);星上的字反向转保持正立 */
+.orbit {
+  transform-origin: 180px 180px;
+  animation-name: orbit-spin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.mind-node.counter-0, .mind-node.counter-1, .mind-node.counter-2 {
+  animation-name: orbit-spin-rev;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes orbit-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes orbit-spin-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+/* 红线流光:每10秒一次,很淡的一点从核心流向节点 */
+.mind-pulse {
+  fill: #7e3035;
+  opacity: 0;
+  animation: pulse-run 10s linear infinite;
+}
+@keyframes pulse-run {
+  0% { transform: translate(0, 0); opacity: 0; }
+  2% { opacity: 0.7; }
+  16% { transform: translate(var(--tx), var(--ty)); opacity: 0.5; }
+  18% { opacity: 0; }
+  100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+}
+
+/* ---- 此刻最想:一行 ---- */
+.mind-intent-line {
+  text-align: center;
+  font-size: 16.5px; color: var(--text);
+  padding: 2px 0 12px;
+}
+.mind-intent-tag {
+  font-size: 11px; color: var(--accent-text);
+  border: 1px solid var(--hairline); border-radius: 10px;
+  padding: 1px 8px; margin-left: 8px;
+  font-family: var(--sans); font-style: normal;
+}
+
+/* ---- 身体感觉 ---- */
+.mind-sense {
+  border-radius: 14px;
+  padding: 11px 15px;
+  margin-bottom: 12px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.mind-sense-k { font-size: 12px; color: var(--text-soft); }
+.mind-sense-item {
+  position: relative;
+  font-size: 13px; color: var(--text);
+  padding-bottom: 5px;
+}
+.mind-sense-item i {
+  position: absolute; left: 0; bottom: 0;
+  height: 2px; border-radius: 1px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  display: block;
+}
+
+/* ---- 卡片 ---- */
+.mind-card {
+  border-radius: 16px;
+  padding: 14px 17px;
+  margin-bottom: 12px;
+}
+.mind-card-head { display: flex; align-items: center; justify-content: space-between; }
+.mind-card-label {
+  font-size: 13px; color: var(--text-soft);
+  display: flex; align-items: center; gap: 10px;
+}
+.mind-mood-chip {
+  font-size: 10px; color: var(--text-dim);
+  border: 1px solid var(--hairline); border-radius: 9px;
+  padding: 1px 8px;
+  font-family: var(--sans); font-style: normal;
+}
+.mind-feel-chip {
+  font-size: 11px; color: var(--accent-text);
+  border: 1px solid var(--hairline); border-radius: 10px;
+  padding: 2px 9px;
+}
+.mind-feel-text {
+  font-size: 13.5px; line-height: 1.8;
+  color: var(--text);
+  padding-top: 8px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- 念头 ---- */
+.mind-th-group { padding-top: 10px; }
+.mind-th-k { font-size: 10.5px; color: var(--text-dim); letter-spacing: 2px; }
+.mind-th-list { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 7px; }
+.mind-th {
+  border: 1px solid var(--hairline); border-radius: 12px;
+  font-size: 12px; color: var(--text);
+  padding: 4px 11px;
+}
+.mind-th.fix {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  box-shadow: 0 0 7px var(--accent-glow);
+}
+
+/* ---- 玻璃思考云 ---- */
+.mind-bubble {
+  position: fixed; z-index: 96;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  animation: bubble-in-mind 0.35s cubic-bezier(0.3, 0, 0.2, 1);
+}
+@keyframes bubble-in-mind {
+  from { opacity: 0; transform: translate(-50%, -86%) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+.mind-bubble-cloud {
+  border-radius: 18px;
+  padding: 9px 14px;
+  max-width: 230px;
+  position: relative;
+}
+/* 云朵的鼓包 */
+.mind-bubble-cloud::before, .mind-bubble-cloud::after {
+  content: '';
+  position: absolute; top: -7px;
+  width: 26px; height: 16px; border-radius: 50%;
+  background: inherit;
+  border: inherit; border-bottom: none;
+}
+.mind-bubble-cloud::before { left: 18px; }
+.mind-bubble-cloud::after { right: 24px; width: 18px; height: 12px; top: -5px; }
+.bl1 { font-size: 12.5px; color: var(--text); line-height: 1.5; }
+.bl2 { font-size: 10.5px; color: var(--text-soft); padding-top: 2px; }
+.bdot {
+  position: absolute; left: 50%;
+  border-radius: 50%;
+  background: var(--g3);
+  border: 1px solid var(--g3-border);
+}
+.bdot.b1 { width: 7px; height: 7px; bottom: -9px; margin-left: -8px; }
+.bdot.b2 { width: 4px; height: 4px; bottom: -16px; margin-left: -2px; }
+
+/* ---- 详情 ---- */
+.mind-det-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 2px 6px 10px;
+}
+.mind-det-name { font-size: 20px; color: var(--text); }
+.mind-det-val { font-size: 15px; color: var(--text-soft); }
+.mind-det-val i { font-style: normal; font-size: 12px; }
+.mind-det-val i.up { color: var(--accent-text); }
+.mind-det-val i.down { color: var(--silver); }
+.mind-det-reason {
+  font-size: 13px; color: var(--text-soft); line-height: 1.7;
+  padding: 0 6px 10px;
+}
+.mind-det-speed {
+  font-size: 11px; color: var(--accent-text);
+  border: 1px solid var(--hairline); border-radius: 9px;
+  padding: 1px 7px; margin-left: 6px;
+}
+.mind-det-th {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  padding: 4px 6px 8px;
+}
+
+/* ---- 身体卡 ---- */
+.mind-body-phase {
+  font-size: 12px; color: var(--accent-text);
+  border: 1px solid var(--hairline); border-radius: 10px;
+  padding: 2px 10px;
+}
+.mind-body-row {
+  display: flex; gap: 16px;
+  font-size: 12.5px; color: var(--text-soft);
+  padding-top: 9px;
+}
+.mind-body-row b { color: var(--text); font-weight: 500; }
+.mind-solo-list {
+  display: flex; flex-direction: column; gap: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--hairline);
+  margin-top: 10px;
+}
+.mind-solo-item { font-size: 11.5px; color: var(--text-dim); }

@@ -1,0 +1,171 @@
+/* Home v2 · 湿玻璃 */
+.hm { padding-left: 20px; padding-right: 20px; }
+
+.hm-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(20px + env(safe-area-inset-top, 0)) 2px 6px;
+}
+.hm-days-label {
+  font-size: 11px; letter-spacing: 5px;
+  color: var(--text-soft);
+}
+.hm-menu {
+  border: none; background: none; cursor: pointer;
+  color: var(--text-soft); font-size: 17px;
+  padding: 4px;
+}
+
+.hm-hero { padding: 6px 2px 4px; }
+.hm-num {
+  font-size: 64px; line-height: 1.05;
+  color: var(--accent);
+}
+.hm-quote {
+  font-size: 20px; line-height: 1.5;
+  color: var(--text);
+  padding-top: 6px;
+  max-width: 90%;
+}
+.hm-quote-by {
+  font-size: 11px; color: var(--text-dim);
+  padding-top: 6px; letter-spacing: 1px;
+}
+
+.hm-divider {
+  height: 1px; background: var(--hairline);
+  margin: 18px 0 16px;
+}
+
+/* 卡片 */
+.hm-card {
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.hm-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 6px;
+}
+.hm-card-title { font-size: 18px; color: var(--text); }
+.hm-plus {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: none; color: var(--text-soft);
+  font-size: 16px; cursor: pointer;
+}
+.hm-empty {
+  text-align: center; color: var(--text-dim);
+  font-size: 14px; padding: 14px 0;
+}
+
+/* 清单条目 */
+.hm-plan {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 2px;
+  border-top: 1px solid var(--hairline);
+}
+.hm-plan:first-of-type { border-top: none; }
+.hm-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid var(--silver);
+  background: none; color: var(--accent);
+  font-size: 12px; cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.hm-plan.done .hm-check { border-color: var(--accent); }
+.hm-plan.done .hm-ptext { color: var(--text-dim); text-decoration: line-through; }
+.hm-who { font-size: 12px; flex-shrink: 0; }
+.hm-who.ayan { color: var(--silver); }
+.hm-who.wanying { color: var(--accent); }
+.hm-ptext { flex: 1; font-size: 14.5px; color: var(--text); }
+.hm-pdate { font-size: 11px; color: var(--text-dim); }
+.hm-pdel {
+  border: none; background: none; cursor: pointer;
+  color: var(--text-dim); font-size: 15px;
+  padding: 2px 4px; opacity: 0.6;
+}
+
+/* 添加表单 */
+.hm-addform {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 10px;
+}
+.hm-addform input {
+  border: 1px solid var(--hairline); border-radius: 12px;
+  background: transparent; color: var(--text);
+  font-size: 14px; padding: 9px 13px;
+  outline: none;
+  color-scheme: light dark;
+}
+.hm-addform input:focus { border-color: var(--accent); }
+.hm-addrow { display: flex; justify-content: flex-end; gap: 8px; }
+.hm-addrow button {
+  border: 1px solid var(--hairline); border-radius: 13px;
+  background: none; color: var(--text-soft);
+  font-size: 13px; padding: 6px 16px; cursor: pointer;
+}
+.hm-addrow button.ok { border-color: var(--accent); color: var(--accent); }
+
+/* 日历 */
+.hm-cal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 2px 4px 10px;
+}
+.hm-cal-head button {
+  border: none; background: none; cursor: pointer;
+  color: var(--text-soft); font-size: 18px; padding: 2px 10px;
+}
+.hm-cal-title { font-size: 16px; color: var(--text); letter-spacing: 1px; }
+.hm-cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.hm-wd {
+  text-align: center; font-size: 10px; color: var(--text-dim);
+  padding-bottom: 6px; letter-spacing: 1px;
+}
+.hm-day {
+  position: relative;
+  border: none; background: none; cursor: pointer;
+  color: var(--text-soft); font-size: 13px;
+  padding: 7px 0 12px;
+  border-radius: 10px;
+}
+.hm-day.today {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.hm-day.sel { background: var(--g1); }
+.hm-dots {
+  position: absolute; left: 0; right: 0; bottom: 4px;
+  display: flex; justify-content: center; gap: 3px;
+}
+.hm-dots i {
+  width: 3.5px; height: 3.5px; border-radius: 50%;
+  display: inline-block;
+}
+.hm-dots .dp { background: var(--accent); }
+.hm-dots .dm { background: var(--silver); }
+
+.hm-sel {
+  border-top: 1px solid var(--hairline);
+  margin-top: 8px; padding-top: 10px;
+}
+.hm-sel-date { font-size: 12px; color: var(--text-dim); padding-bottom: 6px; }
+.hm-sel-item {
+  font-size: 13.5px; color: var(--text);
+  padding: 4px 0; line-height: 1.6;
+}
+
+.hm-foot {
+  text-align: center; color: var(--text-dim);
+  font-size: 12px; padding: 10px 0 4px;
+  letter-spacing: 1px;
+}
+
+/* Together 概览卡 */
+.hm-tg { cursor: pointer; }
+.hm-tg-sub { font-size: 12px; color: var(--text-dim); font-style: italic; }
+.hm-tg-row { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--text); padding: 4px 2px 2px; letter-spacing: .5px; }

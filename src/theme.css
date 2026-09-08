@@ -1,0 +1,308 @@
+/* ============ 主题 v2 · 湿玻璃 ============ */
+/* 背景像隔着湿玻璃看到的光,内容像浮在玻璃上的另一层。
+   月亮代表他,红线代表连接和变化。日夜是同一个空间的不同光线。 */
+
+:root {
+  --serif: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+  --sans: -apple-system, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+
+  /* 用户可调:背景强度(遮罩)与玻璃透明度系数 */
+  --bg-dim: 0;          /* 额外遮罩 0~0.4 */
+  --gk: 1;              /* 玻璃不透明度系数 0.75~1.3 */
+
+  /* ---- 日间 ---- */
+  --bg: #f1f1f0;
+  --bg-img: url('/bg/day.jpg');
+  --bg-overlay: rgba(255, 255, 255, 0.06);
+  --text: #292b2f;
+  --text-soft: #7b7f86;
+  --text-dim: #a3a7ad;
+  --silver: #b8bdc5;
+  --accent: #8d4a4d;
+  --accent-glow: rgba(141, 74, 77, 0.18);
+
+  /* 一级玻璃:聊天气泡 */
+  --g1: rgb(255 255 255 / calc(0.40 * var(--gk)));
+  --g1-border: rgba(255, 255, 255, 0.55);
+  --g1-blur: blur(18px) saturate(125%);
+  /* 二级玻璃:卡片 */
+  --g2: rgb(255 255 255 / calc(0.62 * var(--gk)));
+  --g2-border: rgba(255, 255, 255, 0.6);
+  --g2-blur: blur(14px) saturate(120%);
+  /* 三级玻璃:弹窗/面板 */
+  --g3: rgb(252 252 252 / calc(0.86 * var(--gk)));
+  --g3-border: rgba(255, 255, 255, 0.7);
+  --g3-blur: blur(22px) saturate(120%);
+
+  --hairline: rgba(60, 64, 70, 0.12);
+  --shadow: 0 2px 14px rgba(80, 82, 88, 0.06);
+
+  /* 气泡 tint:他=冷银,她=暖粉(都很轻) */
+  --tint-him: rgba(184, 196, 214, 0.16);
+  --tint-her: rgba(190, 120, 124, 0.13);
+
+  /* 阅读模式(玻璃退场) */
+  --read-bg: #f3f0ea;
+  --read-text: #303035;
+}
+
+:root[data-theme='night'] {
+  --bg: #050607;
+  --bg-img: url('/bg/night.jpg');
+  --bg-overlay: rgba(0, 0, 0, 0.16);
+  --text: #e7e8eb;
+  --text-soft: #8c9098;
+  --text-dim: #5d6167;
+  --silver: #d8dce2;
+  --accent: #87363b;
+  --accent-glow: rgba(135, 54, 59, 0.25);
+
+  --g1: rgb(28 30 34 / calc(0.45 * var(--gk)));
+  --g1-border: rgba(255, 255, 255, 0.12);
+  --g1-blur: blur(18px) saturate(130%);
+  --g2: rgb(23 25 29 / calc(0.68 * var(--gk)));
+  --g2-border: rgba(255, 255, 255, 0.09);
+  --g2-blur: blur(14px) saturate(125%);
+  --g3: rgb(23 25 29 / calc(0.88 * var(--gk)));
+  --g3-border: rgba(255, 255, 255, 0.1);
+  --g3-blur: blur(22px) saturate(125%);
+
+  --hairline: rgba(216, 220, 226, 0.1);
+  --shadow: 0 2px 18px rgba(0, 0, 0, 0.4);
+
+  --tint-him: rgba(170, 190, 220, 0.08);
+  --tint-her: rgba(200, 110, 118, 0.09);
+
+  --read-bg: #18191b;
+  --read-text: #d4d1cc;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  transition: color 0.5s;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+/* 湿玻璃背景层(固定,不随滚动) */
+.wetglass-bg {
+  position: fixed; inset: 0; z-index: -1;
+  background-image: var(--bg-img);
+  background-size: cover;
+  background-position: center;
+  transition: opacity 0.5s;
+}
+.wetglass-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: var(--bg-overlay);
+  box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, var(--bg-dim));
+}
+:root:not([data-theme='night']) .wetglass-bg::after {
+  box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, var(--bg-dim));
+}
+
+.serif { font-family: var(--serif); font-style: italic; }
+
+button { font-family: inherit; }
+
+img.pixel { image-rendering: pixelated; -webkit-user-drag: none; user-select: none; }
+
+/* ---- 三级玻璃通用类 ---- */
+.glass1 {
+  background: var(--g1);
+  backdrop-filter: var(--g1-blur);
+  -webkit-backdrop-filter: var(--g1-blur);
+  border: 1px solid var(--g1-border);
+}
+.glass2 {
+  background: var(--g2);
+  backdrop-filter: var(--g2-blur);
+  -webkit-backdrop-filter: var(--g2-blur);
+  border: 1px solid var(--g2-border);
+}
+.glass3 {
+  background: var(--g3);
+  backdrop-filter: var(--g3-blur);
+  -webkit-backdrop-filter: var(--g3-blur);
+  border: 1px solid var(--g3-border);
+}
+
+/* ---- 底部 Tab 栏 ---- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  max-width: 480px; margin: 0 auto;
+  display: flex;
+  padding: 8px 6px calc(10px + env(safe-area-inset-bottom, 0));
+  border-radius: 0;
+  border-left: none; border-right: none; border-bottom: none;
+}
+.tab-item {
+  flex: 1;
+  border: none; background: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  color: var(--text-soft);
+  padding: 4px 0;
+}
+.tab-icon { font-size: 17px; line-height: 1; }
+.tab-label {
+  font-family: var(--serif); font-style: italic;
+  font-size: 10.5px; letter-spacing: 0.5px;
+}
+.tab-item.active { color: var(--text); }
+.tab-item.active .tab-label { color: var(--accent); }
+
+/* 页面容器:给 tab 栏留出空间 */
+.page {
+  min-height: 100dvh;
+  max-width: 480px; margin: 0 auto;
+  padding-bottom: 90px;
+}
+
+/* ---- 兼容层:旧 token 映射到玻璃体系 ---- */
+:root {
+  --card: var(--g2);
+  --card-border: var(--g2-border);
+  --overlay: rgba(20, 22, 26, 0.35);
+  --accent-soft: #a5787b;
+  --moon: var(--silver);
+  --moon-glow: rgba(216, 220, 226, 0.3);
+  --line-red: var(--accent);
+  --bg-glow: transparent;
+}
+:root[data-theme='night'] {
+  --overlay: rgba(0, 0, 0, 0.5);
+  --accent-soft: #9a5a60;
+}
+
+/* 旧容器统一补毛玻璃 */
+.sheet, .sdrawer, .set-group, .chat-input-wrap,
+.mo-composer-bar, .up-thumb, .att-file {
+  backdrop-filter: var(--g3-blur);
+  -webkit-backdrop-filter: var(--g3-blur);
+}
+.sheet { background: var(--g3); border: 1px solid var(--g3-border); }
+.sdrawer { background: var(--g3); }
+.set-group { background: var(--g2); }
+.chat-input-wrap { background: var(--g1); border: 1px solid var(--g1-border); }
+.mo-composer-bar { background: var(--g1); border: 1px solid var(--g1-border); }
+
+/* More 弹层 */
+.more-item {
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.more-item .serif { font-size: 18px; }
+.more-sub { font-size: 11px; color: var(--text-dim); }
+
+/* ---- 可读性修正:文字用的暗红,夜间提亮为玫瑰银 ---- */
+:root { --accent-text: #8d4a4d; }
+:root[data-theme='night'] { --accent-text: #c8878c; }
+
+/* 朋友圈:昵称/点赞/爱心 */
+.mo-author, .mo-cname { color: var(--accent-text); }
+.mo-liked { color: var(--accent-text); }
+.mo-like { color: var(--silver); }
+.mo-like.on { color: var(--accent-text); }
+.mo-cbtn { color: var(--text-soft); }
+.mo-when { color: var(--text-soft); }
+
+/* Chat:思考链☁︎与记忆🫧标志更明显 */
+.cloud-btn {
+  color: var(--silver);
+  font-size: 14px;
+  opacity: 0.95;
+}
+.cloud-btn:active { color: var(--accent-text); }
+.msg-meta { color: var(--text-soft); }
+
+/* Chat 加载文案 */
+.chat-empty-cat .txt { color: var(--text-soft); }
+.chat-empty { color: var(--text-soft); }
+
+/* 主页清单:她的圆点也用亮玫瑰 */
+.hm-who.wanying { color: var(--accent-text); }
+.hm-quote-by { color: var(--text-soft); }
+
+/* 会话抽屉标题 */
+.sdrawer-title { color: var(--accent-text); }
+
+/* ---- 卡通图标:思考云/记忆泡泡,大而清楚 ---- */
+.cloud-btn svg {
+  width: 20px; height: 20px; display: block;
+}
+.cloud-btn {
+  color: var(--silver);
+  padding: 2px 3px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+}
+:root:not([data-theme='night']) .cloud-btn { color: #8a9099; filter: none; }
+.cloud-btn.mem-btn { color: var(--accent-text); }
+
+/* remembering… 夜间用银白 */
+:root[data-theme='night'] .chat-empty-cat .txt,
+:root[data-theme='night'] .chat-empty { color: var(--silver); }
+
+/* ---- Chat 在线状态点:信号灯化 ---- */
+.chat-dot {
+  background: var(--accent-text);   /* 断线:玫瑰红 */
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.chat-dot.on {
+  background: #4ade80;              /* 在线:亮绿 */
+  box-shadow: 0 0 6px 1px rgba(74, 222, 128, 0.55);
+}
+
+/* ---- iOS 手感修正 ---- */
+/* 长按不出现选中/放大镜/复制菜单 */
+button, .cbtn, .tab-item, .voice-bubble {
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+.cbtn.mic { touch-action: none; }  /* 按住说话时手指移动不触发滚动 */
+
+/* 弹层打开时背景不跟着橡皮筋滚动 */
+html, body { overscroll-behavior: none; }
+.sheet-mask { touch-action: none; }
+.sheet .thought-body,
+.sheet .up-list,
+.sheet .mo-sheet-ta {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---- 通知:Tab红点 + 顶部横幅 ---- */
+.tab-icon { position: relative; }
+.tab-dot {
+  position: absolute; top: -3px; right: -8px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-text);
+  box-shadow: 0 0 5px var(--accent-glow);
+}
+.top-banner {
+  position: fixed; top: calc(10px + env(safe-area-inset-top, 0));
+  left: 14px; right: 14px; z-index: 95;
+  max-width: 452px; margin: 0 auto;
+  display: flex; align-items: center; gap: 10px;
+  border-radius: 16px;
+  padding: 13px 16px;
+  cursor: pointer;
+  animation: banner-in 0.4s cubic-bezier(0.3, 0, 0.2, 1);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+@keyframes banner-in {
+  from { transform: translateY(-120%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.top-banner-moon { color: var(--silver); font-size: 16px; }
+.top-banner-text {
+  flex: 1; text-align: left;
+  font-size: 13.5px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}

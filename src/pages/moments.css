@@ -1,0 +1,182 @@
+.mo {
+  height: 100dvh;
+  max-width: 480px; margin: 0 auto;
+  display: flex; flex-direction: column;
+}
+.mo-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(12px + env(safe-area-inset-top, 0)) 14px 10px;
+  flex-shrink: 0;
+}
+.mo-title { font-size: 22px; color: var(--text); letter-spacing: 1px; }
+
+.mo-feed {
+  flex: 1; overflow-y: auto;
+  padding: 4px 18px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.mo-empty {
+  text-align: center; color: var(--text-dim);
+  font-size: 19px; padding-top: 30vh; line-height: 2;
+}
+.mo-empty-sub { font-size: 13px; }
+
+.mo-post {
+  padding: 18px 0 14px;
+  border-bottom: 1px solid var(--card-border);
+}
+.mo-meta {
+  display: flex; align-items: baseline; gap: 10px;
+  padding-bottom: 8px;
+}
+.mo-when { font-size: 13px; color: var(--text-dim); }
+.mo-author { font-size: 13px; color: var(--accent); }
+.mo-del {
+  margin-left: auto;
+  border: none; background: none; cursor: pointer;
+  color: var(--text-dim); font-size: 11px;
+  letter-spacing: 1px;
+}
+.mo-content {
+  font-size: 15px; line-height: 1.75; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+  padding-bottom: 8px;
+}
+.mo-img {
+  max-width: 100%; max-height: 340px;
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+  margin-bottom: 8px;
+  display: block;
+}
+.mo-actions {
+  display: flex; align-items: center; gap: 12px;
+  padding: 2px 0 4px;
+}
+.mo-like {
+  border: none; background: none; cursor: pointer;
+  font-size: 17px; color: var(--text-dim);
+  padding: 2px;
+}
+.mo-like.on { color: var(--accent); }
+.mo-cbtn {
+  border: none; background: none; cursor: pointer;
+  font-size: 12px; color: var(--text-dim);
+}
+.mo-liked { font-size: 12px; color: var(--accent-soft); margin-left: auto; }
+
+.mo-comments {
+  margin-top: 6px;
+  border-left: 2px solid var(--card-border);
+  padding-left: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.mo-cname { font-size: 13px; color: var(--accent); }
+.mo-ctext {
+  font-size: 14px; line-height: 1.65; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+  margin-top: 2px;
+}
+.mo-ctime { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+.mo-cinput {
+  display: flex; gap: 8px; margin-top: 10px;
+}
+.mo-cinput input {
+  flex: 1;
+  border: 1px solid var(--card-border); border-radius: 16px;
+  background: var(--card); color: var(--text);
+  font-size: 14px; padding: 8px 14px;
+  outline: none;
+}
+.mo-cinput button {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: none; background: var(--text); color: var(--bg);
+  cursor: pointer;
+}
+
+/* 底部发布栏 */
+.mo-composer {
+  flex-shrink: 0;
+  padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0));
+}
+.mo-preview {
+  position: relative;
+  width: 74px; margin-bottom: 8px;
+}
+.mo-preview img {
+  width: 74px; height: 74px; object-fit: cover;
+  border-radius: 12px; border: 1px solid var(--card-border);
+}
+.mo-preview button {
+  position: absolute; top: -6px; right: -6px;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: none; background: var(--text); color: var(--bg);
+  font-size: 12px; cursor: pointer;
+}
+.mo-composer-bar {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+}
+.mo-cam {
+  border: none; background: none; cursor: pointer;
+  font-size: 19px;
+}
+.mo-input {
+  flex: 1;
+  border: none; outline: none; background: transparent;
+  color: var(--text); font-size: 15px;
+}
+.mo-input::placeholder { color: var(--text-dim); }
+.mo-send {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: none; background: var(--text); color: var(--bg);
+  font-size: 16px; cursor: pointer;
+}
+.mo-send:disabled { opacity: 0.35; }
+
+/* ============ v2:动态直接铺在玻璃上,评论区薄玻璃 ============ */
+.mo-post { border-bottom: 1px solid var(--hairline); }
+.mo-comments {
+  border-left: none;
+  background: var(--g1);
+  backdrop-filter: var(--g1-blur);
+  -webkit-backdrop-filter: var(--g1-blur);
+  border: 1px solid var(--g1-border);
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+.mo-cinput input { background: var(--g1); }
+
+/* ============ 发布改为右上角＋弹层 ============ */
+.mo-newbtn { font-size: 18px; }
+.mo-feed { padding-bottom: 100px; }  /* 给底部Tab栏让位 */
+.mo-sheet { display: flex; flex-direction: column; }
+.mo-sheet-title {
+  text-align: center; font-size: 16px;
+  color: var(--text-soft);
+  padding-bottom: 10px;
+}
+.mo-sheet-ta {
+  border: 1px solid var(--hairline); border-radius: 14px;
+  background: transparent; color: var(--text);
+  font-size: 15px; line-height: 1.7; font-family: inherit;
+  padding: 12px 14px;
+  resize: none; outline: none;
+}
+.mo-sheet-ta:focus { border-color: var(--accent); }
+.mo-sheet-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding-top: 12px;
+}
+.mo-publish {
+  border: 1px solid var(--accent); border-radius: 16px;
+  background: none; color: var(--accent-text);
+  font-size: 14px; padding: 7px 22px; cursor: pointer;
+}
+.mo-publish:disabled { opacity: 0.35; }
+.mo-sheet .mo-preview { margin-top: 10px; }

@@ -1,0 +1,114 @@
+/* ===== 通话页:整页湿玻璃,月亮是他,红线是你 ===== */
+.call { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; color: var(--text);
+  background: var(--g2); backdrop-filter: blur(10px) saturate(120%); -webkit-backdrop-filter: blur(10px) saturate(120%);
+  padding: calc(10px + env(safe-area-inset-top, 0)) 0 calc(16px + env(safe-area-inset-bottom, 0)); animation: call-in .28s ease; }
+@keyframes call-in { from { opacity: 0; transform: translateY(24px) } to { opacity: 1; transform: none } }
+.call-top { display: flex; align-items: center; padding: 0 12px; }
+.call-min { border: 0; background: transparent; color: var(--text-dim); font-size: 22px; width: 40px; height: 36px; }
+.call-status { flex: 1; text-align: center; font-size: 14px; color: var(--text-soft); letter-spacing: 1px; }
+.call-top-sp { width: 40px; }
+
+/* 头像位 + 两侧声波 */
+.call-hero { display: flex; align-items: center; justify-content: center; gap: 22px; margin-top: 22px; }
+.call-avatar { width: 96px; height: 96px; border-radius: 50%; border: 1px solid var(--g2-border); background: var(--g2); backdrop-filter: var(--g2-blur); -webkit-backdrop-filter: var(--g2-blur);
+  display: grid; place-items: center; overflow: hidden; box-shadow: var(--shadow); position: relative; }
+.call-avatar.ring::after { content: ''; position: absolute; inset: -1px; border-radius: 50%; border: 1px solid var(--accent); animation: call-ring 1.4s ease-out infinite; }
+@keyframes call-ring { 0% { transform: scale(1); opacity: .8 } 100% { transform: scale(1.35); opacity: 0 } }
+.call-side { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 48px; }
+.call-bars { display: flex; align-items: center; gap: 4px; height: 28px; }
+.call-bars i { width: 2.5px; height: 5px; border-radius: 2px; background: var(--hairline); display: block; transition: height .2s, background .3s; }
+.call-bars.him.on i { background: var(--silver); animation: call-bar .8s ease-in-out infinite; }
+.call-bars.her.on i { background: var(--accent); animation: call-bar .7s ease-in-out infinite; }
+@keyframes call-bar { 0%, 100% { height: 5px } 50% { height: 24px } }
+.call-mic { font-size: 10px; color: var(--accent); letter-spacing: 1px; white-space: nowrap; }
+.call-mic.off { color: var(--text-dim); }
+.call-name { text-align: center; margin-top: 12px; font-size: 17px; font-weight: 600; letter-spacing: 6px; text-indent: 6px; color: var(--text); font-family: var(--serif); }
+
+/* 字幕流:正在说的大字,说完的往上退成小字 */
+.call-list { flex: 1; overflow-y: auto; padding: 18px 24px 8px; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; -webkit-overflow-scrolling: touch; }
+.call-line { display: flex; flex-direction: column; gap: 3px; opacity: .6; font-size: 14px; line-height: 1.55; animation: call-fade .55s ease; }
+.call-line.her { align-items: flex-end; text-align: right; }
+.call-line.him { align-items: flex-start; }
+.call-line-zh { font-size: 12px; color: var(--text-dim); }
+.call-who { font-size: 10px; letter-spacing: 2.5px; color: var(--text-dim); text-transform: uppercase; display: inline-flex; align-items: center; }
+.call-line.him .call-who { color: var(--silver); font-family: var(--serif); letter-spacing: 3px; }
+.call-line.her .call-who { color: var(--accent); opacity: .8; }
+@keyframes call-fade { from { opacity: 1; font-size: 20px } to { opacity: .6; font-size: 14px } }
+.call-cur { padding: 6px 0 2px; }
+.call-cur-en { font-size: 22px; line-height: 1.5; color: var(--text); }
+.call-cur.him .call-cur-en { font-size: 24px; font-family: var(--serif); }
+.call-cur.her { text-align: right; }
+.call-cur.her .call-cur-en { color: var(--text-soft); border-right: 2px solid var(--accent); padding-right: 12px; }
+.call-cur-zh { margin-top: 6px; font-size: 14px; color: var(--text-soft); line-height: 1.5; }
+.call-hint { text-align: center; color: var(--text-dim); font-size: 13px; padding: 20px 0; letter-spacing: 1px; }
+.call-resume { align-self: center; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--g2-border); background: var(--g2); color: var(--text); font-family: inherit; font-size: 14px; }
+
+/* 打字框:和聊天输入框一样,聚焦红线 */
+.call-type { display: flex; gap: 8px; align-items: flex-end; margin: 0 16px 12px; padding: 8px 8px 8px 14px; border-radius: 20px; border: 1px solid var(--hairline); background: var(--g2); backdrop-filter: var(--g2-blur); -webkit-backdrop-filter: var(--g2-blur); transition: border-color .25s, box-shadow .25s; }
+.call-type:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow), 0 2px 14px var(--accent-glow); }
+.call-type textarea { flex: 1; border: 0; background: transparent; color: var(--text); font-size: 16px; font-family: inherit; outline: none; resize: none; line-height: 1.5; max-height: 132px; padding: 6px 0; }
+.call-type button { border: 1px solid var(--silver); border-radius: 999px; width: 34px; height: 34px; background: transparent; color: var(--silver); font-size: 16px; flex: none; }
+.call-type button:disabled { opacity: .3; }
+
+/* 四个键:圆玻璃 + 细线图标;按下红晕;挂断红底 */
+.call-ctl { display: flex; justify-content: space-around; padding: 8px 14px 0; }
+.call-btn { display: flex; flex-direction: column; align-items: center; gap: 7px; border: 0; background: transparent; color: var(--text-soft); font-size: 11px; font-family: inherit; letter-spacing: 1px; }
+.call-btn span { width: 58px; height: 58px; border-radius: 50%; border: 1px solid var(--hairline); background: var(--g2); backdrop-filter: var(--g2-blur); -webkit-backdrop-filter: var(--g2-blur);
+  display: flex; align-items: center; justify-content: center; color: var(--silver); transition: background .2s, box-shadow .25s, border-color .25s; }
+.call-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.call-btn:active span { transform: scale(.94); }
+.call-btn.on span { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow), 0 2px 14px var(--accent-glow); }
+.call-btn.on { color: var(--accent); }
+.call-btn:disabled { opacity: .3; }
+.call-btn.hang span { background: var(--accent); border-color: var(--accent); color: #f6f1ee; box-shadow: 0 4px 16px var(--accent-glow); }
+.call.ended .call-list { opacity: .6; }
+
+/* 缩成右侧药丸 */
+.call-pill { position: fixed; right: 0; top: calc(164px + env(safe-area-inset-top, 0)); z-index: 55; display: flex; align-items: center; gap: 6px; padding: 8px 14px 8px 10px; border-radius: 14px 0 0 14px; border: 1px solid var(--g3-border); border-right: 0; color: var(--text); font-family: inherit; }
+.call-pill-ico { color: var(--accent); font-size: 14px; }
+.call-pill.anim .call-pill-ico { animation: call-blink 1s infinite; }
+@keyframes call-blink { 50% { opacity: .3 } }
+.call-pill-num { font-variant-numeric: tabular-nums; font-size: 14px; }
+.call-toast { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 90; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--g3-border); font-size: 13px; color: var(--text); }
+
+/* ===== 聊天里的通话卡 ===== */
+.call-card { display: inline-flex; align-items: center; gap: 12px; padding: 10px 16px 10px 12px; border-radius: 16px; border: 1px solid var(--g2-border); background: var(--g2); backdrop-filter: var(--g2-blur); -webkit-backdrop-filter: var(--g2-blur); color: var(--text); font-family: inherit; font-size: 14px; text-align: left; box-shadow: var(--shadow); }
+.call-card i { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--silver); color: var(--silver); font-style: normal; font-size: 15px; flex: none; }
+.call-card.bad { color: var(--accent); }
+.call-card.bad i { border-color: var(--accent); color: var(--accent); transform: rotate(135deg); }
+.call-card small { color: var(--text-dim); font-size: 11px; letter-spacing: .5px; }
+
+/* ===== 原文页:背景模糊,中间一张卡,卡里滑 ===== */
+.call-veil { position: fixed; inset: 0; z-index: 49; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: rgba(20, 18, 22, .14); backdrop-filter: blur(7px) saturate(115%); -webkit-backdrop-filter: blur(7px) saturate(115%); animation: veil-in .22s ease; }
+@keyframes veil-in { from { opacity: 0 } to { opacity: 1 } }
+.call-paper { width: min(92vw, 420px); height: 76vh; display: flex; flex-direction: column; border-radius: 22px; background: var(--g3); border: 1px solid var(--g3-border); backdrop-filter: var(--g3-blur); -webkit-backdrop-filter: var(--g3-blur); box-shadow: 0 12px 40px rgba(0, 0, 0, .18); animation: paper-in .28s ease; overflow: hidden; }
+@keyframes paper-in { from { opacity: 0; transform: translateY(14px) scale(.98) } to { opacity: 1; transform: none } }
+.call-paper-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--hairline); display: flex; align-items: center; gap: 12px; }
+.call-paper-head i { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--silver); color: var(--silver); font-style: normal; flex: none; }
+.call-paper.bad .call-paper-head i { border-color: var(--accent); color: var(--accent); transform: rotate(135deg); }
+.call-paper-title { font-family: var(--serif); font-size: 16px; letter-spacing: 1px; }
+.call-paper-sub { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; letter-spacing: .5px; }
+.call-paper-x { margin-left: auto; border: 0; background: transparent; color: var(--text-dim); font-size: 18px; padding: 4px 6px; }
+.call-paper-body { overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
+.call-msg { max-width: 86%; display: flex; flex-direction: column; gap: 4px; }
+.call-msg.him { align-self: flex-start; }
+.call-msg.her { align-self: flex-end; align-items: flex-end; text-align: right; }
+.call-msg .call-who { padding: 0 4px; }
+.call-msg.him .call-who { color: var(--silver); font-family: var(--serif); letter-spacing: 3px; }
+.call-msg.her .call-who { color: var(--accent); opacity: .8; }
+.call-msg-b { padding: 10px 14px; border-radius: 16px; font-size: 14.5px; line-height: 1.6; border: 1px solid var(--g1-border); background: var(--g1); }
+.call-msg.him .call-msg-b { background: linear-gradient(var(--tint-him), var(--tint-him)), var(--g1); border-bottom-left-radius: 6px; }
+.call-msg.her .call-msg-b { background: linear-gradient(var(--tint-her), var(--tint-her)), var(--g1); border-bottom-right-radius: 6px; }
+.call-msg-zh { display: block; margin-top: 5px; font-size: 12.5px; color: var(--text-soft); }
+.call-cloud { display: inline-flex; vertical-align: middle; margin-left: 6px; transform: scale(.85); }
+.call-paper-empty { text-align: center; color: var(--text-dim); font-size: 13px; padding: 30px 0; }
+
+/* 挂断后他才说完的话:红字 */
+.call-msg.late .call-msg-b { color: var(--accent); border-color: var(--accent-glow); }
+.call-msg.late .call-who { color: var(--accent); }
+
+/* 有字时发送键红色填充,和聊天页一样 */
+.call-type button { transition: background .2s, box-shadow .25s, border-color .2s; }
+.call-type button.ready { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 10px var(--accent-glow); }
+
+.call-cur-done { color: var(--text-soft); }

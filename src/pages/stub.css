@@ -1,0 +1,27 @@
+.stub {
+  min-height: 100dvh;
+  max-width: 480px; margin: 0 auto;
+  padding: 0 18px;
+  display: flex; flex-direction: column;
+}
+.stub-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(16px + env(safe-area-inset-top, 0)) 0 12px;
+}
+.stub-back {
+  width: 36px; height: 36px;
+  border: 1px solid var(--card-border); border-radius: 50%;
+  background: var(--card); color: var(--text-soft);
+  font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding-bottom: 3px;
+}
+.stub-title { font-size: 22px; color: var(--text); }
+.stub-sub { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.stub-body {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  padding-bottom: 15vh;
+}
+.stub-soon { font-size: 30px; color: var(--text-dim); }
+.stub-hint { font-size: 13px; color: var(--text-dim); }

@@ -1,0 +1,68 @@
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      changelog:
+        description: '这版改了什么(TestFlight 里显示)'
+        required: false
+        default: '云编译'
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'capacitor.config.json'
+      - 'fastlane/**'
+      - '.github/workflows/ios.yml'
+      - 'package.json'
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Web build + Capacitor sync
+        run: |
+          npm ci
+          npm run build
+          npx cap sync ios
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Fastlane beta
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: https://github.com/${{ github.repository }}.git
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_STORE_NAME: ${{ vars.APP_STORE_NAME }}
+          CHANGELOG: ${{ github.event.inputs.changelog || github.event.head_commit.message }}
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+          FASTLANE_HIDE_CHANGELOG: '1'
+        run: bundle exec fastlane ios beta
+
+      - name: Keep the ipa
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: home-ipa
+          path: build/home.ipa
+          retention-days: 7

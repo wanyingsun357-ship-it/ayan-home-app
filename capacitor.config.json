@@ -1,0 +1,16 @@
+{
+  "appId": "com.entangledforever.home",
+  "appName": "家",
+  "webDir": "dist",
+  "server": {
+    "url": "https://entangledforever.com",
+    "allowNavigation": ["entangledforever.com", "*.entangledforever.com"]
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": false,
+    "backgroundColor": "#f1f1f0",
+    "scrollEnabled": true,
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}
