@@ -15,21 +15,27 @@ platform :ios do
       in_house: false
     )
 
-    # App Store Connect 里建 App 记录 + 注册 Bundle ID(已存在就跳过)
-    begin
-      # produce 没有 api_key 参数,它自动用上面 app_store_connect_api_key 放进 lane_context 的令牌
-      produce(
-        app_identifier: APP_ID,
-        app_name: ENV.fetch('APP_STORE_NAME', 'Entangled Home'),
-        language: 'zh-Hans',
-        sku: 'entangled-home-1',
-        skip_itc: false
-      )
-    rescue => e
-      UI.important("produce 跳过: #{e.message[0, 200]}")
+    # produce 只认账号密码,不认 API 令牌;用 Spaceship 直接注册 Bundle ID + 建 App 记录(已存在就跳过)
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+      key_id: ENV.fetch('ASC_KEY_ID'), issuer_id: ENV.fetch('ASC_ISSUER_ID'), key: ENV.fetch('ASC_KEY_P8')
+    )
+    app_name = ENV.fetch('APP_STORE_NAME', 'Entangled Home')
+    unless Spaceship::ConnectAPI::BundleId.find(APP_ID)
+      UI.message("注册 Bundle ID #{APP_ID}")
+      Spaceship::ConnectAPI::BundleId.create(name: app_name, platform: Spaceship::ConnectAPI::BundleIdPlatform::IOS, identifier: APP_ID)
+      sleep(8)
+    end
+    unless Spaceship::ConnectAPI::App.find(APP_ID)
+      UI.message("建 App 记录 #{app_name}")
+      begin
+        Spaceship::ConnectAPI::App.create(name: app_name, version_string: '1.0', sku: 'entangled-home-1', primary_locale: 'zh-Hans', bundle_id: APP_ID, platforms: [Spaceship::ConnectAPI::Platform::IOS])
+      rescue => e
+        UI.important("建 App 记录没成(可能名字被占): #{e.message[0, 300]}")
+      end
     end
 
     setup_ci
+    ENV['MATCH_READONLY'] = 'false' # setup_ci 会把 match 切成只读,这里要它能建证书
     match(
       type: 'appstore',
       api_key: api_key,
