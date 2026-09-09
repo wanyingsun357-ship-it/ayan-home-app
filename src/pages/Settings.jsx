@@ -56,7 +56,9 @@ export default function Settings({ back }) {
   const [locAuth, setLocAuth] = useState('')
   const [locMsg, setLocMsg] = useState('')
   const [locOn, setLocOn] = useState(localStorage.getItem('loc-on') !== '0')
-  const loadLoc = async () => { try { setLoc(await (await fetch('/api/location')).json()) } catch {}; try { setLocAuth((await geo.status()).auth) } catch {} }
+  const [homes, setHomes] = useState([])
+  const loadLoc = async () => { try { setLoc(await (await fetch('/api/location')).json()) } catch {}; try { setLocAuth((await geo.status()).auth) } catch {}; try { const d = await (await fetch('/api/sessions')).json(); setHomes((d.sessions || []).filter((x) => !/维修/.test(x.title || ''))) } catch {} }
+  const locGreet = async (id) => { await fetch('/api/location/greet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: id || null }) }); loadLoc() }
   useEffect(() => { loadLoc() }, [])
   const locAsk = async (always) => { const r = await geo.request(always); setLocAuth(r.auth); if (r.auth === 'always' || r.auth === 'whenInUse') { await geo.report(); if (r.auth === 'always') geo.startBackground(); setTimeout(loadLoc, 1500) } }
   const locNow = async () => { setLocMsg('定位中…'); const r = await geo.report(); setLocMsg(r ? '已上报' : '没拿到位置'); setTimeout(() => { setLocMsg(''); loadLoc() }, 1500) }
@@ -229,7 +231,14 @@ export default function Settings({ back }) {
             <span>{loc?.home ? `家:已设(${loc.home.name})` : '家:还没设'}</span>
             <div className="set-seg">{loc?.home ? <button onClick={locClearHome}>清掉</button> : null}<button onClick={locSetHome}>把这里设为家</button></div>
           </div>
-          <div className="set-hint">他会在"此刻状态"里看到"在家 / 离家 N 米(几分钟前)";你从外面回到家 200 米内,他会主动来迎一下(90 分钟最多一次)。</div>
+          <div className="set-row">
+            <span>回家时谁来迎</span>
+            <select className="set-select" value={loc?.greetSession || ''} onChange={(e) => locGreet(e.target.value)}>
+              <option value="">当时在聊的那个家</option>
+              {homes.map((h) => <option key={h.id} value={h.id}>{h.title}</option>)}
+            </select>
+          </div>
+          <div className="set-hint">他会在"此刻状态"里看到"在家 / 离家 N 米(几分钟前)";你从外面回到家 200 米内,选中的家会主动来迎一下(90 分钟最多一次)。</div>
         </div>
 
         <div className="set-group">
