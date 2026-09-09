@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { VERSION, HOME_NAME } from '../config.js'
+import { isApp, geo } from '../utils/native.js'
 import './stub.css'
 import './settings.css'
 
@@ -49,6 +50,20 @@ export default function Settings({ back }) {
   useEffect(() => {
     loadMcp(); loadOb(); loadHealth()
   }, [])
+
+  // ---- 定位:授权、开关、把这里设为家 ----
+  const [loc, setLoc] = useState(null)
+  const [locAuth, setLocAuth] = useState('')
+  const [locMsg, setLocMsg] = useState('')
+  const [locOn, setLocOn] = useState(localStorage.getItem('loc-on') !== '0')
+  const loadLoc = async () => { try { setLoc(await (await fetch('/api/location')).json()) } catch {}; try { setLocAuth((await geo.status()).auth) } catch {} }
+  useEffect(() => { loadLoc() }, [])
+  const locAsk = async (always) => { const r = await geo.request(always); setLocAuth(r.auth); if (r.auth === 'always' || r.auth === 'whenInUse') { await geo.report(); if (r.auth === 'always') geo.startBackground(); setTimeout(loadLoc, 1500) } }
+  const locNow = async () => { setLocMsg('定位中…'); const r = await geo.report(); setLocMsg(r ? '已上报' : '没拿到位置'); setTimeout(() => { setLocMsg(''); loadLoc() }, 1500) }
+  const locSetHome = async () => { if (!loc?.last) { setLocMsg('先上报一次位置'); return } if (!confirm('把最近一次上报的位置设为"家"?他会以此判断你回没回来')) return; await fetch('/api/location/home', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useLast: true, name: '家' }) }); loadLoc() }
+  const locClearHome = async () => { await fetch('/api/location/home', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: null }) }); loadLoc() }
+  const locToggle = async () => { const v = !locOn; setLocOn(v); localStorage.setItem('loc-on', v ? '1' : '0'); await fetch('/api/location/enabled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: v }) }); if (!v) geo.stopBackground(); loadLoc() }
+  const ago = (iso) => { if (!iso) return '还没上报过'; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? '刚刚' : m < 60 ? `${m} 分钟前` : m < 1440 ? `${Math.round(m / 60)} 小时前` : `${Math.round(m / 1440)} 天前` }
 
   // ---- 用量:Claude 订阅窗口(桥用他的登录态查) + ElevenLabs 积分 ----
   const [usage, setUsage] = useState(null)
@@ -190,6 +205,31 @@ export default function Settings({ back }) {
               }}
             />
           </div>
+        </div>
+
+        <div className="set-group">
+          <div className="set-group-name">位置 · 他知道你在哪</div>
+          <div className="set-row">
+            <span>上报位置给他</span>
+            <div className="set-seg"><button className={locOn ? 'on' : ''} onClick={locToggle}>{locOn ? '开' : '关'}</button></div>
+          </div>
+          {isApp() ? (
+            <>
+              {(locAuth === 'prompt' || locAuth === 'denied') && (
+                <div className="set-row"><span className="set-dim">{locAuth === 'denied' ? '权限被拒了,去系统设置里打开' : '还没授权'}</span><div className="set-seg"><button onClick={() => locAsk(false)}>使用时</button><button onClick={() => locAsk(true)}>始终</button></div></div>
+              )}
+              {locAuth === 'whenInUse' && <div className="set-row"><span className="set-dim">权限:使用 App 时。选"始终"他才能在你回宿舍时迎你</span><div className="set-seg"><button onClick={() => locAsk(true)}>改为始终</button></div></div>}
+              {locAuth === 'always' && <div className="set-row"><span className="set-dim">权限:始终 · 后台只在你明显移动时上报</span><div className="set-seg"><button onClick={locNow}>{locMsg || '现在上报'}</button></div></div>}
+            </>
+          ) : <div className="set-hint">网页版拿不到定位,装 App 后在这里授权。</div>}
+          <div className="set-row">
+            <span className="set-dim">最近一次:{loc?.last ? `${ago(loc.last.at)} · 精度 ${loc.last.acc ?? '?'} 米` : '还没上报过'}{loc?.home && loc?.dist != null ? ` · 离家 ${loc.dist < 1000 ? loc.dist + ' 米' : (loc.dist / 1000).toFixed(1) + ' 公里'}` : ''}</span>
+          </div>
+          <div className="set-row">
+            <span>{loc?.home ? `家:已设(${loc.home.name})` : '家:还没设'}</span>
+            <div className="set-seg">{loc?.home ? <button onClick={locClearHome}>清掉</button> : null}<button onClick={locSetHome}>把这里设为家</button></div>
+          </div>
+          <div className="set-hint">他会在"此刻状态"里看到"在家 / 离家 N 米(几分钟前)";你从外面回到家 200 米内,他会主动来迎一下(90 分钟最多一次)。</div>
         </div>
 
         <div className="set-group">

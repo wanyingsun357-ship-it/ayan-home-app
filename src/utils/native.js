@@ -64,3 +64,14 @@ export async function syncStatusBar() {
     await StatusBar.setStyle({ style: night ? Style.Dark : Style.Light })
   } catch {}
 }
+
+// 定位(本地 Swift 插件 Location):权限、前台取一次并上报、后台显著变化上报
+const Location = registerPlugin('Location', { web: () => ({ request: async () => ({ auth: 'web' }), current: async () => { throw new Error('web') }, startBackground: async () => ({ ok: false }), stopBackground: async () => ({ ok: true }), status: async () => ({ auth: 'web' }) }) })
+export const geo = {
+  status: async () => { if (!isApp()) return { auth: 'web' }; try { return await Location.status() } catch { return { auth: 'error' } } },
+  request: async (always = false) => { if (!isApp()) return { auth: 'web' }; try { return await Location.request({ always }) } catch { return { auth: 'error' } } },
+  // 取一次并上报(原生侧拿到坐标会自己 POST 到桥)
+  report: async () => { if (!isApp()) return null; try { return await Location.current() } catch (e) { plog({ step: 'loc-fail', err: String(e) }); return null } },
+  startBackground: async () => { if (!isApp()) return { ok: false }; try { return await Location.startBackground({ url: location.origin + '/api/location' }) } catch { return { ok: false } } },
+  stopBackground: async () => { if (!isApp()) return { ok: true }; try { return await Location.stopBackground() } catch { return { ok: true } } },
+}

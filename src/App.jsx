@@ -13,7 +13,7 @@ import Settings from './pages/Settings.jsx'
 import Together from './pages/Together.jsx'
 import CommandWidget from './components/CommandWidget.jsx'
 import CallOverlay from './components/CallOverlay.jsx'
-import { setupPush, isApp, Keyboard, syncStatusBar } from './utils/native.js'
+import { setupPush, isApp, Keyboard, syncStatusBar, geo } from './utils/native.js'
 
 const PAGES = {
 }
@@ -90,6 +90,21 @@ export default function App() {
     document.documentElement.classList.toggle('no-scroll', view === 'chat')
     if (view === 'chat') window.scrollTo(0, 0)
   }, [view])
+
+  // 定位:App 打开和回前台各上报一次;有"始终"权限就顺便挂上后台显著变化监听
+  useEffect(() => {
+    if (!isApp()) return
+    const tick = async () => {
+      if (localStorage.getItem('loc-on') === '0') return
+      const st = await geo.status()
+      if (st.auth === 'prompt') return // 还没在 Settings 里授权
+      if (st.auth === 'always' || st.auth === 'whenInUse') { geo.report(); if (st.auth === 'always') geo.startBackground() }
+    }
+    tick()
+    const onVis = () => { if (!document.hidden) tick() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
 
   // 状态栏颜色跟日夜主题(主题切换时 data-theme 会变)
   useEffect(() => {
