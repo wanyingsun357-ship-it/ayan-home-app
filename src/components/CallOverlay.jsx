@@ -117,7 +117,7 @@ export default function CallOverlay() {
           try { const r = await (await fetch(`/api/call/${c.id}`)).json(); if (r.call?.status === 'ended') finish(r.call) } catch {}
           return
         }
-        if (sc.status === 'active' && phaseRef.current === 'ringing') { setCall(sc); setPhase('active'); startMic() }
+        if (sc.status === 'active' && phaseRef.current === 'ringing' && c.by !== 'him') { stopRing(); clearTimeout(ringTimer.current); setCall(sc); setPhase('active'); startMic() }
         const hims = sc.entries.filter((e) => e.who === 'him' && !himDoneRef.current.has(e.t))
         hims.forEach((e, i) => { himDoneRef.current.add(e.t); onFinal(e, !!sc.hangupPending && i === hims.length - 1) })
       } catch {}
@@ -131,8 +131,8 @@ export default function CallOverlay() {
     if (m.ev === 'ring') { if (!c && m.call && m.call.by === 'him') incoming(m.call); return }
     if (!c) return
     if ((m.call && m.call.id !== c.id) || (m.id && m.id !== c.id)) return
-    if (m.ev === 'answer') { setCall(m.call); setPhase('active'); startMic() }
-    else if (m.ev === 'seg') { busyRef.current = false; if (phaseRef.current === 'ringing') { setPhase('active'); startMic() } onSeg(m.text) }
+    if (m.ev === 'answer') { if (c.by === 'him' && phaseRef.current === 'ringing') return; stopRing(); clearTimeout(ringTimer.current); setCall(m.call); setPhase('active'); startMic() }
+    else if (m.ev === 'seg') { busyRef.current = false; if (phaseRef.current === 'ringing') { if (c.by === 'him') return; stopRing(); setPhase('active'); startMic() } onSeg(m.text) }
     else if (m.ev === 'reset') { playQueue.current = playQueue.current.filter((x) => !x.entry.seg) }
     else if (m.ev === 'entry') { busyRef.current = false; if (m.entry.who === 'him' && !himDoneRef.current.has(m.entry.t)) { himDoneRef.current.add(m.entry.t); onFinal(m.entry, m.hangup) } }
     else if (m.ev === 'end') { finish(m.call) }
