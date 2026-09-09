@@ -13,7 +13,7 @@ import Settings from './pages/Settings.jsx'
 import Together from './pages/Together.jsx'
 import CommandWidget from './components/CommandWidget.jsx'
 import CallOverlay from './components/CallOverlay.jsx'
-import { setupPush, isApp, Keyboard } from './utils/native.js'
+import { setupPush, isApp, Keyboard, syncStatusBar } from './utils/native.js'
 
 const PAGES = {
 }
@@ -90,6 +90,14 @@ export default function App() {
     document.documentElement.classList.toggle('no-scroll', view === 'chat')
     if (view === 'chat') window.scrollTo(0, 0)
   }, [view])
+
+  // 状态栏颜色跟日夜主题(主题切换时 data-theme 会变)
+  useEffect(() => {
+    syncStatusBar()
+    const mo = new MutationObserver(syncStatusBar)
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => mo.disconnect()
+  }, [])
 
   // App 里注册推送:他回话/指令/答题/礼物 锁屏也能收到;点通知进聊天
   useEffect(() => {

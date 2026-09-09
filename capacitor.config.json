@@ -12,7 +12,7 @@
   "ios": {
     "contentInset": "never",
     "allowsLinkPreview": false,
-    "backgroundColor": "#f1f1f0",
+    "backgroundColor": "#050607",
     "scrollEnabled": true,
     "limitsNavigationsToAppBoundDomains": false
   },
@@ -22,6 +22,14 @@
     },
     "PushNotifications": {
       "presentationOptions": []
+    },
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchFadeOutDuration": 200,
+      "backgroundColor": "#050607"
+    },
+    "StatusBar": {
+      "overlaysWebView": true
     }
   }
 }

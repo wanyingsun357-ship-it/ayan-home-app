@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
 import { Haptics } from '@capacitor/haptics'
 import { Keyboard } from '@capacitor/keyboard'
+import { StatusBar, Style } from '@capacitor/status-bar'
 export const isApp = () => { try { return Capacitor.isNativePlatform() } catch { return false } }
 // 壳加载的是线上网页,插件的 JS 半边必须打进前端包里,不然 Capacitor.Plugins 里没有它们
 const P = () => (isApp() ? { Haptics, PushNotifications, Keyboard } : {})
@@ -53,4 +54,13 @@ export const callAudio = {
   end: async () => { if (!isApp()) return null; try { return await AudioSession.endCall() } catch { return null } },
   speaker: async (on) => { if (!isApp()) return null; try { return await AudioSession.setSpeaker({ on: !!on }) } catch { return null } },
   route: async () => { if (!isApp()) return null; try { return await AudioSession.route() } catch { return null } },
+}
+
+// 状态栏跟主题:夜间白字,日间黑字
+export async function syncStatusBar() {
+  if (!isApp()) return
+  try {
+    const night = document.documentElement.dataset.theme === 'night'
+    await StatusBar.setStyle({ style: night ? Style.Dark : Style.Light })
+  } catch {}
 }
