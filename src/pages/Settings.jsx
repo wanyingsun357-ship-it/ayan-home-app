@@ -63,7 +63,7 @@ export default function Settings({ back }) {
   const locSetHome = async () => { if (!loc?.last) { setLocMsg('先上报一次位置'); return } if (!confirm('把最近一次上报的位置设为"家"?他会以此判断你回没回来')) return; await fetch('/api/location/home', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useLast: true, name: '家' }) }); loadLoc() }
   const locClearHome = async () => { await fetch('/api/location/home', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: null }) }); loadLoc() }
   const locToggle = async () => { const v = !locOn; setLocOn(v); localStorage.setItem('loc-on', v ? '1' : '0'); await fetch('/api/location/enabled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: v }) }); if (!v) geo.stopBackground(); loadLoc() }
-  const ago = (iso) => { if (!iso) return '还没上报过'; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? '刚刚' : m < 60 ? `${m} 分钟前` : m < 1440 ? `${Math.round(m / 60)} 小时前` : `${Math.round(m / 1440)} 天前` }
+  const locAgo = (iso) => { if (!iso) return '还没上报过'; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? '刚刚' : m < 60 ? `${m} 分钟前` : m < 1440 ? `${Math.round(m / 60)} 小时前` : `${Math.round(m / 1440)} 天前` }
 
   // ---- 用量:Claude 订阅窗口(桥用他的登录态查) + ElevenLabs 积分 ----
   const [usage, setUsage] = useState(null)
@@ -223,7 +223,7 @@ export default function Settings({ back }) {
             </>
           ) : <div className="set-hint">网页版拿不到定位,装 App 后在这里授权。</div>}
           <div className="set-row">
-            <span className="set-dim">最近一次:{loc?.last ? `${ago(loc.last.at)} · 精度 ${loc.last.acc ?? '?'} 米` : '还没上报过'}{loc?.home && loc?.dist != null ? ` · 离家 ${loc.dist < 1000 ? loc.dist + ' 米' : (loc.dist / 1000).toFixed(1) + ' 公里'}` : ''}</span>
+            <span className="set-dim">最近一次:{loc?.last ? `${locAgo(loc.last.at)} · 精度 ${loc.last.acc ?? '?'} 米` : '还没上报过'}{loc?.home && loc?.dist != null ? ` · 离家 ${loc.dist < 1000 ? loc.dist + ' 米' : (loc.dist / 1000).toFixed(1) + ' 公里'}` : ''}</span>
           </div>
           <div className="set-row">
             <span>{loc?.home ? `家:已设(${loc.home.name})` : '家:还没设'}</span>
