@@ -8,11 +8,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        window?.rootViewController = HomeViewController()
         window?.makeKeyAndVisible()
         // 网页层自己管滚动;关掉 WKWebView 的橡皮筋,不然上滑整页跟着乱跑
         DispatchQueue.main.async {
-            if let vc = self.window?.rootViewController as? CAPBridgeViewController, let sv = vc.webView?.scrollView {
+            if let vc = self.window?.rootViewController as? HomeViewController, let sv = vc.webView?.scrollView {
                 sv.bounces = false
                 sv.contentInsetAdjustmentBehavior = .never
             }

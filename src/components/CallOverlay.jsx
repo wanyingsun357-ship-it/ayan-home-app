@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import PixelCat from './PixelCat.jsx'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import { NAMES } from '../config.js'
+import { isApp, callAudio } from '../utils/native.js'
 import './call.css'
 
 // 通话(一期):她打过去 → 响铃 → 他 [ANSWER]/[DECLINE] → 通话中:
@@ -31,7 +32,9 @@ export default function CallOverlay() {
   const [speaking, setSpeaking] = useState(null)  // 他正在说的 {text, zh}
   const [history, setHistory] = useState([])      // 说完的 [{who,text,zh}]
   const [muted, setMuted] = useState(false)
-  const [quiet, setQuiet] = useState(false)       // "免提"位:iPhone 网页切不了听筒,这里=不放他的声音只看字幕
+  const [quiet, setQuiet] = useState(false)       // 网页版的"免提"位:切不了听筒,只能=不放他的声音只看字幕
+  const [speaker, setSpeaker] = useState(false)   // App 里的真免提:听筒 ↔ 扬声器
+  const speakerRef = useRef(false); speakerRef.current = speaker
   const [typing, setTyping] = useState(false)
   const [input, setInput] = useState('')
   const [endInfo, setEndInfo] = useState('')
@@ -166,6 +169,7 @@ export default function CallOverlay() {
   // ---- 麦克风:整通电话开着一条流式识别 ----
   const startMic = async () => {
     if (asrRef.current) return
+    await callAudio.start(speakerRef.current) // App:语音通话模式、允许蓝牙、屏幕不锁
     finalLenRef.current = 0
     try {
       if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
@@ -317,6 +321,7 @@ export default function CallOverlay() {
     try { srcRef.current?.stop() } catch {} srcRef.current = null
     try { streamRef.current?.getTracks().forEach((t) => t.stop()) } catch {} streamRef.current = null
     try { ctxRef.current?.close() } catch {} ctxRef.current = null
+    callAudio.end()
     try { if (audioRef.current) { audioRef.current.pause(); audioRef.current.removeAttribute('src'); audioRef.current.load() } } catch {} audioRef.current = null
   }
   const dur = (c) => c?.answeredAt ? Math.max(0, Math.floor((now - (Date.parse(c.answeredAt) + offsetRef.current)) / 1000)) : 0
@@ -382,7 +387,9 @@ export default function CallOverlay() {
       <div className="call-ctl">
         <button className={`call-btn ${muted ? 'on' : ''}`} onClick={toggleMute} disabled={phase !== 'active'}><span>{muted ? Ic.micOff : Ic.mic}</span>{muted ? '闭麦' : '开麦'}</button>
         <button className={`call-btn ${typing ? 'on' : ''}`} onClick={toggleTyping} disabled={phase !== 'active'}><span>{Ic.pen}</span>打字</button>
-        <button className={`call-btn ${quiet ? 'on' : ''}`} onClick={() => setQuiet((v) => !v)} disabled={phase !== 'active'}><span>{quiet ? Ic.spkOff : Ic.spk}</span>{quiet ? '只看字' : '放声音'}</button>
+        {isApp()
+          ? <button className={`call-btn ${speaker ? 'on' : ''}`} onClick={async () => { const v = !speaker; setSpeaker(v); await callAudio.speaker(v) }} disabled={phase !== 'active'}><span>{Ic.spk}</span>{speaker ? '免提' : '听筒'}</button>
+          : <button className={`call-btn ${quiet ? 'on' : ''}`} onClick={() => setQuiet((v) => !v)} disabled={phase !== 'active'}><span>{quiet ? Ic.spkOff : Ic.spk}</span>{quiet ? '只看字' : '放声音'}</button>}
         <button className="call-btn hang" onClick={() => hangUp('her')} disabled={phase === 'ended'}><span>{Ic.phone}</span>挂断</button>
       </div>
       {toast && <div className="call-toast glass3">{toast}</div>}

@@ -1,5 +1,5 @@
 // 原生能力的薄封装:在 App 里走 Capacitor 插件,在网页里退回浏览器能力(或什么都不做)
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
 import { Haptics } from '@capacitor/haptics'
 import { Keyboard } from '@capacitor/keyboard'
@@ -44,4 +44,13 @@ export async function setupPush({ onOpen } = {}) {
     plog({ step: 'register-called' })
     return true
   } catch (e) { plog({ step: 'setup-err', err: String(e && e.message || e) }); return false }
+}
+
+// 通话音频会话(本地 Swift 插件 AudioSession):语音通话模式、蓝牙、听筒/扬声器、屏幕不锁;网页里是空操作
+const AudioSession = registerPlugin('AudioSession', { web: () => ({ startCall: async () => ({}), endCall: async () => ({}), setSpeaker: async () => ({}), route: async () => ({}) }) })
+export const callAudio = {
+  start: async (speaker = false) => { if (!isApp()) return null; try { return await AudioSession.startCall({ speaker }) } catch (e) { plog({ step: 'audio-start-fail', err: String(e) }); return null } },
+  end: async () => { if (!isApp()) return null; try { return await AudioSession.endCall() } catch { return null } },
+  speaker: async (on) => { if (!isApp()) return null; try { return await AudioSession.setSpeaker({ on: !!on }) } catch { return null } },
+  route: async () => { if (!isApp()) return null; try { return await AudioSession.route() } catch { return null } },
 }
