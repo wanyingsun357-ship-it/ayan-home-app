@@ -75,6 +75,7 @@ export default function CallOverlay() {
     fetch('/api/call/active').then((r) => r.json()).then((d) => {
       if (d.call && d.call.status !== 'ended') {
         offsetRef.current = Date.now() - (d.serverNow || Date.now())
+        if (d.call.by === 'him' && d.call.status === 'ringing') { incoming(d.call); return }
         setCall(d.call); setPhase(d.call.status); setNeedTap(true); d.call.entries.forEach((e) => { if (e.who === 'him') himDoneRef.current.add(e.t) })
         setHistory(d.call.entries.map((e) => ({ who: e.who, text: e.text, zh: e.zh })))
       }
@@ -127,7 +128,7 @@ export default function CallOverlay() {
   const onCallEvent = (m) => {
     const c = callRef.current
     // 只认自己这台手机发起的通话(维修间/别的家的测试通话不会在这里响);他主动打来是三期
-    if (m.ev === 'ring') { if (!c && m.call && m.call.by === 'him') { setCall(m.call); setPhase('ringing') } return }
+    if (m.ev === 'ring') { if (!c && m.call && m.call.by === 'him') incoming(m.call); return }
     if (!c) return
     if ((m.call && m.call.id !== c.id) || (m.id && m.id !== c.id)) return
     if (m.ev === 'answer') { setCall(m.call); setPhase('active'); startMic() }
@@ -136,6 +137,35 @@ export default function CallOverlay() {
     else if (m.ev === 'entry') { busyRef.current = false; if (m.entry.who === 'him' && !himDoneRef.current.has(m.entry.t)) { himDoneRef.current.add(m.entry.t); onFinal(m.entry, m.hangup) } }
     else if (m.ev === 'end') { finish(m.call) }
   }
+
+  // ---- 他打来:响铃页(App 前台时;锁屏那份是推送带铃声) ----
+  const ringAudioRef = useRef(null)
+  const incoming = (c) => {
+    if (phaseRef.current !== 'idle') return
+    window.__inCall = true
+    setCall(c); setPhase('ringing'); setMin(false); setHistory([]); setEndInfo(''); setSpeaking(null); setLive(''); himDoneRef.current = new Set(); turnRef.current = null; reconnRef.current = 0
+    try { const a = new Audio('/ring.wav'); a.loop = true; a.volume = 0.9; ringAudioRef.current = a; a.play().catch(() => {}) } catch {}
+    buzz([30, 60, 30])
+    clearTimeout(ringTimer.current)
+    ringTimer.current = setTimeout(() => { if (phaseRef.current === 'ringing') finish({ ...c, endedBy: 'missed' }) }, 50000)
+  }
+  const stopRing = () => { try { ringAudioRef.current?.pause() } catch {} ringAudioRef.current = null }
+  // 接听:这一下点击是手势,音频上下文/播放器都在这里解锁
+  const answerIncoming = async () => {
+    const c = callRef.current; if (!c) return
+    stopRing()
+    try {
+      if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      ctxRef.current.resume().catch(() => {})
+      unlockAudio(); getWarmSocket()
+      const r = await post('/api/call/answer', { id: c.id })
+      if (!r.ok) { finish({ ...c, endedBy: 'missed' }); return }
+      clearTimeout(ringTimer.current)
+      setPhase('active'); setCall({ ...c, status: 'active', answeredAt: new Date().toISOString() })
+      startMic()
+    } catch { finish({ ...c, endedBy: 'missed' }) }
+  }
+  const declineIncoming = async () => { const c = callRef.current; stopRing(); if (c) { try { await post('/api/call/end', { id: c.id, by: 'declined' }) } catch {} } finish({ ...(c || {}), endedBy: 'declined' }) }
 
   // ---- 发起 ----
   const start = async ({ session, model }) => {
@@ -307,12 +337,14 @@ export default function CallOverlay() {
   }
   const finish = (c) => {
     if (phaseRef.current === 'idle') return
+    stopRing()
     window.__inCall = false
     clearTimeout(ringTimer.current)
     cleanupMedia()
     setCall(c); setPhase('ended'); setSpeaking(null); setLive('')
     const by = c?.endedBy
-    setEndInfo(!c?.answeredAt && by === 'her' ? '已取消' : by === 'missed' ? '他没接到' : by === 'declined' ? '他现在不方便' : by === 'him' ? `他挂了 · ${fmt(dur(c))}` : `通话结束 · ${fmt(dur(c))}`)
+    const him = c?.by === 'him'
+    setEndInfo(!c?.answeredAt && by === 'her' ? '已取消' : by === 'missed' ? (him ? '没接到' : '他没接到') : by === 'declined' ? (him ? '已拒接' : '他现在不方便') : by === 'him' ? `他挂了 · ${fmt(dur(c))}` : `通话结束 · ${fmt(dur(c))}`)
     setTimeout(() => { setPhase('idle'); setCall(null); setHistory([]); setMin(false) }, 2600)
   }
   const cleanupMedia = () => {
@@ -334,7 +366,7 @@ export default function CallOverlay() {
 
   if (phase === 'idle') return toast ? <div className="call-toast glass3">{toast}</div> : null
 
-  const status = phase === 'ringing' ? '呼叫中…' : phase === 'ended' ? endInfo : speaking ? `${NAMES.me} 在说…` : live ? '你在说…' : `通话中 ${fmt(dur(call))}`
+  const status = phase === 'ringing' ? (call?.by === 'him' ? `${NAMES.me} 来电` : '呼叫中…') : phase === 'ended' ? endInfo : speaking ? `${NAMES.me} 在说…` : live ? '你在说…' : `通话中 ${fmt(dur(call))}`
   const anim = phase === 'active' && (speaking || live)
 
   if (min && phase !== 'ended') {
@@ -374,7 +406,8 @@ export default function CallOverlay() {
         )}
         {!speaking && live && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}{live}</div></div>}
         {!speaking && !live && bufRef.current.length > 0 && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}</div></div>}
-        {phase === 'ringing' && <div className="call-hint">等他接…</div>}
+        {phase === 'ringing' && call?.by !== 'him' && <div className="call-hint">等他接…</div>}
+        {phase === 'ringing' && call?.by === 'him' && <div className="call-reason serif">{call.reason || '他想和你说说话'}</div>}
         {phase === 'active' && needTap && <button className="call-resume glass2" onClick={startMic}>点一下打开麦克风继续</button>}
         {phase === 'active' && !speaking && !live && !history.length && !needTap && <div className="call-hint">接通了,直接说就行</div>}
       </div>
@@ -385,6 +418,12 @@ export default function CallOverlay() {
           <button className={input.trim() ? 'ready' : ''} onClick={sendTyped} disabled={!input.trim()}>↑</button>
         </div>
       )}
+      {phase === 'ringing' && call?.by === 'him' ? (
+        <div className="call-ctl call-ctl-in">
+          <button className="call-btn hang" onClick={declineIncoming}><span>{Ic.phone}</span>拒接</button>
+          <button className="call-btn answer" onClick={answerIncoming}><span>{Ic.phone}</span>接听</button>
+        </div>
+      ) : (
       <div className="call-ctl">
         <button className={`call-btn ${muted ? 'on' : ''}`} onClick={toggleMute} disabled={phase !== 'active'}><span>{muted ? Ic.micOff : Ic.mic}</span>{muted ? '闭麦' : '开麦'}</button>
         <button className={`call-btn ${typing ? 'on' : ''}`} onClick={toggleTyping} disabled={phase !== 'active'}><span>{Ic.pen}</span>打字</button>
@@ -393,6 +432,7 @@ export default function CallOverlay() {
           : <button className={`call-btn ${quiet ? 'on' : ''}`} onClick={() => setQuiet((v) => !v)} disabled={phase !== 'active'}><span>{quiet ? Ic.spkOff : Ic.spk}</span>{quiet ? '只看字' : '放声音'}</button>}
         <button className="call-btn hang" onClick={() => hangUp('her')} disabled={phase === 'ended'}><span>{Ic.phone}</span>挂断</button>
       </div>
+      )}
       {toast && <div className="call-toast glass3">{toast}</div>}
     </div>
   )

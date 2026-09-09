@@ -112,3 +112,10 @@
 .call-type button.ready { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 10px var(--accent-glow); }
 
 .call-cur-done { color: var(--text-soft); }
+
+/* 他打来 */
+.call-reason { text-align: center; font-size: 17px; color: var(--text); padding: 18px 24px; line-height: 1.6; }
+.call-ctl-in { justify-content: space-evenly; padding-top: 18px; }
+.call-ctl-in .call-btn span { width: 70px; height: 70px; }
+.call-btn.answer span { background: #4f8a5a; border-color: #4f8a5a; color: #fff; box-shadow: 0 4px 16px rgba(79,138,90,.35); animation: call-answer 1.2s ease-in-out infinite; }
+@keyframes call-answer { 0%,100% { transform: scale(1) } 50% { transform: scale(1.06) } }

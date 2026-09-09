@@ -1110,7 +1110,7 @@ export default function Chat({ back }) {
               {m.call && (
                 <button className={`call-card ${['missed', 'declined'].includes(m.call.endedBy) ? 'bad' : ''}`} onClick={() => openCall(m.call.id)}>
                   <i>☏</i>
-                  <span>{m.call.endedBy === 'missed' ? '未接通' : m.call.endedBy === 'declined' ? '他没接' : `通话 ${Math.floor(m.call.dur / 60)}:${String(m.call.dur % 60).padStart(2, '0')}`}<br /><small>{m.call.endedBy === 'him' ? '他挂的' : m.call.endedBy === 'her' ? '你挂的' : ''}{m.call.n ? ` · ${m.call.n} 句` : ''}</small></span>
+                  <span>{m.call.endedBy === 'missed' ? (m.call.by === 'him' ? '未接来电' : '未接通') : m.call.endedBy === 'declined' ? (m.call.by === 'him' ? '你没接' : '他没接') : `通话 ${Math.floor(m.call.dur / 60)}:${String(m.call.dur % 60).padStart(2, '0')}`}<br /><small>{m.call.endedBy === 'him' ? '他挂的' : m.call.endedBy === 'her' ? '你挂的' : ''}{m.call.n ? ` · ${m.call.n} 句` : ''}</small></span>
                 </button>
               )}
               {!m.call && m.gift && (
@@ -1441,7 +1441,7 @@ export default function Chat({ back }) {
       {callView && (() => {
         const cv = callView.call; const bad = ['missed', 'declined'].includes(cv.endedBy)
         const when = new Date(cv.startedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-        const how = cv.endedBy === 'her' ? '你挂的' : cv.endedBy === 'him' ? '他挂的' : cv.endedBy === 'missed' ? '没接通' : '他没接'
+        const how = cv.endedBy === 'her' ? '你挂的' : cv.endedBy === 'him' ? '他挂的' : cv.endedBy === 'missed' ? (cv.by === 'him' ? '未接来电' : '没接通') : (cv.by === 'him' ? '你没接' : '他没接')
         return (
           <div className="call-veil" onClick={() => setCallView(null)}>
             <div className={`call-paper ${bad ? 'bad' : ''}`} onClick={(e) => e.stopPropagation()}>
