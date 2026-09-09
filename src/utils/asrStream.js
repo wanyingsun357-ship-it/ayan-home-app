@@ -103,7 +103,8 @@ export function createAsrStream({ ctx, stream, ws, onPartial, onFinal, onError }
     else if (m.type === 'error') { stat.err = m.msg; onError?.(m.msg); resolveDone(all() || null) }
   }
   ws.onerror = () => { stat.err = 'ws'; onError?.('ws'); resolveDone(all() || null) }
-  ws.onclose = () => { if (!done) resolveDone(all() || null) }
+  let closedByUs = false
+  ws.onclose = () => { if (!done) { resolveDone(all() || null); if (!closedByUs && !torn) onError?.('closed') } }
 
   const teardown = () => {
     if (torn) return; torn = true
@@ -117,12 +118,12 @@ export function createAsrStream({ ctx, stream, ws, onPartial, onFinal, onError }
     mute: (v) => { muted = !!v },
     // 松手:拆麦,发 finish,等最终结果(最多 ms 毫秒)。返回 null = 通道没成(该走兜底)
     async stop(ms = 2500) {
-      teardown()
+      teardown(); closedByUs = true
       if (ws.readyState === 1) { flush(); ws.send(JSON.stringify({ type: 'finish' })) }
       const t = await Promise.race([donePromise, new Promise((r) => setTimeout(() => r(undefined), ms))])
       try { ws.close() } catch {}
       return t === undefined ? (all() || null) : t
     },
-    cancel() { teardown(); try { ws.close() } catch {} },
+    cancel() { closedByUs = true; teardown(); try { ws.close() } catch {} },
   }
 }

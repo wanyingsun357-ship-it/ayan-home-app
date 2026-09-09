@@ -56,6 +56,7 @@ export default function CallOverlay() {
   const offsetRef = useRef(0)
   const listRef = useRef(null)
   const ringTimer = useRef(null)
+  const reconnRef = useRef(0)      // 通话里识别通道自动重连次数
   const flash = (t) => { setToast(t); setTimeout(() => setToast(''), 2200) }
 
   // ---- 时钟 & 自动滚到底 ----
@@ -146,7 +147,7 @@ export default function CallOverlay() {
       unlockAudio()
       getWarmSocket()
       window.__inCall = true
-      setPhase('ringing'); setMin(false); setHistory([]); setEndInfo(''); setSpeaking(null); setLive(''); himDoneRef.current = new Set(); turnRef.current = null
+      setPhase('ringing'); setMin(false); setHistory([]); setEndInfo(''); setSpeaking(null); setLive(''); himDoneRef.current = new Set(); turnRef.current = null; reconnRef.current = 0
       const r = await post('/api/call/start', { session, model })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setPhase('idle'); flash(d.error === 'busy' ? '已经在通话里了' : '没打出去'); cleanupMedia(); diag({ step: 'start-fail', status: r.status }); return }
@@ -169,7 +170,7 @@ export default function CallOverlay() {
   // ---- 麦克风:整通电话开着一条流式识别 ----
   const startMic = async () => {
     if (asrRef.current) return
-    await callAudio.start(speakerRef.current) // App:语音通话模式、允许蓝牙、屏幕不锁
+    if (!reconnRef.current) await callAudio.start(speakerRef.current) // App:语音通话模式、允许蓝牙、屏幕不锁(重连时不重设)
     finalLenRef.current = 0
     try {
       if (!streamRef.current) streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
@@ -180,7 +181,7 @@ export default function CallOverlay() {
         ctx: ctxRef.current, stream: streamRef.current.clone(), ws: getWarmSocket(),
         onPartial: (all) => { if (!mutedRef.current && !typingRef.current) setLive(all.slice(finalLenRef.current)) },
         onFinal: (all, sentence) => { finalLenRef.current += sentence.length; if (!sentence.trim()) return; bufRef.current.push(sentence); setLive(''); scheduleFlush() },
-        onError: () => flash('识别通道断了'),
+        onError: () => { if (phaseRef.current !== 'active') return; const n = (reconnRef.current = (reconnRef.current || 0) + 1); try { asrRef.current?.cancel() } catch {} asrRef.current = null; if (n <= 20) setTimeout(() => { if (phaseRef.current === 'active' && !asrRef.current) startMic() }, 600); else flash('识别通道断了') },
       })
       asrRef.current.mute(mutedRef.current || playingRef.current)
       setNeedTap(false)

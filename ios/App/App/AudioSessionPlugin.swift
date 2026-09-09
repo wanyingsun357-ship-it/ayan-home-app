@@ -40,8 +40,13 @@ public class AudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func setSpeaker(_ call: CAPPluginCall) {
         let on = call.getBool("on") ?? false
+        let s = AVAudioSession.sharedInstance()
         do {
-            try AVAudioSession.sharedInstance().overrideOutputAudioPort(on ? .speaker : .none)
+            var opts: AVAudioSession.CategoryOptions = [.allowBluetooth, .allowBluetoothA2DP, .duckOthers]
+            if on { opts.insert(.defaultToSpeaker) }
+            try s.setCategory(.playAndRecord, mode: .voiceChat, options: opts)
+            try s.setActive(true, options: [])
+            try s.overrideOutputAudioPort(on ? .speaker : .none)
             call.resolve(routeInfo())
         } catch {
             call.reject(error.localizedDescription)

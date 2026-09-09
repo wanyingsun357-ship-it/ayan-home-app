@@ -3,7 +3,7 @@ import { NAMES } from '../config.js'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import PixelCat from '../components/PixelCat.jsx'
 import { compressImage, postUpload } from '../utils/compressImage.js'
-import { buzz } from '../utils/native.js'
+import { buzz, isApp } from '../utils/native.js'
 import './chat.css'
 
 // Chat:和阿晏说话
@@ -683,6 +683,8 @@ export default function Chat({ back }) {
   const asrRef = useRef(null)
   const preWsRef = useRef(null)      // 按下那一刻就先把 WebSocket 拨出去,和拿麦克风并行
   const [liveText, setLiveText] = useState('')  // 流式识别边说边出的字
+  const [micReady, setMicReady] = useState(false) // 采样真的跑起来了才算"在听"(App 里麦克风启动要一秒多,之前开头的话会丢)
+  const micKeepRef = useRef({ stream: null, timer: null }) // App:松手后麦克风保温 15 秒,下一次按下不用重新启动
   const diag = (o) => { try { fetch('/api/clientlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag: 'voice', ua: navigator.userAgent.slice(0, 40), ...o }) }).catch(() => {}) } catch {} }
 
   const startRec = async (e) => {
@@ -721,7 +723,11 @@ export default function Chat({ back }) {
     mr.chunks = []; mr.transcript = ''; mr.startAt = Date.now()
     // 录音
     try {
-      let stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      const kept = micKeepRef.current.stream
+      const keptLive = kept && kept.getAudioTracks()[0]?.readyState === 'live'
+      clearTimeout(micKeepRef.current.timer)
+      let stream = keptLive ? kept : await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      diag({ step: 'mic-src', kept: !!keptLive })
       // iOS 偶尔给回来一条已经 ended 的轨(系统音频会话没起来):停掉重要一次;还不行就提示
       if (stream.getAudioTracks()[0]?.readyState === 'ended') {
         stream.getTracks().forEach((t) => t.stop()); await new Promise((r) => setTimeout(r, 600))
@@ -737,6 +743,9 @@ export default function Chat({ back }) {
       // iOS 坑:getUserMedia 会把已建好的 AudioContext 打成 interrupted/suspended,拿到麦克风后必须再 resume 一次
       try { await audioCtxRef.current.resume() } catch {}
       try { setLiveText(''); asrRef.current = createAsrStream({ ctx: audioCtxRef.current, stream: stream.clone(), ws: preWsRef.current, onPartial: setLiveText, onFinal: (all) => setLiveText(all) }) } catch { asrRef.current = null }
+      // 采样跑起来那一刻:提示变"在听"并轻震一下,这之前说的话进不去
+      setMicReady(false)
+      const readyPoll = setInterval(() => { const st = asrRef.current?.stat?.(); if (!recActiveRef.current) { clearInterval(readyPoll); return } if (st && st.frames > 2) { clearInterval(readyPoll); setMicReady(true); buzz('light') } }, 60)
     } catch (e) { mr.recorder = null; diag({ step: 'mic-fail', err: String(e && e.message || e) }) } // 拿不到麦克风就只走转写
     // 苹果听写:只做兜底(流式通道没成时用)
     try {
@@ -768,7 +777,9 @@ export default function Chat({ back }) {
     const blob = await new Promise((resolve) => {
       if (!mr.recorder || mr.recorder.state === 'inactive') return resolve(null)
       mr.recorder.onstop = () => {
-        mr.recorder.stream.getTracks().forEach((t) => t.stop())
+        // App 里麦克风保温 15 秒再关(下一次按下秒开);网页照旧立刻关
+        if (isApp()) { const st = mr.recorder.stream; micKeepRef.current.stream = st; clearTimeout(micKeepRef.current.timer); micKeepRef.current.timer = setTimeout(() => { try { st.getTracks().forEach((t) => t.stop()) } catch {} if (micKeepRef.current.stream === st) micKeepRef.current.stream = null }, 15000) }
+        else mr.recorder.stream.getTracks().forEach((t) => t.stop())
         resolve(new Blob(mr.chunks, { type: mr.recorder.mimeType || 'audio/webm' }))
       }
       mr.recorder.stop()
@@ -1627,7 +1638,7 @@ export default function Chat({ back }) {
         <div className={`rec-overlay ${canceling ? 'cancel' : ''}`}>
           <div className="rec-pill glass3">
             <span className="rec-dot" />
-            {canceling ? '松开取消' : '在听… 松开发送 · 上滑取消'}
+            {canceling ? '松开取消' : micReady ? '在听… 松开发送 · 上滑取消' : '准备中…'}
           </div>
           {liveText && !canceling && <div className="rec-live glass2">{liveText}</div>}
         </div>
