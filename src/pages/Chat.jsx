@@ -349,8 +349,37 @@ export default function Chat({ back }) {
       }
     }
     connect()
-    return () => { stopped = true; esRef.current?.close() }
+    // iPhone 切走再回来:实时通道常常假死(不报错也不来事件)。回前台就重连,并补拉这个会话的最新消息
+    let lastVis = Date.now()
+    const onVis = () => {
+      if (document.hidden) { lastVis = Date.now(); return }
+      try { esRef.current?.close() } catch {}
+      connect()
+      if (Date.now() - lastVis > 3000) refreshTail()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { stopped = true; esRef.current?.close(); document.removeEventListener('visibilitychange', onVis) }
   }, [])
+
+  // 补拉:把服务器上比本地新的消息接到列表末尾(不整页重载,不跳滚动)
+  const refreshTail = async () => {
+    try {
+      const q = sessionRef.current ? `?session=${sessionRef.current}` : ''
+      const h = await (await fetch(`/api/history${q}`, { cache: 'no-store' })).json()
+      if (!Array.isArray(h)) return
+      setMessages((ms) => {
+        const lastIdx = [...ms].reverse().find((m) => m.absIdx !== undefined)?.absIdx
+        if (lastIdx === undefined) return ms
+        const fresh = h.filter((m) => m.i > lastIdx && !m.inCall)
+        if (!fresh.length) return ms
+        // 本地正在流的气泡若已在服务器落库,去掉它避免重复
+        const base = ms.filter((m) => !m.streaming)
+        return [...base, ...fresh.map((m) => newMsg(m.role, m.content, { reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i, memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, timestamp: m.timestamp }))]
+      })
+      setWaiting(false)
+      scrollBottom()
+    } catch {}
+  }
 
   // ---- 历史 ----
   const loadHistory = (sessionId) => {
