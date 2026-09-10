@@ -378,8 +378,7 @@ export default function Chat({ back }) {
         const fresh = h.filter((m) => m.i > lastIdx && !m.inCall)
         if (!fresh.length) return ms
         // 编号之后的本地消息(她刚发的、他刚流完的)服务器这次都送来了:按 角色+内容 认出同一条,不再重复加;正在流的气泡留着
-        const key = (r, c) => r + '
-' + String(c || '').trim()
+        const key = (r, c) => r + '|' + String(c || '').trim()
         const freshKeys = new Set(fresh.map((m) => key(m.role, m.content)))
         const head = ms.slice(0, cut + 1)
         const keep = ms.slice(cut + 1).filter((m) => m.streaming || m.role === 'system' || !freshKeys.has(key(m.role, m.content)))
