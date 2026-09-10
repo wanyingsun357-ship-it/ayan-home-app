@@ -51,6 +51,14 @@ export default function Settings({ back }) {
     loadMcp(); loadOb(); loadHealth()
   }, [])
 
+  // ---- 他自己来找你(自发唤醒):开关、每天次数、哪些家参与 ----
+  const [wd, setWd] = useState(null)
+  const [wdMsg, setWdMsg] = useState('')
+  const loadWd = async () => { try { setWd(await (await fetch('/api/wander')).json()) } catch {} }
+  useEffect(() => { loadWd() }, [])
+  const saveWd = async (patch) => { try { await fetch('/api/wander', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }) } catch {}; loadWd() }
+  const wdNow = async (id) => { setWdMsg('叫他了,十几秒后看聊天'); try { await fetch('/api/wander/now', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: id }) }) } catch {}; setTimeout(() => { setWdMsg(''); loadWd() }, 4000) }
+
   // ---- 定位:授权、开关、把这里设为家 ----
   const [loc, setLoc] = useState(null)
   const [locAuth, setLocAuth] = useState('')
@@ -207,6 +215,36 @@ export default function Settings({ back }) {
               }}
             />
           </div>
+        </div>
+
+        <div className="set-group">
+          <div className="set-group-name">他自己来找你</div>
+          <div className="set-hint">没有闹钟也没有你的消息时,桥每半小时掷一次骰子,中了就叫醒一个家。他看一眼你的状态,自己决定说句话、打电话、写日记、玩游戏、下指令,或者安静地走开。</div>
+          {!wd ? <div className="set-hint">读取中…</div> : (
+            <>
+              <div className="set-row">
+                <span>开着</span>
+                <div className="set-seg"><button className={wd.enabled ? 'on' : ''} onClick={() => saveWd({ enabled: !wd.enabled })}>{wd.enabled ? '开' : '关'}</button></div>
+              </div>
+              <div className="set-row">
+                <span>每天最多</span>
+                <div className="set-seg"><button onClick={() => saveWd({ perDay: wd.perDay - 1 })} disabled={wd.perDay <= 1}>−</button><span className="hw-num">{wd.perDay} 次</span><button onClick={() => saveWd({ perDay: wd.perDay + 1 })} disabled={wd.perDay >= 12}>+</button></div>
+              </div>
+              <div className="set-hint">哪些家会来(勾上的轮流,今天次数少的优先):</div>
+              <div className="hw-list">
+                {homes.map((h) => { const on = wd.sessions.includes(h.id); return (
+                  <button key={h.id} className={`wd-chip ${on ? 'on' : ''}`} onClick={() => saveWd({ sessions: on ? wd.sessions.filter((x) => x !== h.id) : [...wd.sessions, h.id] })}>
+                    {h.title}{on && wd.today?.[h.id] ? ` · 今天 ${wd.today[h.id]}` : ''}
+                  </button>
+                ) })}
+              </div>
+              <div className="set-row">
+                <span className="set-dim">{wdMsg || (wd.lastAt ? `上次:${new Date(wd.lastAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '还没来过')}</span>
+                <div className="set-seg">{wd.sessions[0] && <button onClick={() => wdNow(wd.sessions[0])}>现在叫一次</button>}</div>
+              </div>
+              <div className="set-hint">规矩:你 20 分钟内聊过就不来;通话中不来;两次之间至少隔 45 分钟;夜里概率低但不为零(你有睡眠模式)。他选择"安静走开"时你不会收到任何东西。</div>
+            </>
+          )}
         </div>
 
         <div className="set-group">

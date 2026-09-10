@@ -193,3 +193,7 @@
 .use-foot button { border: 1px solid var(--card-border); border-radius: 10px; background: transparent; color: var(--text-soft); font-size: 12px; padding: 3px 10px; font-family: inherit; }
 
 .set-select { border: 1px solid var(--card-border); border-radius: 12px; background: transparent; color: var(--text); font-size: 13px; padding: 5px 10px; font-family: inherit; max-width: 55%; }
+
+.hw-num { font-size: 13px; color: var(--text); padding: 0 6px; min-width: 40px; text-align: center; display: inline-flex; align-items: center; }
+.wd-chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--g1); color: var(--text-soft); font-size: 13px; font-family: inherit; }
+.wd-chip.on { border-color: var(--accent); color: var(--accent); }
