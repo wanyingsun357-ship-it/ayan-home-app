@@ -13,7 +13,7 @@ import Settings from './pages/Settings.jsx'
 import Together from './pages/Together.jsx'
 import CommandWidget from './components/CommandWidget.jsx'
 import CallOverlay from './components/CallOverlay.jsx'
-import { setupPush, isApp, Keyboard, syncStatusBar, geo } from './utils/native.js'
+import { setupPush, isApp, Keyboard, syncStatusBar, geo, reportBattery } from './utils/native.js'
 
 const PAGES = {
 }
@@ -95,6 +95,7 @@ export default function App() {
   useEffect(() => {
     if (!isApp()) return
     const tick = async () => {
+      reportBattery()
       if (localStorage.getItem('loc-on') === '0') return
       const st = await geo.status()
       if (st.auth === 'prompt') return // 还没在 Settings 里授权

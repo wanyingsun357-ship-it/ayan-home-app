@@ -4,6 +4,7 @@ import { PushNotifications } from '@capacitor/push-notifications'
 import { Haptics } from '@capacitor/haptics'
 import { Keyboard } from '@capacitor/keyboard'
 import { StatusBar, Style } from '@capacitor/status-bar'
+import { Device } from '@capacitor/device'
 export const isApp = () => { try { return Capacitor.isNativePlatform() } catch { return false } }
 // 壳加载的是线上网页,插件的 JS 半边必须打进前端包里,不然 Capacitor.Plugins 里没有它们
 const P = () => (isApp() ? { Haptics, PushNotifications, Keyboard } : {})
@@ -74,4 +75,18 @@ export const geo = {
   report: async () => { if (!isApp()) return null; try { return await Location.current() } catch (e) { plog({ step: 'loc-fail', err: String(e) }); return null } },
   startBackground: async () => { if (!isApp()) return { ok: false }; try { return await Location.startBackground({ url: location.origin + '/api/location' }) } catch { return { ok: false } } },
   stopBackground: async () => { if (!isApp()) return { ok: true }; try { return await Location.stopBackground() } catch { return { ok: true } } },
+}
+
+// 电量:App 打开/回前台时报一次(代替以前的"上报电量"快捷指令),走老接口 /api/s/battery/<百分比>
+let lastBatteryAt = 0
+export async function reportBattery() {
+  if (!isApp() || Date.now() - lastBatteryAt < 10 * 60 * 1000) return
+  try {
+    const b = await Device.getBatteryInfo()
+    if (b && typeof b.batteryLevel === 'number') {
+      lastBatteryAt = Date.now()
+      const pct = Math.round(b.batteryLevel * 100)
+      fetch(`/api/s/battery/${pct}`).catch(() => {})
+    }
+  } catch {}
 }
