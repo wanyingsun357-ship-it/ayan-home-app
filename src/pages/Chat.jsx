@@ -371,13 +371,19 @@ export default function Chat({ back }) {
       const h = await (await fetch(`/api/history${q}`, { cache: 'no-store' })).json()
       if (!Array.isArray(h)) return
       setMessages((ms) => {
-        const lastIdx = [...ms].reverse().find((m) => m.absIdx !== undefined)?.absIdx
-        if (lastIdx === undefined) return ms
+        let cut = -1
+        for (let i = ms.length - 1; i >= 0; i--) { if (ms[i].absIdx !== undefined) { cut = i; break } }
+        if (cut < 0) return ms
+        const lastIdx = ms[cut].absIdx
         const fresh = h.filter((m) => m.i > lastIdx && !m.inCall)
         if (!fresh.length) return ms
-        // 本地正在流的气泡若已在服务器落库,去掉它避免重复
-        const base = ms.filter((m) => !m.streaming)
-        return [...base, ...fresh.map((m) => newMsg(m.role, m.content, { reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i, memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, timestamp: m.timestamp }))]
+        // 编号之后的本地消息(她刚发的、他刚流完的)服务器这次都送来了:按 角色+内容 认出同一条,不再重复加;正在流的气泡留着
+        const key = (r, c) => r + '
+' + String(c || '').trim()
+        const freshKeys = new Set(fresh.map((m) => key(m.role, m.content)))
+        const head = ms.slice(0, cut + 1)
+        const keep = ms.slice(cut + 1).filter((m) => m.streaming || m.role === 'system' || !freshKeys.has(key(m.role, m.content)))
+        return [...head, ...fresh.map((m) => newMsg(m.role, m.content, { reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i, memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, timestamp: m.timestamp })), ...keep]
       })
       setWaiting(false)
       scrollBottom()
