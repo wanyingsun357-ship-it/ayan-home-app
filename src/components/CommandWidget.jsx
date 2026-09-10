@@ -26,10 +26,11 @@ export default function CommandWidget() {
       try { const d = await (await fetch('/api/commands/pending')).json(); syncOffset(d.serverNow); if (!stopped) setQueue(d.commands || []) } catch {}
     }
     load()
-    let es
+    let es, cur_es = null
     const connect = () => {
       if (stopped) return
-      es = new EventSource('/api/stream')
+      try { cur_es?.close() } catch {}
+      es = new EventSource('/api/stream'); cur_es = es
       es.addEventListener('u', (e) => {
         try {
           const d = JSON.parse(e.data)
@@ -37,7 +38,7 @@ export default function CommandWidget() {
           else if (d.type === 'command_done') { const c = JSON.parse(d.content); setQueue((q) => q.filter((x) => x.id !== c.id)) }
         } catch {}
       })
-      es.onerror = () => { es.close(); setTimeout(connect, 4000) }
+      es.onerror = () => { es.close(); if (cur_es !== es) return; setTimeout(() => { if (cur_es === es) connect() }, 4000) }
     }
     connect()
     const t = setInterval(load, 60000)

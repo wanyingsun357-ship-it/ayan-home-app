@@ -96,7 +96,7 @@ export default function CallOverlay() {
         let m; try { m = JSON.parse(d.content) } catch { return }
         onCallEvent(m)
       })
-      es.onerror = () => { es.close(); setTimeout(connect, 4000) }
+      es.onerror = () => { es.close(); if (esRef.current !== es) return; setTimeout(() => { if (esRef.current === es) connect() }, 4000) }
     }
     connect()
     const onVis = () => { if (!document.hidden) connect() }

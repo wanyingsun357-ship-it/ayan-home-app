@@ -291,6 +291,7 @@ export default function Chat({ back }) {
     }
     const connect = () => {
       if (stopped) return
+      try { esRef.current?.close() } catch {}
       const es = new EventSource('/api/stream')
       esRef.current = es
       es.addEventListener('connected', (e) => {
@@ -343,9 +344,11 @@ export default function Chat({ back }) {
         } catch {}
       })
       es.onerror = () => {
-        setOnline(false)
         es.close()
-        if (!stopped) setTimeout(connect, 3000)
+        // 只有"现任"通道才负责重连;被换掉的旧通道晚些报错时不能再开一条(会导致每段文字收到两遍)
+        if (esRef.current !== es) return
+        setOnline(false)
+        if (!stopped) setTimeout(() => { if (esRef.current === es) connect() }, 3000)
       }
     }
     connect()
