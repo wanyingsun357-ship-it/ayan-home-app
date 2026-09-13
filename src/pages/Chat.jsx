@@ -332,6 +332,15 @@ export default function Chat({ back }) {
           else if (d.type === 'compact') { try { compactDoneRef.current?.(JSON.parse(d.content)) } catch {} }
           else if (d.type === 'quiz') { try { const z = JSON.parse(d.content); setQuizzes((qs) => (qs.some((x) => x.id === z.id) ? qs : [...qs, z])); buzz(20) } catch {} }
           else if (d.type === 'quiz_done') { try { const z = JSON.parse(d.content); setQuizzes((qs) => qs.filter((x) => x.id !== z.id)) } catch {} }
+          else if (d.type === 'gallery') {
+            try {
+              const g = JSON.parse(d.content)
+              // 他常在回话中途存/发:小字和卡片插在正在流的气泡前面,和服务器的顺序一致
+              setMessages((ms) => { const nm = newMsg('assistant', g.content || '', { gallery: g.gallery, timestamp: g.timestamp }); const si = ms.findIndex((m) => m.streaming); return si >= 0 ? [...ms.slice(0, si), nm, ...ms.slice(si)] : [...ms, nm] })
+              buzz('light')
+              scrollBottom()
+            } catch {}
+          }
           else if (d.type === 'gift') {
             try {
               const g = JSON.parse(d.content)
@@ -382,7 +391,7 @@ export default function Chat({ back }) {
         const freshKeys = new Set(fresh.map((m) => key(m.role, m.content)))
         const head = ms.slice(0, cut + 1)
         const keep = ms.slice(cut + 1).filter((m) => m.streaming || m.role === 'system' || !freshKeys.has(key(m.role, m.content)))
-        return [...head, ...fresh.map((m) => newMsg(m.role, m.content, { reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i, memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, timestamp: m.timestamp })), ...keep]
+        return [...head, ...fresh.map((m) => newMsg(m.role, m.content, { reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i, memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery, timestamp: m.timestamp })), ...keep]
       })
       setWaiting(false)
       scrollBottom()
@@ -399,7 +408,7 @@ export default function Chat({ back }) {
         if (Array.isArray(h)) {
           setMessages(h.filter((m) => !m.inCall).map((m) => newMsg(m.role, m.content, {
             reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i,
-            memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call,
+            memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery,
             timestamp: m.timestamp,
           })))
           scrollBottom()
@@ -435,7 +444,7 @@ export default function Chat({ back }) {
       if (Array.isArray(h) && h.length) {
         const older = h.filter((m) => !m.inCall).map((m) => newMsg(m.role, m.content, {
           reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i,
-          memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call,
+          memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery,
           timestamp: m.timestamp,
         }))
         setMessages((ms) => [...older, ...ms])
@@ -1148,6 +1157,25 @@ export default function Chat({ back }) {
                 <button className={`call-card ${['missed', 'declined'].includes(m.call.endedBy) ? 'bad' : ''}`} onClick={() => openCall(m.call.id)}>
                   <i>☏</i>
                   <span>{m.call.endedBy === 'missed' ? (m.call.by === 'him' ? '未接来电' : '未接通') : m.call.endedBy === 'declined' ? (m.call.by === 'him' ? '你没接' : '他没接') : `通话 ${Math.floor(m.call.dur / 60)}:${String(m.call.dur % 60).padStart(2, '0')}`}<br /><small>{m.call.endedBy === 'him' ? '他挂的' : m.call.endedBy === 'her' ? '你挂的' : ''}{m.call.n ? ` · ${m.call.n} 句` : ''}</small></span>
+                </button>
+              )}
+              {m.gallery?.ev === 'save' && (
+                <>
+                  <div className="gal-line">相册 · 存进《{m.gallery.album}》 → {m.gallery.id}</div>
+                  <button className="gal-card glass2" onClick={() => setImgView(m.gallery.url)}>
+                    <img src={m.gallery.url} alt="" />
+                    <span className="gal-card-body">
+                      <small>{NAMES.me} 收藏了</small>
+                      <b>存进了「{m.gallery.album}」</b>
+                      {(m.gallery.title || m.gallery.impression) && <i>{m.gallery.title}{m.gallery.title && m.gallery.impression ? ' · ' : ''}{m.gallery.impression}</i>}
+                    </span>
+                  </button>
+                </>
+              )}
+              {m.gallery?.ev === 'send' && (
+                <button className="gal-photo glass2" onClick={() => setImgView(m.gallery.url)}>
+                  <img src={m.gallery.url} alt="" />
+                  <span className="gal-photo-cap"><i>★</i> 来自 Gallery{m.gallery.title ? ` · ${m.gallery.title}` : m.gallery.album ? ` · ${m.gallery.album}` : ''}</span>
                 </button>
               )}
               {!m.call && m.gift && (

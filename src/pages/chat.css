@@ -859,3 +859,16 @@
 .rec-live { margin-top: 10px; max-width: 78vw; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--card-border); color: var(--text); font-size: 15px; line-height: 1.6; text-align: left; white-space: pre-wrap; }
 
 .chat-call { font-size: 18px; }
+
+/* 相册:存进去的一行小字 + 小卡;他从相册发来的照片卡 */
+.gal-line { font-size: 11px; color: var(--text-dim); font-style: italic; letter-spacing: .3px; padding: 2px 0 6px; word-break: break-all; }
+.gal-card { display: flex; align-items: center; gap: 10px; width: 250px; max-width: 100%; padding: 8px; border-radius: 14px; border: 1px solid var(--card-border); background: var(--card); cursor: pointer; text-align: left; font-family: inherit; }
+.gal-card img { width: 54px; height: 54px; border-radius: 10px; object-fit: cover; flex: none; }
+.gal-card-body { display: flex; flex-direction: column; min-width: 0; }
+.gal-card-body small { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+.gal-card-body b { font-size: 14px; color: var(--text); font-weight: 600; margin-top: 1px; }
+.gal-card-body i { font-size: 12px; color: var(--text-soft); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gal-photo { display: block; width: 230px; max-width: 100%; padding: 6px; border-radius: 16px; border: 1px solid var(--card-border); background: var(--card); cursor: pointer; text-align: left; font-family: inherit; }
+.gal-photo img { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; display: block; }
+.gal-photo-cap { display: block; font-size: 12px; color: var(--text-soft); padding: 7px 4px 2px; }
+.gal-photo-cap i { color: var(--accent); font-style: normal; margin-right: 2px; }

@@ -9,6 +9,7 @@ const ITEMS = [
   { key: 'moments', label: 'Moments', sub: '朋友圈' },
   { key: 'diary', label: 'Diary', sub: '日记' },
   { key: 'together', label: 'Together', sub: '一起过日子' },
+  { key: 'gallery', label: 'Gallery', sub: '相册' },
   { key: 'mind', label: 'Mind', sub: '' },
 ]
 
