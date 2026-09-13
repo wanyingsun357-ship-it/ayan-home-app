@@ -192,7 +192,7 @@
 
 /* ---- 底部弹层 ---- */
 .sheet-mask {
-  position: fixed; inset: 0; z-index: 60;
+  position: fixed; left: 0; right: 0; top: 0; bottom: var(--kb, 0px); z-index: 60; transition: bottom .22s ease;
   background: var(--overlay);
   display: flex; align-items: flex-end;
   animation: fade-in 0.2s ease;
@@ -831,7 +831,7 @@
 /* ===== 答题卡 ===== */
 .quiz-chip { align-self: flex-start; margin: 4px 14px 2px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--card-border); color: var(--text); font-size: 13px; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .quiz-chip-q { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--text-soft); font-size: 11px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-soft); }
-.quiz-mask { position: fixed; inset: 0; z-index: 58; background: rgba(0,0,0,.18); display: flex; align-items: flex-end; }
+.quiz-mask { position: fixed; left: 0; right: 0; top: 0; bottom: var(--kb, 0px); z-index: 58; background: rgba(0,0,0,.18); display: flex; align-items: flex-end; transition: bottom .22s ease; }
 .quiz-sheet { width: 100%; border-radius: 22px 22px 0 0; padding: 12px 18px calc(18px + env(safe-area-inset-bottom, 0)); animation: quiz-up .25s ease; }
 @keyframes quiz-up { from { transform: translateY(40px); opacity: 0 } to { transform: none; opacity: 1 } }
 .quiz-nav { display: flex; align-items: center; gap: 10px; color: var(--text-soft); font-size: 15px; }
