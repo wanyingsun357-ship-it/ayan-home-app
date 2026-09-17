@@ -160,6 +160,9 @@
   font-size: 15px; line-height: 2.0; color: inherit;
   font-family: inherit;
   min-height: 44vh;
+  /* App 里键盘弹起时(--kb)框自己缩短,光标在框内滚,不会藏到键盘后面 */
+  max-height: calc(100dvh - var(--kb, 0px) - 330px);
+  transition: max-height .22s ease;
 }
 .dy-editor-bar { display: flex; justify-content: flex-end; }
 .dy-save {

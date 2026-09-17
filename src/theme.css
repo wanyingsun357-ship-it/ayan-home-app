@@ -163,7 +163,7 @@ img.pixel { image-rendering: pixelated; -webkit-user-drag: none; user-select: no
 .page {
   min-height: 100dvh;
   max-width: 480px; margin: 0 auto;
-  padding-bottom: 90px;
+  padding-bottom: calc(90px + var(--kb, 0px)); /* App 里键盘弹起时整页能滚到键盘上面 */
 }
 
 /* ---- 兼容层:旧 token 映射到玻璃体系 ---- */
