@@ -69,6 +69,7 @@ export default function Memory({ back, goSettings }) {
   const [cardSel, setCardSel] = useState(null)          // 正在编辑的卡(可编辑副本)
   const [cardBusy, setCardBusy] = useState(false)
   const [echoEditText, setEchoEditText] = useState('')
+  const [echoEditFeel, setEchoEditFeel] = useState('')
   // ---- 印记画廊(他压缩后送的画) ----
   const [gifts, setGifts] = useState(null)
   const [giftView, setGiftView] = useState(null)
@@ -122,7 +123,7 @@ export default function Memory({ back, goSettings }) {
       const d = await r.json()
       if (!r.ok) { alert(d.error || '改不动'); setEchoBusy(false); return }
       if (patch.remove) setEchoItems((v) => v ? { ...v, items: v.items.filter((x) => x.id !== echoSel.id) } : v)
-      else setEchoItems((v) => v ? { ...v, items: v.items.map((x) => x.id === echoSel.id ? { ...x, text: d.item.text } : x) } : v)
+      else setEchoItems((v) => v ? { ...v, items: v.items.map((x) => x.id === echoSel.id ? { ...x, text: d.item.text, feel: d.item.feel } : x) } : v)
       setEchoSel(null)
       loadEcho()
     } catch {}
@@ -309,7 +310,7 @@ export default function Memory({ back, goSettings }) {
               <div className="mem-filters">
                 {[
                   ['all', '全部'], ['PENDING', '⏳ 待兑现'], ['pinned', '📌 钉住'],
-                  ['COMPLETED', '✓ 已兑现'], ['gone', '🗄 过时/归档'],
+                  ['COMPLETED', '✓ 已兑现'], ['gone', '🗄 过时/归档'], ['nofeel', '♡ 没写感受'],
                 ].map(([k, l]) => (
                   <button key={k} className={`mem-chip ${echoFilter === k ? 'on' : ''}`} onClick={() => setEchoFilter(k)}>{l}</button>
                 ))}
@@ -329,6 +330,7 @@ export default function Memory({ back, goSettings }) {
                   .filter((it) => {
                     if (echoFilter === 'all') return true
                     if (echoFilter === 'pinned') return it.decayClass === 'none'
+                    if (echoFilter === 'nofeel') return !it.feel && it.status !== 'SUPERSEDED' && it.status !== 'ARCHIVED'
                     if (echoFilter === 'gone') return it.status === 'SUPERSEDED' || it.status === 'ARCHIVED'
                     return it.status === echoFilter
                   })
@@ -339,7 +341,7 @@ export default function Memory({ back, goSettings }) {
                   })
                   .map((it) => (
                   <button key={it.id} className={`mem-card glass2 mem-echo-card ${it.status === 'SUPERSEDED' || it.status === 'ARCHIVED' ? 'dim' : ''}`}
-                    onClick={() => { setEchoSel(it); setEchoEditText(it.text) }}>
+                    onClick={() => { setEchoSel(it); setEchoEditText(it.text); setEchoEditFeel(it.feel || '') }}>
                     <div className="mem-card-top">
                       <span className={`mem-echo-st ${ECHO_ST[it.status]?.cls || 'active'}`}>{ECHO_ST[it.status]?.label || it.status}</span>
                       {it.decayClass !== 'normal' && <span className="mem-echo-cls">{ECHO_CLS[it.decayClass]}</span>}
@@ -347,6 +349,8 @@ export default function Memory({ back, goSettings }) {
                       <span className="mem-time">{it.date}{it.event ? ` · ${it.event}` : ''}</span>
                     </div>
                     <div className="mem-preview mem-echo-text">{it.text}</div>
+                    {it.feel && <div className="mem-echo-feel">当时的我:{it.feel}</div>}
+                    {it.auto && <div className="mem-echo-auto">机器从原文拆的,没有他当时的感受</div>}
                   </button>
                 ))}
               </div>
@@ -388,8 +392,10 @@ export default function Memory({ back, goSettings }) {
                 <div className="thought-body mem-detail">
                   <div className="mem-detail-meta">{echoSel.date}{echoSel.event ? ` · ${echoSel.event}` : ''} · 被想起{echoSel.act || 0}次</div>
                   <textarea className="mem-input mem-textarea" defaultValue={echoSel.text} onChange={(e) => setEchoEditText(e.target.value)} rows={4} />
+                  <div className="mem-echo-acts-t">当时的我</div>
+                  <textarea className="mem-input mem-textarea mem-feel-ta" defaultValue={echoSel.feel || ''} placeholder={echoSel.auto ? '这条是机器拆的,他没留当时的感受' : '他当时心里的一两句'} onChange={(e) => setEchoEditFeel(e.target.value)} rows={2} />
                   <div className="mem-echo-btns">
-                    <button disabled={echoBusy || !echoEditText.trim() || echoEditText === echoSel.text} className="mem-echo-btn on" onClick={() => echoEdit({ text: echoEditText })}>保存文字</button>
+                    <button disabled={echoBusy || ((!echoEditText.trim() || echoEditText === echoSel.text) && echoEditFeel === (echoSel.feel || ''))} className="mem-echo-btn on" onClick={() => echoEdit({ ...(echoEditText.trim() && echoEditText !== echoSel.text ? { text: echoEditText } : {}), ...(echoEditFeel !== (echoSel.feel || '') ? { feel: echoEditFeel } : {}) })}>保存</button>
                     <button disabled={echoBusy} className="mem-echo-btn danger" onClick={() => { if (confirm('删掉这条记忆?')) echoEdit({ remove: true }) }}>删掉</button>
                   </div>
                   <div className="mem-echo-acts">

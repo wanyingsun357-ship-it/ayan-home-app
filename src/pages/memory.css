@@ -263,3 +263,7 @@
 .gift-title { color: #e8dcd6; font-size: 20px; letter-spacing: 2px; font-style: italic; }
 .gift-note { color: #d6c7c2; font-size: 14px; line-height: 1.7; text-align: center; max-width: 340px; }
 .gift-hint { position: fixed; bottom: calc(28px + env(safe-area-inset-bottom, 0)); left: 0; right: 0; text-align: center; color: rgba(230,220,214,.55); font-size: 12px; letter-spacing: 1px; }
+
+.mem-echo-feel { font-size: 12px; color: var(--text-soft); font-style: italic; margin-top: 4px; line-height: 1.6; }
+.mem-echo-auto { font-size: 10px; color: var(--text-dim); margin-top: 3px; letter-spacing: .3px; }
+.mem-feel-ta { font-style: italic; }
