@@ -1508,7 +1508,7 @@ export default function Chat({ back }) {
             <div className="sheet-handle" />
             <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('image/*') }}>🖼 图片</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('*/*') }}>📄 文件</button>
-            <button className="sheet-item" onClick={() => { setMenuOpen(false); setArtifactsOpen(true) }}>▤ Artifacts</button>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); setArtifactsOpen(true) }}><span className="artifacts-menu-icon" aria-hidden="true">📂</span> Artifacts</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); openUploads() }}>🗂 附件管理</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); newSession() }}>✦ 新对话</button>
           </div>
