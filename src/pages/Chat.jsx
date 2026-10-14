@@ -330,13 +330,16 @@ export default function Chat({ back }) {
     })
   }
 
+  const streamCursor = useRef({})
+  const tailRequest = useRef(0)
   // ---- SSE(只听统一事件 u) ----
   useEffect(() => {
-    let stopped = false
+    let stopped = false, retryTimer, heartbeatTimer, lastEvent = Date.now()
     const endStream = () => {
-      setMessages((ms) => ms.map((m) => ({ ...m, streaming: false })))
+      setMessages((ms) => ms.map((m) => ({ ...m, recoveryPending:m.streaming || m.recoveryPending, streaming: false })))
       streamRef.current = { id: null, reasoning: '' }
       setWaiting(false)
+      refreshTail(true)
     }
     const onChunk = (text, reasoning, memEvent) => {
       streamedRef.current = true
@@ -367,18 +370,36 @@ export default function Chat({ back }) {
     const connect = () => {
       if (stopped) return
       try { esRef.current?.close() } catch {}
-      const es = new EventSource('/api/stream')
+      clearTimeout(retryTimer)
+      const cursor = streamCursor.current
+      const query = cursor.epoch ? '?' + new URLSearchParams({epoch:cursor.epoch,cursor:String(cursor.seq)}) : ''
+      const es = new EventSource('/api/stream' + query)
+      lastEvent = Date.now()
       esRef.current = es
       es.addEventListener('connected', (e) => {
+        if(stopped || esRef.current!==es)return
+        lastEvent=Date.now()
         setOnline(true)
         try {
           const d = JSON.parse(e.data)
+          if (d.epoch && (!streamCursor.current.epoch || d.gap)) {
+            streamCursor.current={epoch:d.epoch,seq:d.seq}
+            if(d.gap) refreshTail(true)
+          }
           if (d.session && !sessionRef.current) sessionRef.current = d.session
         } catch {}
       })
+      es.addEventListener('heartbeat', () => { if(esRef.current===es)lastEvent=Date.now() })
       es.addEventListener('u', (e) => {
+        if(stopped || esRef.current!==es)return
+        lastEvent=Date.now()
         try {
           const d = JSON.parse(e.data)
+          if(d.epoch && Number.isInteger(d.seq)) {
+            const cursor=streamCursor.current
+            if(cursor.epoch===d.epoch && d.seq<=cursor.seq)return
+            streamCursor.current={epoch:d.epoch,seq:d.seq}
+          }
           // 别的会话的流不掺和进当前界面
           if (d.session && sessionRef.current && d.session !== sessionRef.current) return
           if (browsingRef.current) return
@@ -433,46 +454,58 @@ export default function Chat({ back }) {
         // 只有"现任"通道才负责重连;被换掉的旧通道晚些报错时不能再开一条(会导致每段文字收到两遍)
         if (esRef.current !== es) return
         setOnline(false)
-        if (!stopped) setTimeout(() => { if (esRef.current === es) connect() }, 3000)
+        if (!stopped) retryTimer=setTimeout(() => { if (esRef.current === es && navigator.onLine !== false) connect() }, 3000)
       }
     }
     connect()
-    // iPhone 切走再回来:实时通道常常假死(不报错也不来事件)。回前台就重连,并补拉这个会话的最新消息
-    let lastVis = Date.now()
     const onVis = () => {
-      if (document.hidden) { lastVis = Date.now(); return }
-      try { esRef.current?.close() } catch {}
+      if (document.hidden) return
       connect()
-      if (Date.now() - lastVis > 3000) refreshTail()
+      if(streamRef.current.id==null)refreshTail()
     }
+    const onOffline=()=>{setOnline(false);clearTimeout(retryTimer);esRef.current?.close()}
+    const onOnline=()=>{connect();if(streamRef.current.id==null)refreshTail()}
+    heartbeatTimer=setInterval(()=>{if(!document.hidden && navigator.onLine!==false && Date.now()-lastEvent>45000){setOnline(false);connect()}},10000)
     document.addEventListener('visibilitychange', onVis)
-    return () => { stopped = true; esRef.current?.close(); document.removeEventListener('visibilitychange', onVis) }
+    window.addEventListener('online',onOnline)
+    window.addEventListener('offline',onOffline)
+    window.addEventListener('pageshow',onVis)
+    return () => { stopped = true; clearTimeout(retryTimer);clearInterval(heartbeatTimer);esRef.current?.close(); document.removeEventListener('visibilitychange', onVis);window.removeEventListener('online',onOnline);window.removeEventListener('offline',onOffline);window.removeEventListener('pageshow',onVis) }
   }, [])
 
-  // 补拉:把服务器上比本地新的消息接到列表末尾(不整页重载,不跳滚动)
-  const refreshTail = async () => {
+  // Reconcile persisted replies by absolute index; never resend a user message.
+  const refreshTail = async (finished=false) => {
     if(browsingRef.current)return
-    const refreshSession=sessionRef.current
+    const refreshSession=sessionRef.current,request=++tailRequest.current
+    const activeAtStart=streamRef.current.id
     try {
-      const q = sessionRef.current ? `?session=${sessionRef.current}` : ''
-      const h = await (await fetch(`/api/history${q}`, { cache: 'no-store' })).json()
-      if (browsingRef.current || refreshSession!==sessionRef.current || !Array.isArray(h)) return
-      setMessages((ms) => {
-        let cut = -1
-        for (let i = ms.length - 1; i >= 0; i--) { if (ms[i].absIdx !== undefined) { cut = i; break } }
-        if (cut < 0) return ms
-        const lastIdx = ms[cut].absIdx
-        const fresh = h.filter((m) => m.i > lastIdx && !m.inCall)
-        if (!fresh.length) return ms
-        // 编号之后的本地消息(她刚发的、他刚流完的)服务器这次都送来了:按 角色+内容 认出同一条,不再重复加;正在流的气泡留着
-        const key = (r, c) => r + '|' + String(c || '').trim()
-        const freshKeys = new Set(fresh.map((m) => key(m.role, m.content)))
-        const head = ms.slice(0, cut + 1)
-        const keep = ms.slice(cut + 1).filter((m) => m.streaming || m.role === 'system' || !freshKeys.has(key(m.role, m.content)))
-        return [...head, ...fresh.map((m) => newMsg(m.role, m.content, { reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i, memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery, timestamp: m.timestamp })), ...keep]
+      const q = refreshSession ? '?session='+encodeURIComponent(refreshSession) : ''
+      const response=await fetch('/api/history'+q,{cache:'no-store'})
+      if(!response.ok)return
+      const h=await response.json()
+      if(browsingRef.current || refreshSession!==sessionRef.current || request!==tailRequest.current || !Array.isArray(h))return
+      setMessages(ms=>{
+        const persisted=h.filter(m=>!m.inCall)
+        const lastIndex=Math.max(-1,...ms.filter(m=>m.absIdx!==undefined).map(m=>m.absIdx))
+        const fresh=persisted.filter(m=>m.i>lastIndex)
+        const hasFinal=fresh.some(m=>m.role==='assistant')
+        if(hasFinal)streamedRef.current=true
+        const currentStream=streamRef.current.id
+        const replacePartial=hasFinal && (currentStream===activeAtStart || finished && currentStream==null)
+        const counts=new Map()
+        const key=m=>m.role+'|'+String(m.content||'').trim()
+        for(const m of fresh)counts.set(key(m),(counts.get(key(m))||0)+1)
+        const head=ms.filter(m=>m.absIdx!==undefined)
+        const pending=ms.filter(m=>m.absIdx===undefined).filter(m=>{
+          if((m.streaming && replacePartial) || (m.recoveryPending && hasFinal))return false
+          const k=key(m),n=counts.get(k)||0
+          if(n){counts.set(k,n-1);return false}
+          return true
+        })
+        if(replacePartial){streamRef.current={id:null,reasoning:''};setWaiting(false)}
+        const added=fresh.map(m=>newMsg(m.role,m.content,{...m,absIdx:m.i}))
+        return [...head,...added,...pending]
       })
-      setWaiting(false)
-      scrollBottom()
     } catch {}
   }
 
@@ -751,6 +784,7 @@ export default function Chat({ back }) {
     // POST返回和SSE是两条通道,POST先到就清会把还在路上的尾巴事件塞进幽灵气泡(思考链断成两朵云的元凶)
     streamRef.current = { id: null, reasoning: '' }
     scrollBottom()
+    const sentSession=sessionRef.current
     try {
       const r = await fetch('/api/message', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -760,12 +794,15 @@ export default function Chat({ back }) {
         }),
       })
       const data = await r.json()
+      if(sentSession!==sessionRef.current)return
       // 只有全程没流式收到内容时才补全量返回,避免重复气泡
       if (data.response && !streamedRef.current) {
         setMessages((ms) => [...ms, newMsg('assistant', data.response)])
       }
     } catch {
-      setMessages((ms) => [...ms, newMsg('assistant', '(连接出错了,等下再试试)')])
+      if(sentSession!==sessionRef.current)return
+      showToast('连接暂时中断，正在核对回复；消息不会自动重发')
+      refreshTail()
     }
     setWaiting(false)
     scrollBottom()
