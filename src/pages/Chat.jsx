@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { NAMES } from '../config.js'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import PixelCat from '../components/PixelCat.jsx'
+import ThoughtTimeline from '../components/ThoughtTimeline.jsx'
 import { compressImage, postUpload } from '../utils/compressImage.js'
 import { buzz, isApp } from '../utils/native.js'
+import { FALLBACK_MODELS, cachedModels, selectedModel, modelPrice } from '../utils/models.js'
 import './chat.css'
 
 // Chat:和阿晏说话
@@ -141,17 +143,6 @@ function renderMd(text) {
   })
 }
 
-const MODELS = [
-  { label: 'Fable 5', id: 'claude-fable-5' },
-  { label: 'Opus 5', id: 'claude-opus-5' },
-  { label: 'Sonnet 5', id: 'claude-sonnet-5' },
-  { label: 'Haiku 4.5', id: 'claude-haiku-4-5' },
-  { label: 'Opus 4.8', id: 'claude-opus-4-8' },
-  { label: 'Opus 4.7', id: 'claude-opus-4-7' },
-  { label: 'Opus 4.6', id: 'claude-opus-4-6' },
-  { label: 'Sonnet 4.6', id: 'claude-sonnet-4-6' },
-]
-
 export default function Chat({ back }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -171,6 +162,40 @@ export default function Chat({ back }) {
   const [toast, setToast] = useState('')
   const [model, setModel] = useState(() => localStorage.getItem('chat-model') || 'Opus 4.6')
   const [modelSheet, setModelSheet] = useState(false)
+  const [modelSource, setModelSource] = useState('api')
+  const [models, setModels] = useState(cachedModels)
+  const [modelRoles, setModelRoles] = useState({})
+  const [modelSync, setModelSync] = useState('同步模型中…')
+  const modelsFetchedRef = useRef(false)
+  useEffect(() => {
+    if (!modelSheet && modelsFetchedRef.current) return
+    let ignore = false
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+    setModelSync('同步模型中…')
+    fetch('/api/models', { signal: controller.signal, cache: 'no-store' })
+      .then(async r => { if (!r.ok) throw new Error('models unavailable'); return r.json() })
+      .then(data => {
+        if (ignore) return
+        if (!Array.isArray(data.models) || !data.models.length) throw new Error('empty models')
+        setModels(data.models)
+        try { localStorage.setItem('chat-model-catalog', JSON.stringify(data.models)) } catch {}
+        setModelRoles(data.roles || {})
+        setModel(current => {
+          const saved = selectedModel(data.models, current, data.default_model)
+          const chosen = data.engine && saved.engine && data.engine !== saved.engine
+            ? selectedModel(data.models, data.default_model, data.default_model) : saved
+          localStorage.setItem('chat-model', chosen.label)
+          localStorage.setItem('chat-model-id', chosen.id)
+          return chosen.label
+        })
+        modelsFetchedRef.current = true
+        setModelSync(data.stale ? '暂时无法同步，使用上次模型列表' : `${data.provider === 'mixed' ? 'Claude / Codex' : data.provider === 'openrouter' ? 'OpenRouter' : 'Claude'} · 已同步`)
+      })
+      .catch(() => { if (!ignore) setModelSync('暂时无法同步，使用已有模型列表') })
+      .finally(() => clearTimeout(timeout))
+    return () => { ignore = true; clearTimeout(timeout); controller.abort() }
+  }, [modelSheet])
   const [effort, setEffort] = useState(() => localStorage.getItem('chat-effort') || 'Medium')
   const [extended, setExtended] = useState(() => localStorage.getItem('chat-extended') === '1')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -311,7 +336,7 @@ export default function Chat({ back }) {
           if (d.type === 'text') onChunk(d.content)
           else if (d.type === 'reasoning') onChunk('', d.content)
           else if (d.type === 'memory') { try { onChunk('', '', JSON.parse(d.content)) } catch {} }
-          else if (d.type === 'ctx') setCtx(parseInt(d.content) || 0)
+          else if (d.type === 'ctx') { setCtx(parseInt(d.content) || 0); setCtxEstimated(false); loadCtx() }
           else if (d.type === 'reset') {
             // cot-guard 打回重写:第一版回答作废,清空正在流的气泡等第二版
             setMessages((ms) => {
@@ -528,10 +553,13 @@ export default function Chat({ back }) {
 
   // ---- 水位线(200k窗口)+压缩/衔接 ----
   const [ctx, setCtx] = useState(0)
+  const [ctxEstimated, setCtxEstimated] = useState(false)
+  const [ctxLimit, setCtxLimit] = useState(200000)
+  const [ctxEngine, setCtxEngine] = useState('claude')
   const [ctxOpen, setCtxOpen] = useState(false)
   const [compacting, setCompacting] = useState(false)
   const loadCtx = async () => {
-    try { const d = await (await fetch('/api/context')).json(); setCtx(d.tokens || 0) } catch {}
+    try { const d = await (await fetch('/api/context')).json(); setCtx(d.tokens || 0); setCtxEstimated(Boolean(d.estimated)); setCtxLimit(d.limit); setCtxEngine(d.engine || 'claude') } catch {}
   }
   const doCompact = async (mode) => {
     if (compacting) return
@@ -555,6 +583,7 @@ export default function Chat({ back }) {
   compactDoneRef.current = async (p) => {
     setCompacting(false)
     if (!p?.ok) { showToast('整理失败:' + (p?.error || '未知')); return }
+    setCtxEstimated(Boolean(p.estimated))
     setCtxOpen(false)
     if (p.mode === 'new') {
       await loadSessions()
@@ -1020,12 +1049,25 @@ export default function Chat({ back }) {
   }
 
   const modelId = () =>
-    (MODELS.find((m) => m.label === model) || MODELS[0]).id
-  const pickModel = (m) => {
+    selectedModel(models, model).id
+  const sourceOf = m => m.id.startsWith('codex/') ? 'codex' : 'api'
+  const openModels = () => {
+    setModelSource(sourceOf(selectedModel(models, model)))
+    setModelSheet(true)
+  }
+  const pickModel = async (m) => {
+    if (m.disabled) return
+    try {
+      const r = await fetch('/api/engine', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: m.id }) })
+      if (!r.ok) { showToast('没有切换成功，请检查设备授权和登录状态'); return }
+      const d = await r.json(); if (d.roles) setModelRoles(d.roles)
+    } catch { showToast('暂时无法切换'); return }
     setModel(m.label)
     localStorage.setItem('chat-model', m.label)
+    localStorage.setItem('chat-model-id', m.id)
     setModelSheet(false)
     showToast(`换成 ${m.label} 了`)
+    loadCtx()
   }
   const pickEffort = (e) => {
     setEffort(e)
@@ -1108,8 +1150,8 @@ export default function Chat({ back }) {
       )}
       <div className="ctx-line" onClick={() => { loadCtx(); setCtxOpen(true) }}>
         <div
-          className={`ctx-fill ${ctx >= 150000 ? 'warn' : ''}`}
-          style={{ width: `${Math.min(100, (ctx / 200000) * 100)}%` }}
+          className={`ctx-fill ${(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 150000) ? 'warn' : ''}`}
+          style={{ width: `${ctxLimit ? Math.min(100, (ctx / ctxLimit) * 100) : 0}%` }}
         />
       </div>
 
@@ -1281,7 +1323,7 @@ export default function Chat({ back }) {
         />
         <div className="chat-bar">
           <button className="cbtn" onClick={() => setMenuOpen(true)}>+</button>
-          <button className="model-chip" onClick={() => setModelSheet(true)}>
+          <button className="model-chip" onClick={openModels}>
             {model}{effort !== 'Medium' ? ` · ${effort}` : ''}{extended ? ' ✦' : ''}
           </button>
           <div className="chat-bar-sp" />
@@ -1363,10 +1405,12 @@ export default function Chat({ back }) {
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="ctx-panel-num serif">
-              {Math.round(ctx / 1000)}k <span className="ctx-panel-sub">/ 200k</span>
+              {ctxEstimated && !ctx ? '待下一轮' : `${ctxEstimated ? '约 ' : ''}${Math.round(ctx / 1000)}k`} <span className="ctx-panel-sub">{ctxLimit ? `/ ${Math.round(ctxLimit / 1000)}k` : '/ 等待模型返回窗口'}</span>
             </div>
             <div className="ctx-panel-hint">
-              {ctx >= 160000 ? '水位很高了,建议现在整理'
+              {ctxEngine === 'codex' ? (ctx >= 175000 ? '水位较高，180k 自动收存 Echo 和交接信；窗口预算 220k' : '窗口预算 220k；175k 提醒，180k 自动整理，保留最近约 30k 聊天原文')
+                : ctxEstimated ? '整理后的估算，包含系统与工具；下一轮回复后更新实测水位'
+                : ctx >= 160000 ? '水位很高了,建议现在整理'
                 : ctx >= 150000 ? '快到水位线了,可以准备整理'
                 : '还很宽裕,不用管'}
             </div>
@@ -1401,16 +1445,37 @@ export default function Chat({ back }) {
 
       {/* 模型选择 */}
       {modelSheet && (
-        <div className="sheet-mask" onClick={() => setModelSheet(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-mask model-sheet-mask" onClick={() => setModelSheet(false)}>
+          <div className="sheet model-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="model-sheet-title">Models</div>
-            {MODELS.map((m) => (
-              <button key={m.id} className="sheet-item model-item" onClick={() => pickModel(m)}>
-                <span>{m.label}</span>
+            <div className="model-sources" role="tablist" aria-label="模型来源">
+              {[['api', 'API', 'OpenRouter'], ['codex', 'Codex', '订阅'], ['account', 'Claude', '待接入']].map(([id, label, sub]) => (
+                <button key={id} type="button" role="tab" id={`model-tab-${id}`} aria-controls="model-source-panel" aria-selected={modelSource === id} disabled={id === 'account'} className={`model-source ${modelSource === id ? 'on' : ''}`} onClick={() => setModelSource(id)}>
+                  <span>{label}</span><small>{sub}</small>
+                </button>
+              ))}
+            </div>
+            <div className="model-sync">{modelSync}</div>
+            <div id="model-source-panel" role="tabpanel" aria-labelledby={`model-tab-${modelSource}`}>
+            {models.filter(m => sourceOf(m) === modelSource).map(m => (
+              <div key={m.id}>
+              <button disabled={m.disabled} className="sheet-item model-item" onClick={() => pickModel(m)}>
+                <span>{m.label}<span className="ext-sub">{modelPrice(m)}</span></span>
                 {m.label === model && <span className="model-check">✓</span>}
               </button>
+              </div>
             ))}
+            {!models.some(m => sourceOf(m) === modelSource) && <p className="model-sync">暂时没有可用模型，稍后重新打开同步。</p>}
+            </div>
+            {Object.keys(modelRoles).length > 0 && (
+              <details className="model-roles">
+                <summary>当前后台模型 · 自动分配</summary>
+                {Object.entries(modelRoles).filter(([, role]) => !role.manual).map(([name, role]) => (
+                  <div key={name}>{role.label} · {selectedModel(models, role.model).label}</div>
+                ))}
+              </details>
+            )}
             <div className="model-sheet-title" style={{ paddingTop: 14 }}>Effort</div>
             <div className="effort-row">
               {['Low', 'Medium', 'High', 'Max'].map((e) => (
@@ -1421,13 +1486,13 @@ export default function Chat({ back }) {
                 >{e}</button>
               ))}
             </div>
-            <button className="sheet-item model-item" onClick={toggleExtended}>
+            {modelSource === 'api' && <button className="sheet-item model-item" onClick={toggleExtended}>
               <span>
                 Extended
                 <span className="ext-sub">每条都带深度思考链</span>
               </span>
               <span className={`ext-switch ${extended ? 'on' : ''}`}><i /></span>
-            </button>
+            </button>}
           </div>
         </div>
       )}
@@ -1690,10 +1755,10 @@ export default function Chat({ back }) {
             <div className="sheet-handle" onClick={() => setThoughtFull((f) => !f)} />
             <div className="thought-head">
               <button className="thought-x" onClick={() => { setThought(null); setThoughtFull(false) }}>×</button>
-              <div className="thought-title">Thought process</div>
+              <div className="thought-title">心声</div>
               <div style={{ width: 34 }} />
             </div>
-            <div className="thought-body">{thought}</div>
+            <div className="thought-body thought-text"><ThoughtTimeline text={thought} /></div>
           </div>
         </div>
       )}

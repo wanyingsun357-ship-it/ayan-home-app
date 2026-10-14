@@ -1,0 +1,8 @@
+.engine-pair-mask { z-index: 10000; }
+.engine-pair p { margin: 8px 0 16px; line-height: 1.7; }
+.engine-pair input { box-sizing: border-box; width: 100%; padding: 13px; border: 1px solid var(--line, #c7c2ba); border-radius: 12px; background: transparent; color: inherit; font: inherit; letter-spacing: .06em; }
+.engine-window { padding: 12px 0 6px; }
+.engine-meter { height: 5px; overflow: hidden; border-radius: 4px; background: rgba(128,128,128,.13); margin: 8px 0; }
+.engine-meter i { display: block; height: 100%; background: #94a594; border-radius: inherit; }
+.model-item:disabled { opacity: .45; }
+.model-engine-label { margin: 16px 0 6px; font-size: 12px; opacity: .6; letter-spacing: .05em; }

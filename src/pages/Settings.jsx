@@ -3,6 +3,8 @@ import { VERSION, HOME_NAME } from '../config.js'
 import { isApp, geo } from '../utils/native.js'
 import './stub.css'
 import './settings.css'
+import RouterUsage from '../components/RouterUsage.jsx'
+import EngineUsage from '../components/EngineUsage.jsx'
 
 export default function Settings({ back }) {
   const [theme, setTheme] = useState(document.documentElement.dataset.theme)
@@ -57,7 +59,7 @@ export default function Settings({ back }) {
   const loadWd = async () => { try { setWd(await (await fetch('/api/wander')).json()) } catch {} }
   useEffect(() => { loadWd() }, [])
   const saveWd = async (patch) => { try { await fetch('/api/wander', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }) } catch {}; loadWd() }
-  const wdNow = async (id) => { setWdMsg('叫他了,十几秒后看聊天'); try { await fetch('/api/wander/now', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: id }) }) } catch {}; setTimeout(() => { setWdMsg(''); loadWd() }, 4000) }
+  const wdNow = async (id) => { setWdMsg('正在安排唤醒…'); try { const r=await fetch('/api/wander/now', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: id }) }); if(!r.ok)throw Error();setWdMsg('已加入唤醒队列，可到足迹查看；同一个家间隔至少30分钟') } catch {setWdMsg('唤醒请求没有送达，请稍后重试')}; setTimeout(() => { setWdMsg(''); loadWd() }, 4000) }
 
   // ---- 定位:授权、开关、把这里设为家 ----
   const [loc, setLoc] = useState(null)
@@ -75,9 +77,15 @@ export default function Settings({ back }) {
   const locToggle = async () => { const v = !locOn; setLocOn(v); localStorage.setItem('loc-on', v ? '1' : '0'); await fetch('/api/location/enabled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: v }) }); if (!v) geo.stopBackground(); loadLoc() }
   const locAgo = (iso) => { if (!iso) return '还没上报过'; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? '刚刚' : m < 60 ? `${m} 分钟前` : m < 1440 ? `${Math.round(m / 60)} 小时前` : `${Math.round(m / 1440)} 天前` }
 
-  // ---- 用量:Claude 订阅窗口(桥用他的登录态查) + ElevenLabs 积分 ----
+  // ---- OpenRouter 账单与缓存 + ElevenLabs 积分 ----
   const [usage, setUsage] = useState(null)
-  const loadUsage = async () => { try { setUsage(await (await fetch('/api/usage')).json()) } catch {} }
+  const [usageLoading, setUsageLoading] = useState(false)
+  const [usageError, setUsageError] = useState(false)
+  const loadUsage = async () => {
+    setUsageLoading(true); setUsageError(false)
+    try { const r = await fetch('/api/usage', { signal: AbortSignal.timeout(25000) }); if (!r.ok) throw new Error(); setUsage(await r.json()) }
+    catch { setUsageError(true) } finally { setUsageLoading(false) }
+  }
   useEffect(() => { loadUsage() }, [])
   const resetIn = (iso) => {
     if (!iso) return ''
@@ -279,17 +287,12 @@ export default function Settings({ back }) {
           <div className="set-hint">他会在"此刻状态"里看到"在家 / 离家 N 米(几分钟前)";你从外面回到家 200 米内,选中的家会主动来迎一下(90 分钟最多一次)。</div>
         </div>
 
+        <RouterUsage data={usage?.openrouter} loading={usageLoading} error={usageError} refresh={loadUsage} />
+        <EngineUsage />
         <div className="set-group">
-          <div className="set-group-name">用量 · Usage{usage?.claude?.plan ? ` · ${usage.claude.plan.toUpperCase()}` : ''}</div>
+          <div className="set-group-name">语音 · ElevenLabs</div>
           {!usage ? <div className="set-hint">读取中…</div> : (
             <>
-              {usage.claude ? (
-                <>
-                  <Bar label="当前 5 小时窗口" pct={usage.claude.session?.pct} sub={resetIn(usage.claude.session?.resetsAt)} />
-                  <Bar label="本周 · 全部模型" pct={usage.claude.week?.pct} sub={resetIn(usage.claude.week?.resetsAt)} />
-                  {usage.claude.weekOpus && <Bar label="本周 · Opus" pct={usage.claude.weekOpus.pct} sub={resetIn(usage.claude.weekOpus.resetsAt)} />}
-                </>
-              ) : <div className="set-hint">Claude 用量没拿到{usage.claudeError ? `(${usage.claudeError})` : ''}</div>}
               {usage.eleven ? (
                 <Bar label={`ElevenLabs 积分 · ${usage.eleven.tier || ''}`} pct={usage.eleven.limit ? usage.eleven.used / usage.eleven.limit * 100 : null} sub={`${(usage.eleven.used || 0).toLocaleString()} / ${(usage.eleven.limit || 0).toLocaleString()}${usage.eleven.resetsAt ? ' · ' + resetIn(usage.eleven.resetsAt) : ''}`} />
               ) : <div className="set-hint">ElevenLabs 积分要在它官网看(这把 key 没开"读取用户信息"权限)</div>}

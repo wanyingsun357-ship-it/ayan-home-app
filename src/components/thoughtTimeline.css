@@ -1,0 +1,19 @@
+.thought-plain { white-space: pre-wrap; overflow-wrap: anywhere; }
+.thought-timeline { padding: 4px 2px 14px; white-space: normal; }
+.thought-step { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 13px; padding-bottom: 22px; }
+.thought-step::before { content: ''; position: absolute; left: 9px; top: 24px; bottom: 2px; width: 1px; background: var(--card-border); }
+.thought-step:last-child { padding-bottom: 0; }
+.thought-step:last-child::before { display: none; }
+.thought-step-icon { display: flex; align-items: flex-start; padding-top: 4px; color: var(--accent, #a77d82); opacity: .65; }
+.thought-step-icon svg { width: 19px; height: 19px; }
+.thought-step-copy { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.85; }
+.thought-summary-label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 5px; letter-spacing: .06em; }
+.thought-tool { min-width: 0; }
+.thought-tool summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 9px; min-height: 28px; }
+.thought-tool summary::-webkit-details-marker { display: none; }
+.thought-tool summary:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.thought-tool-label { color: var(--text); font-size: 14px; }
+.thought-tool-name { font: 11px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--text-dim); overflow-wrap: anywhere; }
+.thought-tool-chevron { margin-left: auto; color: var(--text-dim); font-size: 13px; }
+.thought-tool[open] .thought-tool-chevron { transform: rotate(180deg); }
+.thought-tool pre { margin: 9px 0 0; padding: 11px 12px; border: 1px solid var(--card-border); border-radius: 10px; background: var(--card); color: var(--text-soft); font: 11px/1.75 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }

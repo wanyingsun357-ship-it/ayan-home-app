@@ -36,11 +36,19 @@
 
 /* ---- 水位线(200k窗口) ---- */
 .ctx-line {
+  position: relative;
   height: 10px; flex-shrink: 0;
   padding: 4px 16px; cursor: pointer;
   display: flex; align-items: center;
 }
+.ctx-line::before {
+  content: ''; position: absolute; left: 16px; right: 16px;
+  top: 50%; height: 2px; transform: translateY(-50%);
+  border-radius: 2px; background: var(--card-border);
+  pointer-events: none;
+}
 .ctx-fill {
+  position: relative;
   height: 2px; min-width: 2px; border-radius: 2px;
   background: var(--text-dim); opacity: 0.55;
   transition: width 0.6s ease, background 0.4s;
@@ -379,6 +387,18 @@
   padding: 12px 8px;
 }
 .model-check { color: var(--accent); font-size: 15px; }
+.sheet-mask.model-sheet-mask { touch-action: pan-y; }
+.model-sheet { max-height: min(88dvh, calc(100dvh - var(--kb, 0px) - 16px)); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.model-sync, .model-roles { color: var(--text-dim); font-size: 11px; line-height: 1.7; padding: 0 8px 8px; }
+.model-sources { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 8px 14px; }
+.model-source { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 4px; border: 1px solid var(--border, #8883); border-radius: 14px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.model-source > span { font-size: 14px; font-weight: 600; }
+.model-source > small { font-size: 10px; color: var(--text-dim); }
+.model-source.on { background: var(--glass, #8882); border-color: var(--text-dim); }
+.model-source:disabled { opacity: .38; cursor: default; }
+.model-source:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.model-roles summary { cursor: pointer; padding: 8px 0; }
+.model-roles { border-top: 1px solid var(--card-border); padding-top: 10px; }
 
 /* ---- Effort / Extended ---- */
 .effort-row { display: flex; gap: 8px; padding: 4px 8px 8px; }
@@ -748,6 +768,7 @@
 }
 .thought-title { padding-bottom: 0; }
 .thought-body { flex: 1; }
+.thought-text { text-align: left; text-indent: 0; }
 
 /* 录音中提示浮层 */
 .rec-overlay {

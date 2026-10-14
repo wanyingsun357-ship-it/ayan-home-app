@@ -1,0 +1,48 @@
+.footprints { max-width: 600px; margin: auto; padding: calc(18px + env(safe-area-inset-top, 0)) 0 28px; color: var(--text); }
+.fp-head { display:flex; align-items:center; gap:12px; padding:0 18px 20px; }
+.fp-head h1 { font-size:26px; font-weight:400; letter-spacing:2px; margin:0; }
+.fp-head p { font-size:11px; color:var(--text-dim); margin:7px 0 0; }
+.fp-back,.fp-refresh { flex-shrink:0; width:34px; height:34px; border-radius:50%; border:1px solid var(--card-border); background:var(--card); color:var(--text-soft); font-size:22px; }
+.fp-refresh { margin-left:auto; font-size:20px; }
+.fp-homes { display:flex; gap:8px; padding:0 18px 12px; overflow-x:auto; scrollbar-width:none; }
+.fp-homes button { flex-shrink:0; border:1px solid var(--card-border); border-radius:99px; background:var(--card); color:var(--text-soft); padding:8px 13px; font-family:inherit; font-size:12px; }
+.fp-homes button.on { border-color:var(--accent,#a77d82); color:var(--text); }
+.fp-content { padding:0 18px; }
+.fp-day { display:flex; gap:12px; align-items:center; margin:18px 2px 12px; font-size:12px; color:var(--text-dim); letter-spacing:1px; }
+.fp-day span { flex:1; height:1px; background:var(--card-border); }
+.fp-card { border-radius:19px; padding:17px 17px 12px; margin-bottom:12px; border:1px solid var(--card-border); }
+.fp-card-head { display:flex; align-items:center; gap:10px; }
+.fp-symbol { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; color:var(--accent,#a77d82); background:var(--card); font-size:20px; }
+.fp-card h2 { font-size:14px; font-weight:500; margin:0 0 3px; }
+.fp-home { color:var(--text-dim); font-size:10px; }
+.fp-card time { font-size:11px; color:var(--text-dim); margin-left:auto; font-variant-numeric:tabular-nums; }
+.fp-reason { font-size:12px; line-height:1.7; color:var(--text-dim); margin:14px 0 8px; overflow-wrap:anywhere; }
+.fp-message { margin:14px 0; color:var(--text-soft); font-size:14px; line-height:1.8; overflow-wrap:anywhere; }
+.fp-message summary { cursor:pointer; list-style:none; white-space:pre-wrap; }
+.fp-message summary::-webkit-details-marker { display:none; }
+.fp-message[open] summary { display:none; }
+.fp-message p { white-space:pre-wrap; margin:0; }
+.fp-trace { border-top:1px solid var(--card-border); padding-top:10px; margin:12px 0; }
+.fp-trace>summary { font-size:12px; color:var(--text-dim); list-style:none; cursor:pointer; display:flex; justify-content:space-between; }
+.fp-trace>summary::-webkit-details-marker { display:none; }
+.fp-trace .thought-timeline { margin-top:14px; font-size:13px; color:var(--text-soft); }
+.fp-card footer { display:flex; align-items:center; gap:6px; margin-top:12px; font-size:10px; color:var(--text-dim); }
+.fp-card footer i { width:4px; height:4px; border-radius:50%; background:#a4afa5; }
+.fp-card footer i.failed,.fp-card footer i.timeout,.fp-card footer i.interrupted { background:#ba9391; }
+.fp-muted,.fp-note { color:var(--text-dim); font-size:11px; line-height:1.8; }
+.fp-note { text-align:center; padding:15px 10px; }
+.fp-empty { text-align:center; padding:35px 12px; color:var(--text-dim); font-size:13px; }
+.fp-empty small { display:block; margin-top:9px; }
+.fp-empty button,.fp-more { display:block; margin:15px auto; border:1px solid var(--card-border); border-radius:99px; padding:9px 18px; color:var(--text-soft); background:var(--card); }
+
+.fp-activities { margin: 12px 0; }
+.fp-activity { border-bottom: 1px solid var(--card-border); padding: 10px 0; }
+.fp-activity:last-child { border-bottom: 0; }
+.fp-activity summary { display: flex; gap: 10px; align-items: baseline; list-style: none; cursor: pointer; }
+.fp-activity summary::-webkit-details-marker { display: none; }
+.fp-activity-icon { color: var(--accent); width: 20px; flex-shrink: 0; }
+.fp-activity strong { font-size: 13px; font-weight: 400; }
+.fp-activity small { display: block; font-size: 11px; color: var(--text-dim); overflow-wrap: anywhere; margin-top: 4px; }
+.fp-activity em { margin-left: auto; flex-shrink: 0; font-style: normal; font-size: 10px; color: var(--text-dim); }
+.fp-activity pre, .fp-error { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; line-height: 1.7; color: var(--text-soft); }
+.fp-activity pre { padding-left: 30px; }

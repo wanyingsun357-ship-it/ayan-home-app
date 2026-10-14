@@ -11,13 +11,17 @@ import Read from './pages/Read.jsx'
 import Stub from './pages/Stub.jsx'
 import Settings from './pages/Settings.jsx'
 import Together from './pages/Together.jsx'
+import Footprints from './pages/Footprints.jsx'
 import Gallery from './pages/Gallery.jsx'
 import CommandWidget from './components/CommandWidget.jsx'
 import CallOverlay from './components/CallOverlay.jsx'
+import EngineAccess from './components/EngineAccess.jsx'
+import { installEngineAccess } from './utils/engineAccess.js'
 import { setupPush, isApp, Keyboard, syncStatusBar, geo, reportBattery } from './utils/native.js'
 
 const PAGES = {
 }
+installEngineAccess()
 
 const TABS = [
   { key: 'home', icon: '⌂', label: 'Home' },
@@ -28,6 +32,7 @@ const TABS = [
 ]
 
 const MORE_ITEMS = [
+  { key: 'footprints', label: '足迹', sub: '他醒来后，留下的小小踪迹' },
   { key: 'together', label: 'Together', sub: 'life, kept · 三餐/睡眠/记账' },
   { key: 'gallery', label: 'Gallery', sub: '相册 · 他留下的' },
   { key: 'read', label: 'Read', sub: '一起看书' },
@@ -152,6 +157,7 @@ export default function App() {
       <>
         <div className="wetglass-bg" />
         <Splash onDone={() => setSplashDone(true)} />
+        <EngineAccess />
       </>
     )
   }
@@ -179,6 +185,7 @@ export default function App() {
       {view === 'read' && <Read back={() => go('home')} />}
       {view === 'settings' && <Settings back={() => go('home')} />}
       {view === 'together' && <Together back={() => go('home')} />}
+      {view === 'footprints' && <Footprints back={() => go('home')} />}
       {view === 'gallery' && <Gallery back={() => go('home')} go={go} />}
       {PAGES[view] && <Stub page={PAGES[view]} back={() => go('home')} />}
 
@@ -217,6 +224,7 @@ export default function App() {
       )}
 
       <CommandWidget />
+      <EngineAccess />
       <CallOverlay />
       <Sidebar
         open={sidebarOpen}
