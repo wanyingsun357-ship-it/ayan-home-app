@@ -940,3 +940,9 @@
 :root[data-theme='night'] .sheet.thought.artifacts-sheet { background:rgba(28,26,28,.97); border-color:rgba(255,255,255,.08); }
 :root[data-theme='night'] .artifacts-sheet .up-item { background:rgba(255,255,255,.045); border-color:rgba(255,255,255,.07); box-shadow:0 5px 14px rgba(0,0,0,.12); }
 :root[data-theme='night'] .artifacts-sheet .up-icon { background:rgba(255,255,255,.05); }
+.artifacts-sheet .favorite-card { display:block; }
+.favorite-copy { white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.8; max-height:220px; overflow-y:auto; }
+.favorite-actions { display:flex; align-items:center; gap:12px; margin-top:14px; }
+.favorite-actions small { margin-right:auto; color:var(--text-soft); font-size:10px; }
+.favorite-actions button { border:0; background:none; color:var(--accent-text); font:12px var(--sans); padding:5px 0; cursor:pointer; }
+.favorite-actions button:disabled { color:var(--text-soft); cursor:default; }

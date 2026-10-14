@@ -1,3 +1,5 @@
+import useHouseDraft from '../utils/useHouseDraft.js'
+import FavoritesSheet from '../components/FavoritesSheet.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { NAMES } from '../config.js'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
@@ -165,7 +167,9 @@ function renderMd(text) {
 
 export default function Chat({ back }) {
   const [messages, setMessages] = useState([])
-  const [input, setInput] = useState('')
+  const [activeId, setActiveId] = useState(null)
+  const [input, setInput] = useHouseDraft(activeId)
+  const [favoritesOpen,setFavoritesOpen]=useState(false)
   const [online, setOnline] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const waitingRef = useRef(false)          // 松手回调是按下那一刻的闭包,得用 ref 看当下
@@ -277,7 +281,6 @@ export default function Chat({ back }) {
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
   const [sessions, setSessions] = useState([])
-  const [activeId, setActiveId] = useState(null)
   const [pressed, setPressed] = useState(null)     // 长按选中的消息
   const [editing, setEditing] = useState(null)     // {idx, old} 正在编辑
 
@@ -1546,6 +1549,7 @@ export default function Chat({ back }) {
             <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('image/*') }}>🖼 图片</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('*/*') }}>📄 文件</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); setArtifactsOpen(true) }}><span className="artifacts-menu-icon" aria-hidden="true">📂</span> Artifacts</button>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); setFavoritesOpen(true) }}>⭐ Favorites</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); openUploads() }}>🗂 附件管理</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); newSession() }}>✦ 新对话</button>
           </div>
@@ -1612,6 +1616,10 @@ export default function Chat({ back }) {
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="press-preview">{pressed.m.content.slice(0, 60)}</div>
+            <button className="sheet-item" disabled={pressed.m.streaming} onClick={async()=>{
+              const m=pressed.m;setPressed(null)
+              try{const r=await fetch('/api/chat-favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:sessionRef.current,index:m.absIdx,role:m.role,content:m.content,timestamp:m.timestamp})});const d=await r.json();if(!r.ok)throw Error(d.error||'收藏失败');showToast('已收藏，在 ＋ → Favorites 里查看')}catch(e){showToast(e.message)}
+            }}>☆ 收藏这条</button>
             <button className="sheet-item" onClick={doCopy}>⧉ 复制</button>
             {pressed.m.role === 'user' && (
               <button className="sheet-item" onClick={doEdit}>✎ 编辑并重新发送</button>
@@ -1886,6 +1894,7 @@ export default function Chat({ back }) {
         </div>
       )}
 
+      {favoritesOpen && <FavoritesSheet session={sessionRef.current} onClose={()=>setFavoritesOpen(false)} onJump={i=>{setFavoritesOpen(false);jumpHistory({i:String(i)})}} />}
       {artifactsOpen && <ArtifactsSheet session={sessionRef.current} onClose={() => setArtifactsOpen(false)} onOpen={f => { setArtifactsOpen(false); window.dispatchEvent(new CustomEvent('open-made', {detail:{url:f.url,name:f.name,kind:fileKind(f.name)}})) }} />}
       {/* 附件管理 */}
       {uploadsOpen && (
