@@ -26,11 +26,15 @@ export function parseTimeline(value) {
   const result = []
   let kind = 'voice', lines = []
   const flush = () => {
-    const text = lines.join('\n').trim()
-    if (text) result.push({ kind, text, ...(kind === 'tool' ? toolInfo(text) : {}) })
+    let text = lines.join('\n').trim()
+    const id = kind === 'tool' ? text.match(/^\[id=([^\]]+)\] /)?.[1] : null
+    if (id) text=text.replace(/^\[id=[^\]]+\] /,'')
+    if (text) result.push({ kind, text, ...(kind === 'tool' ? {...toolInfo(text),id,status:id?'running':'unknown'} : {}) })
     lines = []
   }
   for (const line of String(value || '').split(/\r?\n/)) {
+    const status=line.match(/^【工具状态 (\S+) (completed|failed)】$/)
+    if(status){flush();const tool=result.find(e=>e.kind==='tool'&&e.id===status[1]);if(tool)tool.status=status[2];kind='voice';continue}
     if (/^\s*【心声(?:[^】]*)】\s*$/.test(line)) { flush(); kind = 'voice'; continue }
     if (/^\s*【思考摘要】\s*$/.test(line)) { flush(); kind = 'summary'; continue }
     if (/^\s*⚙\uFE0F?\s*/.test(line)) {

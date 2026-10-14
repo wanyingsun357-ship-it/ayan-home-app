@@ -32,7 +32,7 @@ const TABS = [
 ]
 
 const MORE_ITEMS = [
-  { key: 'footprints', label: '足迹', sub: '他醒来后，留下的小小踪迹' },
+  { key: 'footprints', label: 'Footprints', sub: '他醒来后，留下的小小踪迹' },
   { key: 'together', label: 'Together', sub: 'life, kept · 三餐/睡眠/记账' },
   { key: 'gallery', label: 'Gallery', sub: '相册 · 他留下的' },
   { key: 'read', label: 'Read', sub: '一起看书' },

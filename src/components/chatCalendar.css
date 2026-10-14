@@ -1,0 +1,17 @@
+.chat-calendar { margin: 14px; padding: 20px 16px; border-radius: 23px; }
+.chat-calendar header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.chat-calendar header strong { flex: 1; font: 20px var(--serif); color: var(--text); }
+.chat-calendar button { border: 0; background: none; color: var(--text); cursor: pointer; font: inherit; }
+.chat-calendar header button { font-size: 26px; padding: 0 8px; }
+.chat-calendar-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 8px 2px; text-align: center; }
+.chat-calendar-grid small { font-size: 9px; letter-spacing: .05em; color: var(--text-soft); padding-bottom: 8px; }
+.chat-calendar-grid button { width: 36px; height: 36px; max-width: 100%; justify-self: center; border-radius: 50%; font-size: 14px; }
+.chat-calendar-grid button.today { background: var(--accent); color: #fff; }
+.chat-calendar-grid button:disabled { opacity: .25; cursor: default; }
+.chat-calendar-grid button:focus-visible { outline: 1px solid var(--accent-text); }
+.chat-calendar footer { margin-top: 20px; font-size: 11px; color: var(--text-soft); text-align: center; }
+.chat-history-banner { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; font-size: 11px; color: var(--text-soft); border-bottom: 1px solid var(--hairline); }
+.chat-history-banner button { background: none; border: 0; color: var(--accent-text); font: inherit; cursor: pointer; }
+.msg-row.history-highlight .bubble { outline: 1px solid var(--accent-text); outline-offset: 3px; }
+.csearch-calendar-toggle { display: block; margin: 12px auto; border: 1px solid var(--hairline); border-radius: 20px; padding: 8px 18px; background: var(--g2); color: var(--accent-text); font: inherit; cursor: pointer; }
+.chat-history-compose { padding: 16px; text-align: center; color: var(--text-soft); font-size: 12px; }

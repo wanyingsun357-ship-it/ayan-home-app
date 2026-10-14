@@ -26,7 +26,7 @@ export default function Footprints({ back }) {
   const day = at => new Date(at).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
   const time = at => new Date(at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
   return <section className="footprints">
-    <header className="fp-head"><button className="fp-back" onClick={back} aria-label="返回">‹</button><div><h1 className="serif">足迹</h1><p>你不在的时候，也有日子轻轻走过。</p></div><button className="fp-refresh" onClick={() => load()} disabled={busy} aria-label="刷新足迹">↻</button></header>
+    <header className="fp-head"><button className="fp-back" onClick={back} aria-label="返回">‹</button><div><h1 className="serif">Footprints</h1><p>你不在的时候，也有日子轻轻走过。</p></div><button className="fp-refresh" onClick={() => load()} disabled={busy} aria-label="刷新足迹">↻</button></header>
     <nav className="fp-homes" aria-label="选择家"><button className={!session ? 'on' : ''} onClick={() => setSession('')}>全部</button>{sessions.map(s => <button key={s.id} className={session === s.id ? 'on' : ''} onClick={() => setSession(s.id)}>{s.title}</button>)}</nav>
     <div className="fp-content">
       {error && <div className="fp-empty" role="alert">{error}<button onClick={() => load()}>重试</button></div>}

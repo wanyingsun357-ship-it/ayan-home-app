@@ -90,6 +90,22 @@
 .msg-row.user { align-items: flex-end; }
 .msg-row.assistant { align-items: flex-start; }
 
+/* 隔了一阵再回来:让时间留下很轻的一道痕迹 */
+.msg-group { display: contents; }
+.time-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 22px 2px 18px;
+  color: var(--text-dim);
+  font-size: 10.5px; letter-spacing: .16em;
+  white-space: nowrap;
+}
+.time-divider::before, .time-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hairline));
+}
+.time-divider::after { transform: scaleX(-1); }
+:root[data-theme='night'] .time-divider { color: color-mix(in srgb, var(--silver) 62%, transparent); }
+
 .msg-meta {
   display: flex; align-items: center; gap: 6px;
   font-size: 10px; color: var(--text-dim);
@@ -896,3 +912,9 @@
 
 /* Match the existing muted red palette for message dates at night. */
 :root[data-theme='night'] .msg-meta > span { color: var(--accent); }
+
+.artifacts-sheet .artifact-open { display:flex; align-items:center; gap:12px; flex:1; min-width:0; border:0; background:none; color:var(--text); text-align:left; padding:0; font:inherit; cursor:pointer; }
+.artifacts-sheet .artifact-open:disabled { opacity:.4; }
+.artifacts-sheet .up-info { display:flex; flex-direction:column; }
+.artifacts-status { display:block; margin:24px auto; border:0; background:none; color:var(--text-soft); font:inherit; }
+.fileview-bar .download-progress, .file-acts .download-progress, .artifacts-sheet .download-progress { font:12px var(--sans); padding:5px 10px; min-width:0; border-color:var(--accent); background:transparent; color:var(--accent-text); }

@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { NAMES } from '../config.js'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import PixelCat from '../components/PixelCat.jsx'
+import ArtifactsSheet from '../components/ArtifactsSheet.jsx'
+import DownloadButton from '../components/DownloadButton.jsx'
+import ChatCalendar from '../components/ChatCalendar.jsx'
+import ToolActivity from '../components/ToolActivity.jsx'
 import ThoughtTimeline from '../components/ThoughtTimeline.jsx'
 import { compressImage, postUpload } from '../utils/compressImage.js'
 import { buzz, isApp } from '../utils/native.js'
@@ -14,12 +18,41 @@ const fmtTime = (d = new Date()) =>
   `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 
 let msgId = 0
-const newMsg = (role, content, extra = {}) => ({
-  id: ++msgId, role, content,
+const newMsg = (role, content, extra = {}) => {
   // 历史消息用它自己的时间戳,不用"加载时刻"冒充
-  time: fmtTime(extra.timestamp ? new Date(extra.timestamp) : new Date()),
-  ...extra,
-})
+  const parsed = extra.timestamp ? new Date(extra.timestamp) : new Date()
+  const created = Number.isNaN(parsed.getTime()) ? new Date() : parsed
+  return {
+    id: ++msgId, role, content,
+    time: fmtTime(created),
+    timeMs: created.getTime(),
+    ...extra,
+  }
+}
+
+const TIME_DIVIDER_GAP = 30 * 60 * 1000
+const localDayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+const dividerLabel = (messages, idx) => {
+  const currentMs = messages[idx]?.timeMs
+  if (!Number.isFinite(currentMs)) return ''
+  let prevIdx = idx - 1
+  while (prevIdx >= 0 && messages[prevIdx]?.role === 'system') prevIdx--
+  if (prevIdx < 0 || !Number.isFinite(messages[prevIdx]?.timeMs)) return ''
+  const current = new Date(currentMs)
+  const previous = new Date(messages[prevIdx].timeMs)
+  const changedDay = localDayKey(current) !== localDayKey(previous)
+  if (!changedDay && currentMs - messages[prevIdx].timeMs < TIME_DIVIDER_GAP) return ''
+
+  const now = new Date()
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+  let day
+  if (localDayKey(current) === localDayKey(now)) day = '今天'
+  else if (localDayKey(current) === localDayKey(yesterday)) day = '昨天'
+  else if (current.getFullYear() === now.getFullYear()) day = `${current.getMonth() + 1}月${current.getDate()}日`
+  else day = `${current.getFullYear()}年${current.getMonth() + 1}月${current.getDate()}日`
+  const clock = `${String(current.getHours()).padStart(2, '0')}:${String(current.getMinutes()).padStart(2, '0')}`
+  return `${day} · ${clock}`
+}
 
 // 卡通线条图标:思考云 / 记忆泡泡
 const CloudIcon = () => (
@@ -66,19 +99,6 @@ function parseSegments(content, splitPara = false) {
 
 // 他做给她的文件(/made/...):不再是裸链接,画成文件卡。PWA里点裸链接会全屏且没有返回键
 // 下载:PWA独立窗口里<a download>没反应(iOS没有下载管理器)。走系统分享面板(存储到文件/隔空投送),不支持再退回新窗口打开
-async function downloadMade(url, name) {
-  try {
-    const blob = await (await fetch(url)).blob()
-    const file = new File([blob], name, { type: blob.type || 'application/octet-stream' })
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return }
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click()
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 3000)
-  } catch (e) {
-    if (e && e.name === 'AbortError') return // 她自己取消了分享
-    window.open(url, '_blank')
-  }
-}
 const MADE_RE = /^https?:\/\/[^/]+\/(?:made|uploads)\/(.+)$/ // 他做的(made)和她发的(uploads)都画成文件卡
 const fileKind = (name) => {
   const ext = (name.split('.').pop() || '').toLowerCase()
@@ -104,7 +124,7 @@ const FileCard = ({ url, title }) => {
         {k.mode !== 'download' && (
           <button className="file-btn" onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('open-made', { detail: { url, name, kind: k } })) }}>打开</button>
         )}
-        <button className="file-btn ghost" onClick={(e) => { e.stopPropagation(); downloadMade(url, name) }}>下载</button>
+        <DownloadButton url={url} name={name} />
       </span>
     </span>
   )
@@ -205,24 +225,52 @@ export default function Chat({ back }) {
   const [searchQ, setSearchQ] = useState('')
   const [searchHits, setSearchHits] = useState(null)
   const [searchCtx, setSearchCtx] = useState(null)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [historyView, setHistoryView] = useState(null)
+  const [jumpBusy, setJumpBusy] = useState(false)
+  const browsingRef = useRef(false), historyRequest = useRef(0)
+  const historicalMsg = m => newMsg(m.role, m.content, { ...m, id: ++msgId, absIdx: m.i, time: fmtTime(new Date(m.timestamp)) })
+  const returnLatest = () => { historyRequest.current++; browsingRef.current=false;setHistoryView(null);setJumpBusy(false);streamRef.current={id:null,reasoning:''};loadHistory(sessionRef.current) }
+  const jumpHistory = async (query, direction = '') => {
+    if (jumpBusy) return
+    if (!direction && (waiting || streamRef.current.id != null)) { showToast('等这条回复结束，就可以翻旧聊天了');return }
+    const session=sessionRef.current, request=++historyRequest.current
+    if(!session){showToast('还在加载这个家，请稍后再试');return}
+    setJumpBusy(true)
+    const el=listRef.current,top=el?.scrollTop||0,height=el?.scrollHeight||0
+    try {
+      const params=new URLSearchParams({session,tz:Intl.DateTimeFormat().resolvedOptions().timeZone,...query})
+      const r=await fetch('/api/chat-window?'+params)
+      const d=await r.json();if(!r.ok)throw Error(d.error||'暂时没有取到聊天')
+      if(request!==historyRequest.current||session!==sessionRef.current)return
+      if(!d.msgs?.length){showToast(query.date?'这一天没有聊天记录':'没有更多聊天了');return}
+      if(!direction&&streamRef.current.id!=null){showToast('他正在回复，等这条结束再翻看');return}
+      browsingRef.current=true
+      setSearchOpen(false);setSearchCtx(null);setCalendarOpen(false)
+      setMessages(old=>direction ? (direction==='before'?[...d.msgs.map(historicalMsg),...old]:[...old,...d.msgs.map(historicalMsg)]).filter((m,i,arr)=>arr.findIndex(x=>x.absIdx===m.absIdx)===i) : d.msgs.map(historicalMsg))
+      setHistoryView(old=>direction ? {...old,[direction]:d[direction]} : {before:d.before,after:d.after,center:d.center})
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        if(request!==historyRequest.current)return
+        if(direction==='before'&&el)el.scrollTop=el.scrollHeight-height+top
+        else if(direction==='after'&&el)el.scrollTop=top
+        else listRef.current?.querySelector(`[data-message-index="${d.center}"]`)?.scrollIntoView({block:'start'})
+      }))
+    }catch(e){if(request===historyRequest.current)showToast(e.message)}
+    finally{if(request===historyRequest.current)setJumpBusy(false)}
+  }
   const doSearch = async () => {
     const q = searchQ.trim()
     if (!q) return
     const sid = sessionRef.current ? `&session=${sessionRef.current}` : ''
     const isDate = /^\d{4}-\d{2}-\d{2}$/.test(q)
+    if(isDate){jumpHistory({date:q});return}
     const param = isDate ? `date=${q}` : `q=${encodeURIComponent(q)}`
     try {
       const d = await (await fetch(`/api/chat-search?${param}${sid}&limit=500`)).json() // 她这边一次拉全(最多500条),从近到远
       setSearchHits(d.hits || [])
     } catch { setSearchHits([]) }
   }
-  const openHit = async (i, radius = 15) => {
-    const sid = sessionRef.current ? `&session=${sessionRef.current}` : ''
-    try {
-      const d = await (await fetch(`/api/chat-context?i=${i}&radius=${radius}${sid}`)).json()
-      setSearchCtx({ ...d, radius })
-    } catch {}
-  }
+  const openHit = i => jumpHistory({i:String(i)})
   const fmtSearchTs = (t) => {
     if (!t) return ''
     const d = new Date(t)
@@ -274,7 +322,9 @@ export default function Chat({ back }) {
   const showToast = (t) => { setToast(t); setTimeout(() => setToast(''), 2200) }
 
   const scrollBottom = () => {
+    if(browsingRef.current)return
     requestAnimationFrame(() => {
+      if(browsingRef.current)return
       const el = listRef.current
       if (el) el.scrollTop = el.scrollHeight
     })
@@ -331,6 +381,7 @@ export default function Chat({ back }) {
           const d = JSON.parse(e.data)
           // 别的会话的流不掺和进当前界面
           if (d.session && sessionRef.current && d.session !== sessionRef.current) return
+          if (browsingRef.current) return
           if (d.type === 'call') { try { const m = JSON.parse(d.content); if (m.ev === 'end' || m.ev === 'late') setTimeout(() => loadHistory(sessionRef.current), 600) } catch {} return }
           if (window.__inCall && ['text', 'reasoning', 'memory', 'reset', 'done', 'error'].includes(d.type)) return
           if (d.type === 'text') onChunk(d.content)
@@ -400,10 +451,12 @@ export default function Chat({ back }) {
 
   // 补拉:把服务器上比本地新的消息接到列表末尾(不整页重载,不跳滚动)
   const refreshTail = async () => {
+    if(browsingRef.current)return
+    const refreshSession=sessionRef.current
     try {
       const q = sessionRef.current ? `?session=${sessionRef.current}` : ''
       const h = await (await fetch(`/api/history${q}`, { cache: 'no-store' })).json()
-      if (!Array.isArray(h)) return
+      if (browsingRef.current || refreshSession!==sessionRef.current || !Array.isArray(h)) return
       setMessages((ms) => {
         let cut = -1
         for (let i = ms.length - 1; i >= 0; i--) { if (ms[i].absIdx !== undefined) { cut = i; break } }
@@ -425,12 +478,14 @@ export default function Chat({ back }) {
 
   // ---- 历史 ----
   const loadHistory = (sessionId) => {
+    browsingRef.current=false;setHistoryView(null);historyRequest.current++;setJumpBusy(false)
+    const request=historyRequest.current
     setHistLoading(true)
     const q = sessionId ? `?session=${sessionId}` : ''
     fetch(`/api/history${q}`)
       .then((r) => r.json())
       .then((h) => {
-        if (Array.isArray(h)) {
+        if (request===historyRequest.current && !browsingRef.current && Array.isArray(h)) {
           setMessages(h.filter((m) => !m.inCall).map((m) => newMsg(m.role, m.content, {
             reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i,
             memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery,
@@ -456,9 +511,11 @@ export default function Chat({ back }) {
   // ---- 往上翻:加载更早的历史(接口一次最多500条) ----
   const [histMoreBusy, setHistMoreBusy] = useState(false)
   const loadEarlier = async () => {
+    if(browsingRef.current){if(historyView?.before!=null)jumpHistory({before:String(historyView.before)},'before');return}
     const first = messages.find((m) => m.absIdx !== undefined)
     if (!first || !first.absIdx || histMoreBusy) return
     setHistMoreBusy(true)
+    const earlierRequest=historyRequest.current
     const el = listRef.current
     const prevH = el ? el.scrollHeight : 0
     const prevTop = el ? el.scrollTop : 0
@@ -466,6 +523,7 @@ export default function Chat({ back }) {
       const sid = sessionRef.current ? `&session=${sessionRef.current}` : ''
       const r = await fetch(`/api/history?before=${first.absIdx}&limit=300${sid}`)
       const h = await r.json()
+      if(earlierRequest!==historyRequest.current||browsingRef.current){setHistMoreBusy(false);return}
       if (Array.isArray(h) && h.length) {
         const older = h.filter((m) => !m.inCall).map((m) => newMsg(m.role, m.content, {
           reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i,
@@ -648,6 +706,7 @@ export default function Chat({ back }) {
 
   // ---- 发送 ----
   const send = async () => {
+    if(browsingRef.current){showToast('回到最新聊天后再发送');return}
     const text = input.trim()
     const atts = pending.filter((x) => x.url && !x.uploading)
     if ((!text && !atts.length) || waiting) return
@@ -934,6 +993,7 @@ export default function Chat({ back }) {
   }
 
   // ---- 附件管理 ----
+  const [artifactsOpen, setArtifactsOpen] = useState(false)
   const [uploadsOpen, setUploadsOpen] = useState(false)
   const [uploads, setUploads] = useState({ files: [], total: 0 })
   const fmtSize = (b) =>
@@ -1155,10 +1215,11 @@ export default function Chat({ back }) {
         />
       </div>
 
+      {historyView && <div className="chat-history-banner"><span>正在翻看聊天记录</span><button onClick={returnLatest}>回到最新 ↓</button></div>}
       {/* 消息区 */}
       <div className="chat-list" ref={listRef}>
         {!histLoading && (messages.find((m) => m.absIdx !== undefined)?.absIdx > 0) && (
-          <button className="hist-more" onClick={loadEarlier} disabled={histMoreBusy}>
+          <button className="hist-more" onClick={loadEarlier} disabled={histMoreBusy || jumpBusy}>
             {histMoreBusy ? '翻着呢…' : '↑ 更早的对话'}
           </button>
         )}
@@ -1172,11 +1233,17 @@ export default function Chat({ back }) {
         )}
         {messages.map((m, idx) => (
           m.role === 'system' ? (
-            <div key={m.id} className="sys-divider">
+            <div key={m.id} data-message-index={m.absIdx} className="sys-divider">
               <span>{m.content}</span>
             </div>
           ) : (
-          <div key={m.id} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''}`}>
+          <div key={m.id} className="msg-group">
+          {dividerLabel(messages, idx) && (
+            <div className="time-divider" aria-label={`相隔一段时间，${dividerLabel(messages, idx)}`}>
+              <span>{dividerLabel(messages, idx)}</span>
+            </div>
+          )}
+          <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
             <div className="msg-meta">
               <span>{m.time}</span>
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
@@ -1194,6 +1261,7 @@ export default function Chat({ back }) {
               onPointerLeave={cancelPress}
               onContextMenu={(e) => { e.preventDefault(); setPressed({ m, idx }) }}
             >
+              {m.role === 'assistant' && <ToolActivity text={m.reasoning} streaming={m.streaming} />}
               {/* 婉莹的语音条 */}
               {m.call && (
                 <button className={`call-card ${['missed', 'declined'].includes(m.call.endedBy) ? 'bad' : ''}`} onClick={() => openCall(m.call.id)}>
@@ -1279,9 +1347,11 @@ export default function Chat({ back }) {
               )}
             </div>
           </div>
+          </div>
           )
         ))}
-        {waiting && (
+        {historyView?.after != null && <button className="hist-more" disabled={jumpBusy} onClick={()=>jumpHistory({after:String(historyView.after)},'after')}>{jumpBusy?'翻着呢…':'↓ 后面的对话'}</button>}
+        {!historyView && waiting && (
           <div className="msg-row assistant">
             <div className="bubble assistant typing-bubble">
               <span className="tdot" /><span className="tdot" /><span className="tdot" />
@@ -1290,8 +1360,9 @@ export default function Chat({ back }) {
         )}
       </div>
 
+      {historyView && <div className="chat-history-compose">上下翻看这段记录，点「回到最新」继续聊天</div>}
       {/* 输入区 */}
-      <div className="chat-input-wrap">
+      <div className="chat-input-wrap" style={historyView?{display:'none'}:undefined}>
         {editing != null && (
           <div className="edit-tip">
             正在编辑那条消息 <button onClick={() => { setEditing(null); setInput('') }}>取消</button>
@@ -1437,6 +1508,7 @@ export default function Chat({ back }) {
             <div className="sheet-handle" />
             <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('image/*') }}>🖼 图片</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('*/*') }}>📄 文件</button>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); setArtifactsOpen(true) }}>▤ Artifacts</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); openUploads() }}>🗂 附件管理</button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); newSession() }}>✦ 新对话</button>
           </div>
@@ -1600,7 +1672,7 @@ export default function Chat({ back }) {
         <div className="fileview">
           <div className="fileview-bar">
             <span className="fileview-name">{fileView.kind.icon} {fileView.name}</span>
-            <button className="file-btn ghost" onClick={() => downloadMade(fileView.url, fileView.name)}>下载</button>
+            <DownloadButton url={fileView.url} name={fileView.name} />
             <button className="fileview-x" onClick={() => setFileView(null)}>✕</button>
           </div>
           <div className="fileview-body">
@@ -1637,6 +1709,9 @@ export default function Chat({ back }) {
             <button onClick={doSearch}>搜</button>
             <button onClick={() => { setSearchOpen(false); setSearchHits(null); setSearchCtx(null) }}>✕</button>
           </div>
+          <button className="csearch-calendar-toggle" onClick={()=>setCalendarOpen(v=>!v)}>▦ 按日期查找</button>
+          {calendarOpen && <ChatCalendar session={sessionRef.current} onPick={date=>jumpHistory({date})} busy={jumpBusy} />}
+          {jumpBusy && <div className="csearch-empty">正在回到那一天…</div>}
           {!searchCtx && searchHits && (
             <div className="csearch-list">
               {searchHits.length === 0 && <div className="csearch-empty">没有找到,换个词试试?</div>}
@@ -1774,6 +1849,7 @@ export default function Chat({ back }) {
         </div>
       )}
 
+      {artifactsOpen && <ArtifactsSheet session={sessionRef.current} onClose={() => setArtifactsOpen(false)} onOpen={f => { setArtifactsOpen(false); window.dispatchEvent(new CustomEvent('open-made', {detail:{url:f.url,name:f.name,kind:fileKind(f.name)}})) }} />}
       {/* 附件管理 */}
       {uploadsOpen && (
         <div className="sheet-mask" onClick={() => setUploadsOpen(false)}>
