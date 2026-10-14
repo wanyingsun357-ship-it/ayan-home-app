@@ -9,7 +9,7 @@ import './chat.css'
 // Chat:和阿晏说话
 // SSE 统一事件(事件名 u):text / reasoning / error / done
 const fmtTime = (d = new Date()) =>
-  `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 
 let msgId = 0
 const newMsg = (role, content, extra = {}) => ({
