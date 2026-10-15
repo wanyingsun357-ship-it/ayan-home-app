@@ -1690,8 +1690,8 @@ export default function Chat({ back }) {
 
       {historyView && <div className="chat-history-compose">上下翻看这段记录，点「回到最新」继续聊天</div>}
       {/* 输入区 */}
-      <div className="chat-input-wrap" style={historyView?{display:'none'}:undefined}>
-        {(draftSegments.length > 0 || input.trim()) && editing == null && (
+      <div className={`chat-input-wrap ${draftSegments.length ? 'has-segments' : ''}`} style={historyView?{display:'none'}:undefined}>
+        {draftSegments.length > 0 && editing == null && (
           <div className="segment-dock" aria-label="待发送的分段">
             {draftSegments.map((segment, index) => {
               const active = editingDraftId === segment.id
@@ -1712,13 +1712,6 @@ export default function Chat({ back }) {
                 </div>
               )
             })}
-            {input.trim() && !editingDraftId && (
-              <div className="segment-chip active live" aria-label="正在编辑的分段">
-                <small>{draftSegments.length + 1}</small>
-                {replying?.content && <i className="segment-chip-reply">↩ {replying.content}</i>}
-                <span>{input}</span>
-              </div>
-            )}
           </div>
         )}
         <button className={`segment-feather ${input.trim() ? 'awake' : ''} ${featherSweep ? 'sweep' : ''}`}

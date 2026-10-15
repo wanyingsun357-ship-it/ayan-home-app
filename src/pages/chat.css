@@ -796,24 +796,29 @@
 
 /* ---- 分段发送：玻璃托盘 + 小羽毛 ---- */
 .segment-dock {
-  display: flex; gap: 7px; overflow-x: auto;
-  margin: -3px 30px 10px -2px; padding: 3px 2px 5px;
+  position: absolute; left: 2px; right: 48px; bottom: calc(100% + 9px);
+  display: flex; gap: 8px; overflow-x: auto;
+  margin: 0; padding: 5px 4px 7px;
   scrollbar-width: none; overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+  filter: drop-shadow(0 7px 12px rgba(82,35,46,.10));
 }
+.chat-input-wrap.has-segments { margin-top: 65px; }
 .segment-dock::-webkit-scrollbar { display: none; }
 .segment-chip {
   position: relative; flex: 0 0 auto;
   width: clamp(112px, 38vw, 168px); min-height: 40px;
   padding: 7px 27px 7px 25px;
   border-radius: 15px;
-  border: 1px solid color-mix(in srgb, var(--g1-border) 88%, transparent);
-  background: color-mix(in srgb, var(--g1) 78%, transparent);
+  border: 1px solid rgba(151,69,84,.28);
+  background:
+    linear-gradient(135deg, rgba(255,250,249,.84), rgba(248,220,220,.76) 54%, rgba(232,190,178,.62));
   backdrop-filter: blur(18px) saturate(1.12);
   -webkit-backdrop-filter: blur(18px) saturate(1.12);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.17), 0 3px 12px rgba(50,28,30,.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 4px 13px rgba(91,39,50,.10);
   color: var(--text-soft); touch-action: pan-x;
   transition: opacity .2s, transform .2s, border-color .25s, box-shadow .25s;
+  animation: segment-float-in .34s cubic-bezier(.2,.8,.24,1) both;
 }
 .segment-chip > small {
   position: absolute; left: 9px; top: 9px;
@@ -843,23 +848,25 @@
   box-shadow: 0 0 0 1px rgba(133,45,61,.10), 0 0 14px rgba(145,55,72,.18), inset 0 1px 0 rgba(255,255,255,.28);
   animation: segment-breathe-day 3.2s ease-in-out infinite;
 }
-.segment-chip.live { animation: segment-live-in .28s ease both, segment-breathe-day 3.2s .28s ease-in-out infinite; }
 .segment-chip.dragging { opacity: .74; transform: scale(.97); z-index: 3; }
-@keyframes segment-live-in { from { opacity: 0; transform: translateX(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes segment-float-in { from { opacity: 0; transform: translateY(9px) scale(.94); } to { opacity: 1; transform: none; } }
 @keyframes segment-breathe-day {
   0%,100% { box-shadow: 0 0 0 1px rgba(133,45,61,.08), 0 0 10px rgba(145,55,72,.12), inset 0 1px 0 rgba(255,255,255,.25); }
   50% { box-shadow: 0 0 0 1px rgba(133,45,61,.14), 0 0 17px rgba(145,55,72,.22), inset 0 1px 0 rgba(255,255,255,.38); }
 }
 
 .segment-feather {
-  position: absolute; z-index: 4; right: 13px; top: -19px;
-  width: 40px; height: 40px; padding: 5px;
-  border: 0; border-radius: 50%; background: transparent;
+  position: absolute; z-index: 4; right: 13px; top: -22px;
+  width: 44px; height: 44px; padding: 7px;
+  border: 1px solid var(--card-border); border-radius: 48% 52% 48% 52%;
+  background: var(--card);
+  box-shadow: 0 3px 11px rgba(83,35,45,.08), inset 0 1px 0 rgba(255,255,255,.24);
   color: color-mix(in srgb, var(--accent) 42%, var(--text-dim));
   opacity: .38; cursor: default;
   transform: rotate(-8deg); transform-origin: 34% 78%;
   transition: opacity .25s, color .25s, filter .25s, transform .25s;
 }
+.chat-input-wrap:focus-within .segment-feather { border-color: var(--accent); }
 .segment-feather svg { width: 28px; height: 28px; display: block; }
 .segment-feather > i {
   position: absolute; width: 3px; height: 3px; border-radius: 50%;
@@ -885,9 +892,19 @@
   box-shadow: 0 0 0 1px rgba(109,25,43,.14), 0 8px 20px rgba(74,10,28,.2), inset 0 -8px 15px rgba(117,23,44,.12);
   animation-name: segment-breathe-night;
 }
-:root[data-theme='night'] .segment-chip.live { animation-name: segment-live-in, segment-breathe-night; }
+:root[data-theme='night'] .segment-chip:not(.active) {
+  border-color: rgba(191,128,143,.25);
+  background:
+    linear-gradient(135deg, rgba(88,26,43,.82), rgba(54,24,35,.88) 58%, rgba(35,35,43,.86));
+  color: color-mix(in srgb, var(--silver) 88%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 7px 18px rgba(0,0,0,.24);
+}
 :root[data-theme='night'] .segment-chip-reply { color: var(--silver); }
-:root[data-theme='night'] .segment-feather { color: color-mix(in srgb, var(--silver) 45%, transparent); }
+:root[data-theme='night'] .segment-feather {
+  color: color-mix(in srgb, var(--silver) 45%, transparent);
+  background: color-mix(in srgb, var(--card) 94%, #28151d);
+  box-shadow: 0 4px 13px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08);
+}
 :root[data-theme='night'] .segment-feather.awake {
   color: var(--silver); filter: drop-shadow(0 0 6px rgba(218,222,230,.24));
 }
@@ -898,7 +915,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .segment-chip.active, .segment-chip.live, .segment-feather, .segment-feather.awake,
+  .segment-chip, .segment-chip.active, .segment-feather, .segment-feather.awake,
   .segment-feather.awake > i, .segment-feather.sweep { animation: none !important; }
 }
 
