@@ -172,7 +172,6 @@ export default function Chat({ back }) {
   const [favoritesOpen,setFavoritesOpen]=useState(false)
   const [favoriteMarks,setFavoriteMarks]=useState([])
   const [replying,setReplying]=useState(null) // {index,role,name,content}
-  const [textSelection,setTextSelection]=useState(null) // {msgId,text,x,y}
   const [online, setOnline] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const waitingRef = useRef(false)          // 松手回调是按下那一刻的闭包,得用 ref 看当下
@@ -356,45 +355,16 @@ export default function Chat({ back }) {
     } catch (e) { showToast(e.message) }
   }
 
-  const clearNativeSelection = () => {
-    try { window.getSelection()?.removeAllRanges() } catch {}
-    setTextSelection(null)
-  }
-  useEffect(() => {
-    let timer
-    const updateSelection = () => {
-      clearTimeout(timer)
-      timer = setTimeout(() => {
-        const sel = window.getSelection()
-        if (!sel || sel.isCollapsed || !sel.rangeCount) { setTextSelection(null); return }
-        const nodeEl = (node) => node?.nodeType === 1 ? node : node?.parentElement
-        const a = nodeEl(sel.anchorNode)?.closest?.('.selectable-assistant')
-        const b = nodeEl(sel.focusNode)?.closest?.('.selectable-assistant')
-        if (!a || !b || a.dataset.selectMessage !== b.dataset.selectMessage) { setTextSelection(null); return }
-        const text = sel.toString().trim().slice(0, 1000)
-        if (!text) { setTextSelection(null); return }
-        const rect = sel.getRangeAt(0).getBoundingClientRect()
-        setTextSelection({
-          msgId: Number(a.dataset.selectMessage), text,
-          x: Math.max(86, Math.min(window.innerWidth - 86, rect.left + rect.width / 2)),
-          y: Math.max(58, rect.top - 10),
-        })
-      }, 40)
-    }
-    document.addEventListener('selectionchange', updateSelection)
-    return () => { clearTimeout(timer); document.removeEventListener('selectionchange', updateSelection) }
-  }, [])
-
-  const replyToSelection = () => {
-    const m = messages.find((x) => x.id === textSelection?.msgId)
-    if (!m || !textSelection?.text) return
+  const replyToPressed = () => {
+    const m = pressed?.m
+    if (!m) return
     setReplying({
       index: Number.isInteger(m.absIdx) ? m.absIdx : undefined,
       role: m.role,
       name: m.role === 'assistant' ? NAMES.me : NAMES.her,
-      content: textSelection.text,
+      content: pressed.segmentText || m.content,
     })
-    clearNativeSelection()
+    setPressed(null)
     inputRef.current?.focus()
     setTimeout(scrollBottom, 80)
   }
@@ -890,15 +860,15 @@ export default function Chat({ back }) {
   }
 
   // ---- 长按消息 ----
-  const startPress = (e, m, idx) => {
-    if (m.role === 'assistant' && e.target.closest?.('.selectable-assistant')) return
+  const startPress = (e, m, idx, segmentText = '') => {
     clearTimeout(pressTimer.current)
-    pressTimer.current = setTimeout(() => setPressed({ m, idx }), 520)
+    pressTimer.current = setTimeout(() => setPressed({ m, idx, segmentText: segmentText.trim() }), 520)
   }
   const cancelPress = () => clearTimeout(pressTimer.current)
 
   const doCopy = async () => {
-    try { await navigator.clipboard.writeText(pressed.m.content) ; showToast('已复制') }
+    const text = pressed.segmentText || pressed.m.content
+    try { await navigator.clipboard.writeText(text) ; showToast(pressed.segmentText ? '已复制这段' : '已复制') }
     catch { showToast('复制失败') }
     setPressed(null)
   }
@@ -1383,7 +1353,6 @@ export default function Chat({ back }) {
               onPointerMove={cancelPress}
               onPointerLeave={cancelPress}
               onContextMenu={(e) => {
-                if (m.role === 'assistant' && e.target.closest?.('.selectable-assistant')) return
                 e.preventDefault(); setPressed({ m, idx })
               }}
             >
@@ -1474,8 +1443,13 @@ export default function Chat({ back }) {
                     <div className="voice-script">{seg.voice}</div>
                   </div>
                 ) : (
-                  <div key={i} data-select-message={m.role === 'assistant' ? m.id : undefined}
-                    className={`bubble ${m.role} ${m.role === 'assistant' ? 'selectable-assistant' : ''}`}>{renderMd(seg.text)}</div>
+                  <div key={i} className={`bubble ${m.role} message-text-segment`}
+                    onPointerDown={(e) => { e.stopPropagation(); startPress(e, m, idx, seg.text) }}
+                    onPointerUp={(e) => { e.stopPropagation(); cancelPress() }}
+                    onPointerMove={(e) => { e.stopPropagation(); cancelPress() }}
+                    onPointerLeave={cancelPress}
+                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setPressed({ m, idx, segmentText: seg.text.trim() }) }}
+                  >{renderMd(seg.text)}</div>
                 )
               )}
             </div>
@@ -1493,13 +1467,6 @@ export default function Chat({ back }) {
           </div>
         )}
       </div>
-
-      {textSelection && (
-        <div className="selection-toolbar" style={{ left: textSelection.x, top: textSelection.y }} onPointerDown={(e) => e.preventDefault()}>
-          <button onClick={async () => { try { await navigator.clipboard.writeText(textSelection.text); showToast('已复制选中文字') } catch { showToast('复制失败') } clearNativeSelection() }}>复制</button>
-          <button onClick={replyToSelection}>回复</button>
-        </div>
-      )}
 
       {historyView && <div className="chat-history-compose">上下翻看这段记录，点「回到最新」继续聊天</div>}
       {/* 输入区 */}
@@ -1723,11 +1690,14 @@ export default function Chat({ back }) {
         <div className="sheet-mask" onClick={() => setPressed(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="press-preview">{pressed.m.content.slice(0, 60)}</div>
+            <div className="press-preview">{(pressed.segmentText || pressed.m.content).slice(0, 60)}</div>
             <button className="sheet-item" disabled={pressed.m.streaming || favoriteFor(pressed.m)} onClick={() => {
               const m = pressed.m; setPressed(null); favoriteMessage(m)
             }}>{favoriteFor(pressed.m) ? '★ 已加入 Favorite' : '☆ 收藏这条'}</button>
-            <button className="sheet-item" onClick={doCopy}>⧉ 复制</button>
+            {pressed.m.role === 'assistant' && (
+              <button className="sheet-item" onClick={replyToPressed}>↩ {pressed.segmentText ? '回复这段' : '回复这条'}</button>
+            )}
+            <button className="sheet-item" onClick={doCopy}>⧉ {pressed.segmentText ? '复制这段' : '复制整条'}</button>
             {pressed.m.role === 'user' && (
               <button className="sheet-item" onClick={doEdit}>✎ 编辑并重新发送</button>
             )}
