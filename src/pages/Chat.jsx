@@ -75,6 +75,15 @@ const MemIcon = () => (
   </svg>
 )
 
+const FeatherIcon = () => (
+  <svg viewBox="0 0 28 28" fill="none" stroke="currentColor"
+    strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22.9 4.7c-4.7-.2-9.5 2.4-12.6 6.2-2.5 3-3.4 6.3-3.6 9.6 2.5-1.3 4.8-3 6.9-5.1" />
+    <path d="M22.9 4.7c.1 4.7-2.2 9.6-6.1 12.8-2.8 2.3-6.3 3.2-10.1 3" />
+    <path d="M7 20.3 4.2 23.8M9.2 17.7h5.4M11.5 14.7h5.8M14.1 11.6h4.8" />
+  </svg>
+)
+
 // 解析 [VOICE]...[/VOICE] 语音条标记 → 段落数组 [{voice?, text}]
 // splitPara=true 时把文字按空行拆成多个气泡(像真人连发几条)
 function parseSegments(content, splitPara = false) {
@@ -169,6 +178,15 @@ export default function Chat({ back }) {
   const [messages, setMessages] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [input, setInput] = useHouseDraft(activeId)
+  const [draftSegments, setDraftSegments] = useState([])
+  const [editingDraftId, setEditingDraftId] = useState(null)
+  const [featherSweep, setFeatherSweep] = useState(false)
+  const [draggingDraftId, setDraggingDraftId] = useState(null)
+  const draftSessionRef = useRef(null)
+  const draftHydratingRef = useRef(false)
+  const draftDragRef = useRef(null)
+  const segmentTimingRef = useRef({ startedAt: 0, lastAt: 0, pauses: 0, baseMs: 0, basePauses: 0 })
+  const groupStartedRef = useRef(0)
   const [favoritesOpen,setFavoritesOpen]=useState(false)
   const [favoriteMarks,setFavoriteMarks]=useState([])
   const [replying,setReplying]=useState(null) // {index,role,name,content}
@@ -323,6 +341,38 @@ export default function Chat({ back }) {
   const recogRef = useRef(null)
   const audioRef = useRef(null)
   const pressTimer = useRef(null)
+
+  const freshDraftId = () => `seg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+  const cleanDraftReply = (reply) => reply ? { ...reply, content: String(reply.content || '').slice(0, 1000) } : null
+  const currentTiming = () => {
+    const t = segmentTimingRef.current
+    const extra = t.startedAt ? Math.max(0, Date.now() - t.startedAt) : 0
+    return { typingMs: Math.round((t.baseMs || 0) + extra), pauses: (t.basePauses || 0) + (t.pauses || 0) }
+  }
+  const resetSegmentTiming = (baseMs = 0, basePauses = 0, started = false) => {
+    const now = Date.now()
+    segmentTimingRef.current = { startedAt: started ? now : 0, lastAt: started ? now : 0, pauses: 0, baseMs, basePauses }
+  }
+
+  useEffect(() => {
+    if (!activeId || activeId === draftSessionRef.current) return
+    draftHydratingRef.current = true
+    draftSessionRef.current = activeId
+    let saved = []
+    try { saved = JSON.parse(localStorage.getItem(`house-segments:${activeId}`) || '[]') } catch {}
+    setDraftSegments(Array.isArray(saved) ? saved : [])
+    setEditingDraftId(null)
+    groupStartedRef.current = 0
+    resetSegmentTiming()
+  }, [activeId])
+  useEffect(() => {
+    if (!activeId || draftSessionRef.current !== activeId) return
+    if (draftHydratingRef.current) { draftHydratingRef.current = false; return }
+    try {
+      if (draftSegments.length) localStorage.setItem(`house-segments:${activeId}`, JSON.stringify(draftSegments))
+      else localStorage.removeItem(`house-segments:${activeId}`)
+    } catch {}
+  }, [draftSegments, activeId])
 
   const showToast = (t) => { setToast(t); setTimeout(() => setToast(''), 2200) }
 
@@ -595,6 +645,7 @@ export default function Chat({ back }) {
           setMessages(h.filter((m) => !m.inCall).map((m) => newMsg(m.role, m.content, {
             reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i,
             memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery, reply: m.reply,
+            segments: m.segments, composition: m.composition,
             timestamp: m.timestamp,
           })))
           scrollBottom()
@@ -634,6 +685,7 @@ export default function Chat({ back }) {
         const older = h.filter((m) => !m.inCall).map((m) => newMsg(m.role, m.content, {
           reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i,
           memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery, reply: m.reply,
+          segments: m.segments, composition: m.composition,
           timestamp: m.timestamp,
         }))
         setMessages((ms) => [...older, ...ms])
@@ -810,16 +862,132 @@ export default function Chat({ back }) {
     loadSessions()
   }
 
+  const collectSegment = () => {
+    const content = input.trim()
+    if (!content || waiting || editing != null) return
+    if (!editingDraftId && draftSegments.length >= 12) { showToast('一组最多收十二段，先发出去吧'); return }
+    const timing = currentTiming()
+    const next = {
+      id: editingDraftId || freshDraftId(),
+      content,
+      ...(replying ? { reply: cleanDraftReply(replying) } : {}),
+      ...timing,
+    }
+    setDraftSegments((items) => editingDraftId
+      ? items.map((item) => item.id === editingDraftId ? next : item)
+      : [...items, next])
+    setFeatherSweep(false)
+    requestAnimationFrame(() => setFeatherSweep(true))
+    setTimeout(() => setFeatherSweep(false), 620)
+    setEditingDraftId(null)
+    setInput('')
+    setReplying(null)
+    resetSegmentTiming()
+    if (inputRef.current) inputRef.current.style.height = 'auto'
+    setTimeout(() => inputRef.current?.focus(), 40)
+  }
+
+  const editDraftSegment = (segment) => {
+    if (!segment || waiting) return
+    if (input.trim() && editingDraftId !== segment.id) {
+      showToast('先用小羽毛收好正在写的这一段')
+      return
+    }
+    setEditingDraftId(segment.id)
+    setInput(segment.content)
+    setReplying(segment.reply || null)
+    resetSegmentTiming(segment.typingMs || 0, segment.pauses || 0, true)
+    inputRef.current?.focus()
+  }
+
+  const removeDraftSegment = (id) => {
+    if (draftSegments.length === 1 && draftSegments[0]?.id === id && (!input.trim() || editingDraftId === id)) groupStartedRef.current = 0
+    setDraftSegments((items) => items.filter((item) => item.id !== id))
+    if (editingDraftId === id) {
+      setEditingDraftId(null)
+      setInput('')
+      setReplying(null)
+      resetSegmentTiming()
+    }
+  }
+
+  const moveDraftSegment = (fromId, toId) => {
+    if (!fromId || !toId || fromId === toId) return
+    setDraftSegments((items) => {
+      const from = items.findIndex((item) => item.id === fromId)
+      const to = items.findIndex((item) => item.id === toId)
+      if (from < 0 || to < 0) return items
+      const copy = [...items]
+      const [picked] = copy.splice(from, 1)
+      copy.splice(to, 0, picked)
+      return copy
+    })
+  }
+
+  const startDraftPress = (e, segment) => {
+    const node = e.currentTarget
+    const drag = { id: segment.id, x: e.clientX, y: e.clientY, active: false, node, pointerId: e.pointerId }
+    drag.timer = setTimeout(() => {
+      drag.active = true
+      setDraggingDraftId(segment.id)
+      try { node.setPointerCapture(drag.pointerId) } catch {}
+      buzz('light')
+    }, 360)
+    draftDragRef.current = drag
+  }
+  const moveDraftPress = (e) => {
+    const drag = draftDragRef.current
+    if (!drag) return
+    if (!drag.active && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) {
+      clearTimeout(drag.timer)
+      draftDragRef.current = null
+      return
+    }
+    if (!drag.active) return
+    e.preventDefault()
+    const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-draft-id]')
+    if (hit?.dataset.draftId) moveDraftSegment(drag.id, hit.dataset.draftId)
+  }
+  const endDraftPress = (segment) => {
+    const drag = draftDragRef.current
+    if (!drag) return
+    clearTimeout(drag.timer)
+    if (!drag.active) editDraftSegment(segment)
+    setDraggingDraftId(null)
+    draftDragRef.current = null
+  }
+
   // ---- 发送 ----
   const send = async () => {
     if(browsingRef.current){showToast('回到最新聊天后再发送');return}
     const text = input.trim()
     const atts = pending.filter((x) => x.url && !x.uploading)
-    if ((!text && !atts.length) || waiting) return
+    if ((!text && !draftSegments.length && !atts.length) || waiting) return
     if (pending.some((x) => x.uploading)) { showToast('图片还在上传,等一下下'); return }
     const reply = replying ? { ...replying, content: replying.content.slice(0, 1000) } : null
+    let outgoingSegments = draftSegments
+    if (editingDraftId) {
+      if (!text) { showToast('这一段还没有写完'); return }
+      const timing = currentTiming()
+      outgoingSegments = draftSegments.map((item) => item.id === editingDraftId
+        ? { ...item, content: text, ...(reply ? { reply } : { reply: undefined }), ...timing }
+        : item)
+    } else if (draftSegments.length && text) {
+      if (draftSegments.length >= 12) { showToast('这一组已经有十二段了，先收起这一句再发送'); return }
+      outgoingSegments = [...draftSegments, { id: freshDraftId(), content: text, ...(reply ? { reply } : {}), ...currentTiming() }]
+    }
+    const segmented = outgoingSegments.length > 0
+    const outgoingText = segmented ? outgoingSegments.map((item) => item.content).join('\n\n') : text
+    const composition = segmented ? {
+      totalMs: groupStartedRef.current ? Math.max(0, Date.now() - groupStartedRef.current) : outgoingSegments.reduce((sum, item) => sum + (item.typingMs || 0), 0),
+      segments: outgoingSegments.map((item) => ({ typingMs: item.typingMs || 0, pauses: item.pauses || 0 })),
+    } : null
     setInput('')
     setReplying(null)
+    setDraftSegments([])
+    setEditingDraftId(null)
+    groupStartedRef.current = 0
+    resetSegmentTiming()
     if (inputRef.current) inputRef.current.style.height = 'auto'
 
     const modelArg = modelId()
@@ -830,7 +998,7 @@ export default function Chat({ back }) {
       setEditing(null)
       setMessages((ms) => {
         const keep = ms.slice(0, idx)
-        return [...keep, newMsg('user', text)]
+        return [...keep, newMsg('user', outgoingText)]
       })
       setWaiting(true)
       streamedRef.current = false
@@ -838,7 +1006,7 @@ export default function Chat({ back }) {
       try {
         const r = await fetch('/api/edit', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ index: idx, message: text, oldContent: old, model: modelArg, ...reasonArgs() }),
+          body: JSON.stringify({ index: idx, message: outgoingText, oldContent: old, model: modelArg, ...reasonArgs() }),
         })
         if (!r.ok) {
           showToast('没对上那条消息,刷新一下历史')
@@ -851,8 +1019,8 @@ export default function Chat({ back }) {
 
     const attachments = atts.map(({ name, url, path, type }) => ({ name, url, path, type }))
     setPending([])
-    setMessages((ms) => [...ms, newMsg('user', text || atts.map((a) => a.name).join(', '),
-      { ...(attachments.length ? { attachments } : {}), ...(reply ? { reply } : {}) })])
+    setMessages((ms) => [...ms, newMsg('user', outgoingText || atts.map((a) => a.name).join(', '),
+      { ...(attachments.length ? { attachments } : {}), ...(segmented ? { segments: outgoingSegments, composition } : reply ? { reply } : {}) })])
     setWaiting(true)
     streamedRef.current = false
     // 新一轮开始时清流式指针;结束交给SSE的done事件——
@@ -864,9 +1032,9 @@ export default function Chat({ back }) {
       const r = await fetch('/api/message', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: text, model: modelArg, session: sessionRef.current, ...reasonArgs(),
+          message: outgoingText, model: modelArg, session: sessionRef.current, ...reasonArgs(),
           ...(attachments.length ? { attachments } : {}),
-          ...(reply ? { reply } : {}),
+          ...(segmented ? { segments: outgoingSegments, composition } : reply ? { reply } : {}),
         }),
       })
       const data = await r.json()
@@ -1274,8 +1442,17 @@ export default function Chat({ back }) {
   }
 
   const onInput = (e) => {
-    setInput(e.target.value)
-    if (e.target.value.trim()) pingTyping()
+    const value = e.target.value
+    setInput(value)
+    if (value.trim()) {
+      const now = Date.now()
+      const timing = segmentTimingRef.current
+      if (!groupStartedRef.current) groupStartedRef.current = now
+      if (!timing.startedAt) timing.startedAt = now
+      if (timing.lastAt && now - timing.lastAt > 15000) timing.pauses++
+      timing.lastAt = now
+      pingTyping()
+    }
     const el = e.target
     el.style.height = 'auto'
     el.style.height = Math.min(el.scrollHeight, 120) + 'px'
@@ -1283,7 +1460,7 @@ export default function Chat({ back }) {
 
   // 发送就绪:有字或有传完的附件,且没有还在传的
   const sendReady =
-    (input.trim() || pending.some((x) => x.url)) &&
+    (input.trim() || draftSegments.length || pending.some((x) => x.url)) &&
     !pending.some((x) => x.uploading) &&
     !waiting
 
@@ -1446,7 +1623,9 @@ export default function Chat({ back }) {
                   )}
                 </div>
               )}
-              {!m.voice && !m.call && parseSegments(m.content || (m.streaming ? '…' : ''), m.role === 'assistant').map((seg, i) =>
+              {!m.voice && !m.call && (m.role === 'user' && Array.isArray(m.segments) && m.segments.length
+                ? m.segments.map((seg) => ({ text: seg.content, reply: seg.reply, draftId: seg.id }))
+                : parseSegments(m.content || (m.streaming ? '…' : ''), m.role === 'assistant')).map((seg, i) =>
                 seg.voice ? (
                   <div key={i} className="voice-wrap"
                     onPointerDown={(e) => { e.stopPropagation(); startPress(e, m, idx, '', seg.voice) }}
@@ -1470,16 +1649,24 @@ export default function Chat({ back }) {
                     <div className="voice-script">{seg.voice}</div>
                   </div>
                 ) : (
-                  <div key={i} className={`bubble ${m.role} message-text-segment`}
-                    onPointerDown={(e) => { e.stopPropagation(); startPress(e, m, idx, seg.text) }}
-                    onPointerUp={(e) => { e.stopPropagation(); cancelPress() }}
-                    onPointerMove={(e) => { e.stopPropagation(); cancelPress() }}
-                    onPointerLeave={cancelPress}
-                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setPressed({ m, idx, segmentText: seg.text.trim() }) }}
-                  >{renderMd(seg.text)}</div>
+                  <div key={seg.draftId || i} className={`message-segment-block ${m.role}`}>
+                    <div className={`bubble ${m.role} message-text-segment`}
+                      onPointerDown={(e) => { e.stopPropagation(); startPress(e, m, idx, seg.text) }}
+                      onPointerUp={(e) => { e.stopPropagation(); cancelPress() }}
+                      onPointerMove={(e) => { e.stopPropagation(); cancelPress() }}
+                      onPointerLeave={cancelPress}
+                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setPressed({ m, idx, segmentText: seg.text.trim() }) }}
+                    >{renderMd(seg.text)}</div>
+                    {seg.reply?.content && (
+                      <div className="reply-quote segment-reply">
+                        <i />
+                        <span><b>{seg.reply.name || (seg.reply.role === 'assistant' ? NAMES.me : NAMES.her)}</b><em>{seg.reply.content}</em></span>
+                      </div>
+                    )}
+                  </div>
                 )
               )}
-              {m.reply?.content && (
+              {m.reply?.content && !(m.role === 'user' && Array.isArray(m.segments) && m.segments.length) && (
                 <div className="reply-quote">
                   <i />
                   <span><b>{m.reply.name || (m.reply.role === 'assistant' ? NAMES.me : NAMES.her)}</b><em>{m.reply.content}</em></span>
@@ -1504,6 +1691,41 @@ export default function Chat({ back }) {
       {historyView && <div className="chat-history-compose">上下翻看这段记录，点「回到最新」继续聊天</div>}
       {/* 输入区 */}
       <div className="chat-input-wrap" style={historyView?{display:'none'}:undefined}>
+        {(draftSegments.length > 0 || input.trim()) && editing == null && (
+          <div className="segment-dock" aria-label="待发送的分段">
+            {draftSegments.map((segment, index) => {
+              const active = editingDraftId === segment.id
+              const shown = active ? input : segment.content
+              const shownReply = active ? replying : segment.reply
+              return (
+                <div key={segment.id} data-draft-id={segment.id}
+                  className={`segment-chip ${active ? 'active' : ''} ${draggingDraftId === segment.id ? 'dragging' : ''}`}
+                  onPointerDown={(e) => startDraftPress(e, segment)}
+                  onPointerMove={moveDraftPress}
+                  onPointerUp={() => endDraftPress(segment)}
+                  onPointerCancel={() => endDraftPress(segment)}>
+                  <small>{index + 1}</small>
+                  {shownReply?.content && <i className="segment-chip-reply">↩ {shownReply.content}</i>}
+                  <span>{shown || '正在编辑…'}</span>
+                  <button aria-label="删除这一段" onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => removeDraftSegment(segment.id)}>×</button>
+                </div>
+              )
+            })}
+            {input.trim() && !editingDraftId && (
+              <div className="segment-chip active live" aria-label="正在编辑的分段">
+                <small>{draftSegments.length + 1}</small>
+                {replying?.content && <i className="segment-chip-reply">↩ {replying.content}</i>}
+                <span>{input}</span>
+              </div>
+            )}
+          </div>
+        )}
+        <button className={`segment-feather ${input.trim() ? 'awake' : ''} ${featherSweep ? 'sweep' : ''}`}
+          aria-label="用小羽毛收好这一段" title="收好这一段"
+          onClick={collectSegment} disabled={!input.trim() || waiting || editing != null}>
+          <FeatherIcon /><i />
+        </button>
         {editing != null && (
           <div className="edit-tip">
             正在编辑那条消息 <button onClick={() => { setEditing(null); setInput('') }}>取消</button>
