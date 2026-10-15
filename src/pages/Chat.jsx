@@ -1368,12 +1368,6 @@ export default function Chat({ back }) {
               }}
             >
               {m.role === 'assistant' && <ToolActivity text={m.reasoning} streaming={m.streaming} />}
-              {m.reply?.content && (
-                <div className="reply-quote">
-                  <i />
-                  <span><b>{m.reply.name || (m.reply.role === 'assistant' ? NAMES.me : NAMES.her)}</b><em>{m.reply.content}</em></span>
-                </div>
-              )}
               {/* 婉莹的语音条 */}
               {m.call && (
                 <button className={`call-card ${['missed', 'declined'].includes(m.call.endedBy) ? 'bad' : ''}`} onClick={() => openCall(m.call.id)}>
@@ -1462,6 +1456,12 @@ export default function Chat({ back }) {
                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setPressed({ m, idx, segmentText: seg.text.trim() }) }}
                   >{renderMd(seg.text)}</div>
                 )
+              )}
+              {m.reply?.content && (
+                <div className="reply-quote">
+                  <i />
+                  <span><b>{m.reply.name || (m.reply.role === 'assistant' ? NAMES.me : NAMES.her)}</b><em>{m.reply.content}</em></span>
+                </div>
               )}
             </div>
             {favoriteFor(m) && <div className="favorite-inline"><span>★</span> 已加入 Favorite</div>}
