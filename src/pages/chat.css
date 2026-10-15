@@ -440,6 +440,11 @@
   border: 0; background: transparent; color: var(--text-dim);
   font-size: 17px; padding: 0 3px; cursor: pointer;
 }
+:root[data-theme='night'] .reply-quote b,
+:root[data-theme='night'] .reply-compose b { color: var(--silver); }
+:root[data-theme='night'] .reply-quote em,
+:root[data-theme='night'] .reply-compose em { color: color-mix(in srgb, var(--silver) 82%, transparent); }
+:root[data-theme='night'] .reply-compose button { color: color-mix(in srgb, var(--silver) 68%, transparent); }
 
 /* ---- 模型选择 ---- */
 .model-sheet-title {
