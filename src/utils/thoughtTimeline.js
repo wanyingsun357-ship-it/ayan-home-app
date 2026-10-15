@@ -1,8 +1,15 @@
 export function toolInfo(raw) {
   const name = raw.match(/^([^\s({]+)/)?.[1] || '工具'
   const s = raw.toLowerCase()
+  if (/chat-favorites/.test(s)) {
+    const locked=/月亮锁收藏|["']?locked["']?\s*:\s*true/.test(s)
+    const method=s.match(/(?:-x|method["']?\s*:)\s*["']?(post|patch|delete)/)?.[1]
+    const label=locked?'收起一份月亮锁收藏':method==='post'?'收进自己的 Favorite':method==='patch'?'整理自己的 Favorite':method==='delete'?'移出一份 Favorite':'重看 Favorite'
+    return {name,target:locked?'锁里的内容没有留在足迹':/owner=her/.test(s)?'婉莹的收藏':'阿晏的收藏',label,icon:'heart'}
+  }
   const choices = [
     [/ombre|breath_search|echo|\/memory|\/memories/, '记忆', 'heart'],
+    [/chat-favorites|favorites|收藏/, '重看或整理收藏', 'heart'],
     [/annotation|\/books|read_book|\/read\b/, '读书', 'book'],
     [/\/moments|朋友圈/, '朋友圈', 'chat'],
     [/wake-outbox|alarm|闹钟/, '设置或查看闹钟', 'voice'],
