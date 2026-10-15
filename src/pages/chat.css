@@ -402,7 +402,7 @@
 /* 消息收藏留下轻轻一颗星，不另占一只大气泡 */
 .favorite-inline {
   display: flex; align-items: center; gap: 5px;
-  margin: -8px 7px 0; color: var(--text-dim);
+  margin: 2px 7px 0; color: var(--text-dim);
   font-size: 10.5px; letter-spacing: .025em;
   animation: favorite-in .32s ease both;
 }
