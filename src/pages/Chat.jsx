@@ -1355,7 +1355,9 @@ export default function Chat({ back }) {
               {m.role === 'assistant' && m.memory?.length > 0 && (
                 <button className="cloud-btn mem-btn" onClick={() => setMemView(m.memory)}><MemIcon /></button>
               )}
-              <button className="msg-more" aria-label="整条消息操作" onClick={() => setPressed({ m, idx })}>···</button>
+              <button className={`msg-more ${m.role}`} aria-label="整条消息操作" onClick={() => setPressed({ m, idx })}>
+                {m.role === 'assistant' ? '☾' : '●'}
+              </button>
             </div>
             <div
               className="msg-segs"
