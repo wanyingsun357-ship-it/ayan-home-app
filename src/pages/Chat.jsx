@@ -345,16 +345,30 @@ export default function Chat({ back }) {
       (Number.isInteger(m.absIdx) && f.index === m.absIdx)
       || (f.content === m.content && (!m.timestamp || !f.timestamp || f.timestamp === m.timestamp))))
 
-  const favoriteMessage = async (m) => {
+  const favoriteChoiceFor = (choice, owner = 'her') => {
+    const m = choice?.m
+    if (!m) return false
+    return favoriteMarks.some((f) => {
+      if (owner && f.owner !== owner) return false
+      const sameMessage = (Number.isInteger(m.absIdx) && f.index === m.absIdx)
+        || ((!f.sourceContent || f.sourceContent === m.content) && (!m.timestamp || !f.timestamp || f.timestamp === m.timestamp))
+      if (!sameMessage) return false
+      return choice.voiceText
+        ? f.kind === 'assistant_voice' && f.content === choice.voiceText
+        : !f.kind && f.content === m.content
+    })
+  }
+
+  const favoriteMessage = async (m, voiceText = '') => {
     try {
       const r = await fetch('/api/chat-favorites', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session: sessionRef.current, index: m.absIdx, role: m.role, content: m.content, timestamp: m.timestamp }),
+        body: JSON.stringify({ session: sessionRef.current, index: m.absIdx, role: m.role, content: m.content, timestamp: m.timestamp, ...(voiceText ? { voiceText } : {}) }),
       })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || '收藏失败')
       if (d.item) setFavoriteMarks((items) => [...items.filter((x) => x.id !== d.item.id), d.item])
-      showToast('已收藏，在 ＋ → Favorites 里查看')
+      showToast(voiceText ? '这段语音已收进 Favorite' : '已收藏，在 ＋ → Favorites 里查看')
     } catch (e) { showToast(e.message) }
   }
 
@@ -365,7 +379,7 @@ export default function Chat({ back }) {
       index: Number.isInteger(m.absIdx) ? m.absIdx : undefined,
       role: m.role,
       name: m.role === 'assistant' ? NAMES.me : NAMES.her,
-      content: pressed.segmentText || m.content,
+      content: pressed.voiceText || pressed.segmentText || m.content,
     })
     setPressed(null)
     inputRef.current?.focus()
@@ -871,15 +885,15 @@ export default function Chat({ back }) {
   }
 
   // ---- 长按消息 ----
-  const startPress = (e, m, idx, segmentText = '') => {
+  const startPress = (e, m, idx, segmentText = '', voiceText = '') => {
     clearTimeout(pressTimer.current)
-    pressTimer.current = setTimeout(() => setPressed({ m, idx, segmentText: segmentText.trim() }), 520)
+    pressTimer.current = setTimeout(() => setPressed({ m, idx, segmentText: segmentText.trim(), voiceText: voiceText.trim() }), 520)
   }
   const cancelPress = () => clearTimeout(pressTimer.current)
 
   const doCopy = async () => {
-    const text = pressed.segmentText || pressed.m.content
-    try { await navigator.clipboard.writeText(text) ; showToast(pressed.segmentText ? '已复制这段' : '已复制') }
+    const text = pressed.voiceText || pressed.segmentText || pressed.m.content
+    try { await navigator.clipboard.writeText(text) ; showToast((pressed.voiceText || pressed.segmentText) ? '已复制这段' : '已复制') }
     catch { showToast('复制失败') }
     setPressed(null)
   }
@@ -1434,7 +1448,13 @@ export default function Chat({ back }) {
               )}
               {!m.voice && !m.call && parseSegments(m.content || (m.streaming ? '…' : ''), m.role === 'assistant').map((seg, i) =>
                 seg.voice ? (
-                  <div key={i} className="voice-wrap">
+                  <div key={i} className="voice-wrap"
+                    onPointerDown={(e) => { e.stopPropagation(); startPress(e, m, idx, '', seg.voice) }}
+                    onPointerUp={(e) => { e.stopPropagation(); cancelPress() }}
+                    onPointerMove={(e) => { e.stopPropagation(); cancelPress() }}
+                    onPointerLeave={cancelPress}
+                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setPressed({ m, idx, segmentText: '', voiceText: seg.voice.trim() }) }}
+                  >
                     <button
                       className={`voice-bubble ${playingKey === `${m.id}-${i}` ? 'playing' : ''}`}
                       onClick={() => play(`${m.id}-${i}`, seg.voice)}
@@ -1703,20 +1723,20 @@ export default function Chat({ back }) {
         <div className="sheet-mask" onClick={() => setPressed(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="press-preview">{(pressed.segmentText || pressed.m.content).slice(0, 60)}</div>
-            <button className="sheet-item" disabled={pressed.m.streaming || favoriteFor(pressed.m, 'her')} onClick={() => {
-              const m = pressed.m; setPressed(null); favoriteMessage(m)
-            }}>{favoriteFor(pressed.m, 'her') ? '★ 已加入 Favorite' : '☆ 收藏这条'}</button>
+            <div className="press-preview">{(pressed.voiceText || pressed.segmentText || pressed.m.content).slice(0, 60)}</div>
+            <button className="sheet-item" disabled={pressed.m.streaming || favoriteChoiceFor(pressed)} onClick={() => {
+              const { m, voiceText } = pressed; setPressed(null); favoriteMessage(m, voiceText)
+            }}>{favoriteChoiceFor(pressed) ? '★ 已加入 Favorite' : pressed.voiceText ? '☆ 收藏这段语音' : '☆ 收藏这条'}</button>
             {pressed.m.role === 'assistant' && (
-              <button className="sheet-item" onClick={replyToPressed}>↩ {pressed.segmentText ? '回复这段' : '回复这条'}</button>
+              <button className="sheet-item" onClick={replyToPressed}>↩ {(pressed.voiceText || pressed.segmentText) ? '回复这段' : '回复这条'}</button>
             )}
-            <button className="sheet-item" onClick={doCopy}>⧉ {pressed.segmentText ? '复制这段' : '复制整条'}</button>
+            <button className="sheet-item" onClick={doCopy}>⧉ {(pressed.voiceText || pressed.segmentText) ? '复制这段' : '复制整条'}</button>
             {pressed.m.role === 'user' && (
               <button className="sheet-item" onClick={doEdit}>✎ 编辑并重新发送</button>
             )}
             {pressed.m.role === 'assistant' && (
               <>
-                <button className="sheet-item" onClick={() => { play(`m-${pressed.m.id}`, pressed.m.content.replace(/\[VOICE\]|\[\/VOICE\]/g, '')); setPressed(null) }}>▷ 听这条</button>
+                <button className="sheet-item" onClick={() => { play(`m-${pressed.m.id}`, pressed.voiceText || pressed.m.content.replace(/\[VOICE\]|\[\/VOICE\]/g, '')); setPressed(null) }}>▷ {pressed.voiceText ? '听这段' : '听这条'}</button>
                 {pressed.idx === messages.length - 1 && (
                   <button className="sheet-item" onClick={doRegen}>↻ 重新回答</button>
                 )}
