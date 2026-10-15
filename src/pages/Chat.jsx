@@ -236,7 +236,7 @@ export default function Chat({ back }) {
   const [jumpBusy, setJumpBusy] = useState(false)
   const browsingRef = useRef(false), historyRequest = useRef(0)
   const historicalMsg = m => newMsg(m.role, m.content, { ...m, id: ++msgId, absIdx: m.i, time: fmtTime(new Date(m.timestamp)) })
-  const returnLatest = () => { historyRequest.current++; browsingRef.current=false;setHistoryView(null);setJumpBusy(false);streamRef.current={id:null,reasoning:''};loadHistory(sessionRef.current) }
+  const returnLatest = () => { historyRequest.current++; browsingRef.current=false;setHistoryView(null);setJumpBusy(false);streamRef.current={id:null,reasoning:'',reply:null};loadHistory(sessionRef.current) }
   const jumpHistory = async (query, direction = '') => {
     if (jumpBusy) return
     if (!direction && (waiting || streamRef.current.id != null)) { showToast('等这条回复结束，就可以翻旧聊天了');return }
@@ -289,7 +289,7 @@ export default function Chat({ back }) {
   const listRef = useRef(null)
   const inputRef = useRef(null)
   const esRef = useRef(null)
-  const streamRef = useRef({ id: null, reasoning: '' })
+  const streamRef = useRef({ id: null, reasoning: '', reply: null })
   const sessionRef = useRef(null)      // 当前会话id,过滤别的会话串进来的流
   const compactDoneRef = useRef(null)  // 整理记忆是异步的(Cloudflare限时100秒),完成靠SSE的compact事件回调
   const [giftOpen, setGiftOpen] = useState(null) // 全屏拆礼物:{url,title,note,phase}
@@ -329,18 +329,21 @@ export default function Chat({ back }) {
   const loadFavoriteMarks = async (sid = sessionRef.current) => {
     if (!sid) { setFavoriteMarks([]); return }
     try {
-      const q = new URLSearchParams({ session: sid, owner: 'her', viewer: 'her' })
-      const r = await fetch(`/api/chat-favorites?${q}`)
-      if (!r.ok) throw new Error('favorites unavailable')
-      const d = await r.json()
-      setFavoriteMarks((d.items || []).filter((x) => !x.hidden))
+      const query = (owner) => new URLSearchParams({ session: sid, owner, viewer: 'her' })
+      const [her, ayan] = await Promise.all(['her', 'ayan'].map(async (owner) => {
+        const r = await fetch(`/api/chat-favorites?${query(owner)}`)
+        if (!r.ok) throw new Error('favorites unavailable')
+        return (await r.json()).items || []
+      }))
+      setFavoriteMarks([...her, ...ayan].filter((x) => !x.hidden))
     } catch {}
   }
   useEffect(() => { if (activeId) loadFavoriteMarks(activeId) }, [activeId])
 
-  const favoriteFor = (m) => favoriteMarks.some((f) =>
-    (Number.isInteger(m.absIdx) && f.index === m.absIdx)
-    || (f.content === m.content && (!m.timestamp || !f.timestamp || f.timestamp === m.timestamp)))
+  const favoriteFor = (m, owner = '') => favoriteMarks.some((f) =>
+    (!owner || f.owner === owner) && (
+      (Number.isInteger(m.absIdx) && f.index === m.absIdx)
+      || (f.content === m.content && (!m.timestamp || !f.timestamp || f.timestamp === m.timestamp))))
 
   const favoriteMessage = async (m) => {
     try {
@@ -385,7 +388,7 @@ export default function Chat({ back }) {
     let stopped = false, retryTimer, heartbeatTimer, lastEvent = Date.now()
     const endStream = () => {
       setMessages((ms) => ms.map((m) => ({ ...m, recoveryPending:m.streaming || m.recoveryPending, streaming: false })))
-      streamRef.current = { id: null, reasoning: '' }
+      streamRef.current = { id: null, reasoning: '', reply: null }
       setWaiting(false)
       refreshTail(true)
     }
@@ -399,7 +402,7 @@ export default function Chat({ back }) {
           st.id = m.id
           st.reasoning = reasoning || ''
           st.memory = memEvent ? [memEvent] : []
-          return [...ms, { ...m, reasoning: st.reasoning || undefined, memory: st.memory.length ? [...st.memory] : undefined }]
+          return [...ms, { ...m, reasoning: st.reasoning || undefined, memory: st.memory.length ? [...st.memory] : undefined, reply: st.reply || undefined }]
         }
         return ms.map((m) => {
           if (m.id !== st.id) return m
@@ -456,6 +459,14 @@ export default function Chat({ back }) {
           if (d.type === 'text') onChunk(d.content)
           else if (d.type === 'reasoning') onChunk('', d.content)
           else if (d.type === 'memory') { try { onChunk('', '', JSON.parse(d.content)) } catch {} }
+          else if (d.type === 'assistant_reply') {
+            try {
+              const reply = JSON.parse(d.content), st = streamRef.current
+              st.reply = reply
+              if (st.id != null) setMessages((ms) => ms.map((m) => m.id === st.id ? { ...m, reply } : m))
+            } catch {}
+          }
+          else if (d.type === 'favorite_changed') loadFavoriteMarks(sessionRef.current)
           else if (d.type === 'ctx') { setCtx(parseInt(d.content) || 0); setCtxEstimated(false); loadCtx() }
           else if (d.type === 'reset') {
             // cot-guard 打回重写:第一版回答作废,清空正在流的气泡等第二版
@@ -832,7 +843,7 @@ export default function Chat({ back }) {
     streamedRef.current = false
     // 新一轮开始时清流式指针;结束交给SSE的done事件——
     // POST返回和SSE是两条通道,POST先到就清会把还在路上的尾巴事件塞进幽灵气泡(思考链断成两朵云的元凶)
-    streamRef.current = { id: null, reasoning: '' }
+    streamRef.current = { id: null, reasoning: '', reply: null }
     scrollBottom()
     const sentSession=sessionRef.current
     try {
@@ -1073,7 +1084,7 @@ export default function Chat({ back }) {
     setMessages((ms) => [...ms, newMsg('user', transcript, { voice, ...(reply ? { reply } : {}) })])
     setWaiting(true)
     streamedRef.current = false
-    streamRef.current = { id: null, reasoning: '' }  // 开局清,结束交给done(防幽灵气泡)
+    streamRef.current = { id: null, reasoning: '', reply: null }  // 开局清,结束交给done(防幽灵气泡)
     scrollBottom()
     try {
       await fetch('/api/message', {
@@ -1691,9 +1702,9 @@ export default function Chat({ back }) {
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="press-preview">{(pressed.segmentText || pressed.m.content).slice(0, 60)}</div>
-            <button className="sheet-item" disabled={pressed.m.streaming || favoriteFor(pressed.m)} onClick={() => {
+            <button className="sheet-item" disabled={pressed.m.streaming || favoriteFor(pressed.m, 'her')} onClick={() => {
               const m = pressed.m; setPressed(null); favoriteMessage(m)
-            }}>{favoriteFor(pressed.m) ? '★ 已加入 Favorite' : '☆ 收藏这条'}</button>
+            }}>{favoriteFor(pressed.m, 'her') ? '★ 已加入 Favorite' : '☆ 收藏这条'}</button>
             {pressed.m.role === 'assistant' && (
               <button className="sheet-item" onClick={replyToPressed}>↩ {pressed.segmentText ? '回复这段' : '回复这条'}</button>
             )}
