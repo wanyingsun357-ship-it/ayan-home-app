@@ -170,6 +170,9 @@ export default function Chat({ back }) {
   const [activeId, setActiveId] = useState(null)
   const [input, setInput] = useHouseDraft(activeId)
   const [favoritesOpen,setFavoritesOpen]=useState(false)
+  const [favoriteMarks,setFavoriteMarks]=useState([])
+  const [replying,setReplying]=useState(null) // {index,role,name,content}
+  const [textSelection,setTextSelection]=useState(null) // {msgId,text,x,y}
   const [online, setOnline] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const waitingRef = useRef(false)          // 松手回调是按下那一刻的闭包,得用 ref 看当下
@@ -323,6 +326,78 @@ export default function Chat({ back }) {
   const pressTimer = useRef(null)
 
   const showToast = (t) => { setToast(t); setTimeout(() => setToast(''), 2200) }
+
+  const loadFavoriteMarks = async (sid = sessionRef.current) => {
+    if (!sid) { setFavoriteMarks([]); return }
+    try {
+      const q = new URLSearchParams({ session: sid, owner: 'her', viewer: 'her' })
+      const r = await fetch(`/api/chat-favorites?${q}`)
+      if (!r.ok) throw new Error('favorites unavailable')
+      const d = await r.json()
+      setFavoriteMarks((d.items || []).filter((x) => !x.hidden))
+    } catch {}
+  }
+  useEffect(() => { if (activeId) loadFavoriteMarks(activeId) }, [activeId])
+
+  const favoriteFor = (m) => favoriteMarks.some((f) =>
+    (Number.isInteger(m.absIdx) && f.index === m.absIdx)
+    || (f.content === m.content && (!m.timestamp || !f.timestamp || f.timestamp === m.timestamp)))
+
+  const favoriteMessage = async (m) => {
+    try {
+      const r = await fetch('/api/chat-favorites', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: sessionRef.current, index: m.absIdx, role: m.role, content: m.content, timestamp: m.timestamp }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || '收藏失败')
+      if (d.item) setFavoriteMarks((items) => [...items.filter((x) => x.id !== d.item.id), d.item])
+      showToast('已收藏，在 ＋ → Favorites 里查看')
+    } catch (e) { showToast(e.message) }
+  }
+
+  const clearNativeSelection = () => {
+    try { window.getSelection()?.removeAllRanges() } catch {}
+    setTextSelection(null)
+  }
+  useEffect(() => {
+    let timer
+    const updateSelection = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const sel = window.getSelection()
+        if (!sel || sel.isCollapsed || !sel.rangeCount) { setTextSelection(null); return }
+        const nodeEl = (node) => node?.nodeType === 1 ? node : node?.parentElement
+        const a = nodeEl(sel.anchorNode)?.closest?.('.selectable-assistant')
+        const b = nodeEl(sel.focusNode)?.closest?.('.selectable-assistant')
+        if (!a || !b || a.dataset.selectMessage !== b.dataset.selectMessage) { setTextSelection(null); return }
+        const text = sel.toString().trim().slice(0, 1000)
+        if (!text) { setTextSelection(null); return }
+        const rect = sel.getRangeAt(0).getBoundingClientRect()
+        setTextSelection({
+          msgId: Number(a.dataset.selectMessage), text,
+          x: Math.max(86, Math.min(window.innerWidth - 86, rect.left + rect.width / 2)),
+          y: Math.max(58, rect.top - 10),
+        })
+      }, 40)
+    }
+    document.addEventListener('selectionchange', updateSelection)
+    return () => { clearTimeout(timer); document.removeEventListener('selectionchange', updateSelection) }
+  }, [])
+
+  const replyToSelection = () => {
+    const m = messages.find((x) => x.id === textSelection?.msgId)
+    if (!m || !textSelection?.text) return
+    setReplying({
+      index: Number.isInteger(m.absIdx) ? m.absIdx : undefined,
+      role: m.role,
+      name: m.role === 'assistant' ? NAMES.me : NAMES.her,
+      content: textSelection.text,
+    })
+    clearNativeSelection()
+    inputRef.current?.focus()
+    setTimeout(scrollBottom, 80)
+  }
 
   const scrollBottom = () => {
     if(browsingRef.current)return
@@ -524,7 +599,7 @@ export default function Chat({ back }) {
         if (request===historyRequest.current && !browsingRef.current && Array.isArray(h)) {
           setMessages(h.filter((m) => !m.inCall).map((m) => newMsg(m.role, m.content, {
             reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i,
-            memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery,
+            memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery, reply: m.reply,
             timestamp: m.timestamp,
           })))
           scrollBottom()
@@ -563,7 +638,7 @@ export default function Chat({ back }) {
       if (Array.isArray(h) && h.length) {
         const older = h.filter((m) => !m.inCall).map((m) => newMsg(m.role, m.content, {
           reasoning: m.reasoning, hasReasoning: m.hasReasoning, absIdx: m.i,
-          memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery,
+          memory: m.memory, voice: m.voice, attachments: m.attachments, gift: m.gift, call: m.call, gallery: m.gallery, reply: m.reply,
           timestamp: m.timestamp,
         }))
         setMessages((ms) => [...older, ...ms])
@@ -747,7 +822,9 @@ export default function Chat({ back }) {
     const atts = pending.filter((x) => x.url && !x.uploading)
     if ((!text && !atts.length) || waiting) return
     if (pending.some((x) => x.uploading)) { showToast('图片还在上传,等一下下'); return }
+    const reply = replying ? { ...replying, content: replying.content.slice(0, 1000) } : null
     setInput('')
+    setReplying(null)
     if (inputRef.current) inputRef.current.style.height = 'auto'
 
     const modelArg = modelId()
@@ -780,7 +857,7 @@ export default function Chat({ back }) {
     const attachments = atts.map(({ name, url, path, type }) => ({ name, url, path, type }))
     setPending([])
     setMessages((ms) => [...ms, newMsg('user', text || atts.map((a) => a.name).join(', '),
-      attachments.length ? { attachments } : {})])
+      { ...(attachments.length ? { attachments } : {}), ...(reply ? { reply } : {}) })])
     setWaiting(true)
     streamedRef.current = false
     // 新一轮开始时清流式指针;结束交给SSE的done事件——
@@ -794,6 +871,7 @@ export default function Chat({ back }) {
         body: JSON.stringify({
           message: text, model: modelArg, session: sessionRef.current, ...reasonArgs(),
           ...(attachments.length ? { attachments } : {}),
+          ...(reply ? { reply } : {}),
         }),
       })
       const data = await r.json()
@@ -812,7 +890,8 @@ export default function Chat({ back }) {
   }
 
   // ---- 长按消息 ----
-  const startPress = (m, idx) => {
+  const startPress = (e, m, idx) => {
+    if (m.role === 'assistant' && e.target.closest?.('.selectable-assistant')) return
     clearTimeout(pressTimer.current)
     pressTimer.current = setTimeout(() => setPressed({ m, idx }), 520)
   }
@@ -825,6 +904,7 @@ export default function Chat({ back }) {
   }
   const doEdit = () => {
     setEditing({ idx: pressed.idx, old: pressed.m.content })
+    setReplying(null)
     setInput(pressed.m.content.replace(/\[VOICE\]|\[\/VOICE\]/g, ''))
     setPressed(null)
     inputRef.current?.focus()
@@ -1018,7 +1098,9 @@ export default function Chat({ back }) {
 
   const sendVoice = async (transcript, voice) => {
     if (waitingRef.current) { voiceQueueRef.current.push([transcript, voice]); showToast('他还在说,说完就替你发'); return }
-    setMessages((ms) => [...ms, newMsg('user', transcript, { voice })])
+    const reply = replying ? { ...replying, content: replying.content.slice(0, 1000) } : null
+    setReplying(null)
+    setMessages((ms) => [...ms, newMsg('user', transcript, { voice, ...(reply ? { reply } : {}) })])
     setWaiting(true)
     streamedRef.current = false
     streamRef.current = { id: null, reasoning: '' }  // 开局清,结束交给done(防幽灵气泡)
@@ -1026,7 +1108,7 @@ export default function Chat({ back }) {
     try {
       await fetch('/api/message', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: transcript, voice, model: modelId(), session: sessionRef.current, ...reasonArgs() }),
+        body: JSON.stringify({ message: transcript, voice, model: modelId(), session: sessionRef.current, ...reasonArgs(), ...(reply ? { reply } : {}) }),
       })
     } catch { showToast('语音没发出去') }
     setWaiting(false)
@@ -1292,16 +1374,26 @@ export default function Chat({ back }) {
               {m.role === 'assistant' && m.memory?.length > 0 && (
                 <button className="cloud-btn mem-btn" onClick={() => setMemView(m.memory)}><MemIcon /></button>
               )}
+              <button className="msg-more" aria-label="整条消息操作" onClick={() => setPressed({ m, idx })}>···</button>
             </div>
             <div
               className="msg-segs"
-              onPointerDown={() => startPress(m, idx)}
+              onPointerDown={(e) => startPress(e, m, idx)}
               onPointerUp={cancelPress}
               onPointerMove={cancelPress}
               onPointerLeave={cancelPress}
-              onContextMenu={(e) => { e.preventDefault(); setPressed({ m, idx }) }}
+              onContextMenu={(e) => {
+                if (m.role === 'assistant' && e.target.closest?.('.selectable-assistant')) return
+                e.preventDefault(); setPressed({ m, idx })
+              }}
             >
               {m.role === 'assistant' && <ToolActivity text={m.reasoning} streaming={m.streaming} />}
+              {m.reply?.content && (
+                <div className="reply-quote">
+                  <i />
+                  <span><b>{m.reply.name || (m.reply.role === 'assistant' ? NAMES.me : NAMES.her)}</b><em>{m.reply.content}</em></span>
+                </div>
+              )}
               {/* 婉莹的语音条 */}
               {m.call && (
                 <button className={`call-card ${['missed', 'declined'].includes(m.call.endedBy) ? 'bad' : ''}`} onClick={() => openCall(m.call.id)}>
@@ -1382,10 +1474,12 @@ export default function Chat({ back }) {
                     <div className="voice-script">{seg.voice}</div>
                   </div>
                 ) : (
-                  <div key={i} className={`bubble ${m.role}`}>{renderMd(seg.text)}</div>
+                  <div key={i} data-select-message={m.role === 'assistant' ? m.id : undefined}
+                    className={`bubble ${m.role} ${m.role === 'assistant' ? 'selectable-assistant' : ''}`}>{renderMd(seg.text)}</div>
                 )
               )}
             </div>
+            {favoriteFor(m) && <div className="favorite-inline"><span>★</span> 已加入 Favorite</div>}
           </div>
           </div>
           )
@@ -1400,12 +1494,26 @@ export default function Chat({ back }) {
         )}
       </div>
 
+      {textSelection && (
+        <div className="selection-toolbar" style={{ left: textSelection.x, top: textSelection.y }} onPointerDown={(e) => e.preventDefault()}>
+          <button onClick={async () => { try { await navigator.clipboard.writeText(textSelection.text); showToast('已复制选中文字') } catch { showToast('复制失败') } clearNativeSelection() }}>复制</button>
+          <button onClick={replyToSelection}>回复</button>
+        </div>
+      )}
+
       {historyView && <div className="chat-history-compose">上下翻看这段记录，点「回到最新」继续聊天</div>}
       {/* 输入区 */}
       <div className="chat-input-wrap" style={historyView?{display:'none'}:undefined}>
         {editing != null && (
           <div className="edit-tip">
             正在编辑那条消息 <button onClick={() => { setEditing(null); setInput('') }}>取消</button>
+          </div>
+        )}
+        {replying && (
+          <div className="reply-compose">
+            <i />
+            <span><b>回复 {replying.name}</b><em>{replying.content}</em></span>
+            <button aria-label="取消回复" onClick={() => setReplying(null)}>×</button>
           </div>
         )}
         {pending.length > 0 && (
@@ -1616,10 +1724,9 @@ export default function Chat({ back }) {
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="press-preview">{pressed.m.content.slice(0, 60)}</div>
-            <button className="sheet-item" disabled={pressed.m.streaming} onClick={async()=>{
-              const m=pressed.m;setPressed(null)
-              try{const r=await fetch('/api/chat-favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:sessionRef.current,index:m.absIdx,role:m.role,content:m.content,timestamp:m.timestamp})});const d=await r.json();if(!r.ok)throw Error(d.error||'收藏失败');showToast('已收藏，在 ＋ → Favorites 里查看')}catch(e){showToast(e.message)}
-            }}>☆ 收藏这条</button>
+            <button className="sheet-item" disabled={pressed.m.streaming || favoriteFor(pressed.m)} onClick={() => {
+              const m = pressed.m; setPressed(null); favoriteMessage(m)
+            }}>{favoriteFor(pressed.m) ? '★ 已加入 Favorite' : '☆ 收藏这条'}</button>
             <button className="sheet-item" onClick={doCopy}>⧉ 复制</button>
             {pressed.m.role === 'user' && (
               <button className="sheet-item" onClick={doEdit}>✎ 编辑并重新发送</button>
@@ -1894,7 +2001,7 @@ export default function Chat({ back }) {
         </div>
       )}
 
-      {favoritesOpen && <FavoritesSheet session={sessionRef.current} onClose={()=>setFavoritesOpen(false)} onJump={i=>{setFavoritesOpen(false);jumpHistory({i:String(i)})}} />}
+      {favoritesOpen && <FavoritesSheet session={sessionRef.current} onClose={()=>{setFavoritesOpen(false);loadFavoriteMarks()}} onJump={i=>{setFavoritesOpen(false);jumpHistory({i:String(i)})}} />}
       {artifactsOpen && <ArtifactsSheet session={sessionRef.current} onClose={() => setArtifactsOpen(false)} onOpen={f => { setArtifactsOpen(false); window.dispatchEvent(new CustomEvent('open-made', {detail:{url:f.url,name:f.name,kind:fileKind(f.name)}})) }} />}
       {/* 附件管理 */}
       {uploadsOpen && (
