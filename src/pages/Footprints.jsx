@@ -36,7 +36,7 @@ export default function Footprints({ back }) {
         <article className="fp-card glass1">
           <div className="fp-card-head"><span className="fp-symbol" aria-hidden="true">{kind[0]}</span><div><h2>{kind[1]}</h2><span className="fp-home">{sessions.find(s => s.id === item.session)?.title || '家'}</span></div><time dateTime={item.at}>{time(item.at)}</time></div>
           {item.status==='quiet' && <p className="fp-muted">选择了 [QUIET]，这次不发聊天消息。做过的事仍会留在下面。</p>}
-          {item.status==='queued' && <p className="fp-muted">唤醒请求已收到。等待当前活动结束或同一个家 30 分钟的间隔；每天最多执行 6 次。</p>}
+          {item.status==='queued' && <p className="fp-muted">唤醒请求已收到，等当前活动结束后执行。</p>}
           {item.status==='scheduled' && <p className="fp-muted">闹钟已安排，到约定的时间再醒来。</p>}
           {item.error && <p className="fp-error">{item.error}</p>}
           {!!activities.length && <div className="fp-activities">{activities.map(a=>{const info=toolInfo(a.detail);return <details className="fp-activity" key={a.id}><summary><span className="fp-activity-icon" aria-hidden="true">{activityIcons[info.icon]||'✧'}</span><span><strong>{info.label}</strong>{(a.titles?.length||info.target)&&<small>{a.titles?.map(t=>'《'+t+'》').join('、')||info.target}</small>}</span><em>{a.status==='running'?'进行中':a.status==='failed'?'未完成':a.status==='completed'?'调用完成':'已调用'}</em></summary><pre>{a.detail}</pre></details>})}</div>}

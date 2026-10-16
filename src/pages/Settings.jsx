@@ -59,7 +59,7 @@ export default function Settings({ back }) {
   const loadWd = async () => { try { setWd(await (await fetch('/api/wander')).json()) } catch {} }
   useEffect(() => { loadWd() }, [])
   const saveWd = async (patch) => { try { await fetch('/api/wander', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }) } catch {}; loadWd() }
-  const wdNow = async (id) => { setWdMsg('正在安排唤醒…'); try { const r=await fetch('/api/wander/now', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: id }) }); if(!r.ok)throw Error();setWdMsg('已加入唤醒队列，可到足迹查看；同一个家间隔至少30分钟') } catch {setWdMsg('唤醒请求没有送达，请稍后重试')}; setTimeout(() => { setWdMsg(''); loadWd() }, 4000) }
+  const wdNow = async (id) => { setWdMsg('正在安排唤醒…'); try { const r=await fetch('/api/wander/now', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: id }) }); if(!r.ok)throw Error();setWdMsg('已加入唤醒队列，可到足迹查看；当前活动结束后执行') } catch {setWdMsg('唤醒请求没有送达，请稍后重试')}; setTimeout(() => { setWdMsg(''); loadWd() }, 4000) }
 
   // ---- 定位:授权、开关、把这里设为家 ----
   const [loc, setLoc] = useState(null)
