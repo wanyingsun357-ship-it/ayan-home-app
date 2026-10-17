@@ -109,3 +109,15 @@
 @keyframes paper-quill-fall{0%{opacity:.7;transform:translate(0,0) rotate(0)}50%{opacity:.5;transform:translate(-18px,27px) rotate(-35deg)}100%{opacity:0;transform:translate(-7px,63px) rotate(25deg)}}
 @media(max-width:360px){:root[data-visual=paper] .chat-head-r{gap:2px}:root[data-visual=paper] .chat-head-r .chat-back{width:28px}}
 @media(prefers-reduced-motion:reduce){:root[data-visual=paper] .paper-quill-icon{animation:none!important}:root[data-visual=paper] .paper-falling-feather{display:none}}
+:root[data-visual=paper] .waiting-reply>.paper-avatar{top:0}
+.avatar-crop-mask{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:var(--paper-overlay,#2b222b80);padding:16px;overscroll-behavior:contain}
+.avatar-crop-dialog{width:320px;max-width:100%;max-height:calc(100dvh - 32px);overflow:auto;padding:20px 12px;border-radius:26px;background:var(--paper-popup,#f9f2ee);color:var(--paper-text,#352e30);box-shadow:0 16px 50px #211b2530;text-align:center}
+.avatar-crop-dialog h2{font-size:19px;margin:0 0 8px}.avatar-crop-dialog p{font-size:12px;color:var(--paper-secondary,#827778);margin:0 0 18px}
+.avatar-crop-stage{width:260px;height:260px;position:relative;overflow:hidden;margin:auto;touch-action:none;cursor:grab;background:#211b25;border-radius:12px;user-select:none}
+.avatar-crop-stage:active{cursor:grabbing}.avatar-crop-stage img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none}
+.avatar-crop-circle{position:absolute;inset:0;border-radius:50%;border:2px solid #fff9;box-shadow:0 0 0 100px #211b2599;pointer-events:none}
+.avatar-crop-zoom{display:flex;align-items:center;gap:12px;font-size:12px;margin:20px 12px;color:var(--paper-secondary,#827778)}.avatar-crop-zoom input{min-width:0;flex:1;accent-color:var(--paper-brand,#95505b)}
+.avatar-crop-actions{display:flex;gap:8px;justify-content:center}.avatar-crop-actions button{border:1px solid var(--paper-input-border,#e6d4ce);border-radius:20px;padding:10px 15px;background:none;color:inherit;font:inherit;font-size:13px}.avatar-crop-actions .save{background:var(--paper-send,#95505b);border-color:transparent;color:#fffaf6}
+
+.avatar-crop-mask,.avatar-crop-dialog,.avatar-crop-circle{box-sizing:border-box}
+.avatar-crop-dialog{width:min(320px,calc(100vw - 32px));min-width:0}

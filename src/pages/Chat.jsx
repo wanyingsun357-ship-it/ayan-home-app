@@ -1704,8 +1704,8 @@ export default function Chat({ back }) {
         ))}
         {historyView?.after != null && <button className="hist-more" disabled={jumpBusy} onClick={()=>jumpHistory({after:String(historyView.after)},'after')}>{jumpBusy?'翻着呢…':'↓ 后面的对话'}</button>}
         {!historyView && waiting && (
-          <div className="msg-row assistant">
-            <div className="bubble assistant typing-bubble">
+          <div className="msg-row assistant waiting-reply">
+            <PaperAvatar /><div className="bubble assistant typing-bubble" aria-label="正在等待回复">
               <span className="tdot" /><span className="tdot" /><span className="tdot" />
             </div>
           </div>
