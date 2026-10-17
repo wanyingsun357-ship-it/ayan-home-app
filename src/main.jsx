@@ -1,6 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './theme.css'
+import './paper-theme.css'
+import './paper-release.css'
+
+document.documentElement.dataset.visual = localStorage.getItem('visual-theme') || 'paper'
 import App from './App.jsx'
 
 // 主题初始化:记住上次选择,否则跟随系统

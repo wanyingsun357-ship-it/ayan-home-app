@@ -46,6 +46,10 @@ export default function App() {
     () => sessionStorage.getItem('splashed') === '1'
   )
   const [view, setView] = useState('home')
+  useEffect(() => {
+    document.documentElement.dataset.paperSurface = ['home','together','settings'].includes(view) ? 'home' : 'chat'
+    document.documentElement.dataset.paperBackgroundOnly = String(['moments','diary','together','footprints','memory'].includes(view))
+  }, [view])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [diaryDot, setDiaryDot] = useState(false)

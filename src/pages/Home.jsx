@@ -1,3 +1,4 @@
+import PaperAvatar from '../components/PaperAvatar.jsx'
 import { useEffect, useState } from 'react'
 import { TOGETHER_SINCE, NAMES, daysSince } from '../config.js'
 import './home.css'
@@ -7,6 +8,7 @@ const pad = (n) => String(n).padStart(2, '0')
 const dstr = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
 export default function Home({ go, openSidebar }) {
+  const [paperPage,setPaperPage]=useState('today')
   const days = daysSince(TOGETHER_SINCE)
   const [quote, setQuote] = useState(null)
   const [plans, setPlans] = useState([])
@@ -140,7 +142,7 @@ export default function Home({ go, openSidebar }) {
         <button className="hm-menu" onClick={openSidebar}>☰</button>
       </header>
 
-      <div className="hm-hero">
+      <div className="paper-portraits"><PaperAvatar who="me" editable/><PaperAvatar who="him" editable/></div><div className="hm-hero">
         <div className="hm-num serif">{days}</div>
         <div className="hm-quote serif">
           {quote?.text || '…'}
@@ -148,10 +150,11 @@ export default function Home({ go, openSidebar }) {
         <div className="hm-quote-by">— {NAMES.me}{quote?.fresh === false ? ` · ${quote.date.slice(5).replace('-', '.')}` : ''}</div>
       </div>
 
-      <div className="hm-divider" />
+      <p className="paper-home-greeting">I'm here. You're back.</p><div className="hm-divider" />
 
+      <nav className="paper-book-tabs" aria-label="日程页">{["today","upcoming"].map(p=><button key={p} aria-pressed={paperPage===p} onClick={()=>setPaperPage(p)}>{p==='today'?'Today':'Upcoming'}</button>)}</nav>
       {/* Today */}
-      <section className="hm-card glass2">
+      <section key={paperPage+"-today"} className={`hm-card glass2 paper-book today ${paperPage==='today'?'shown':''}`}>
         <div className="hm-card-head">
           <span className="serif hm-card-title">Today</span>
           <button className="hm-plus" onClick={() => { setAdding(adding === 'today' ? null : 'today'); setText('') }}>+</button>
@@ -164,7 +167,7 @@ export default function Home({ go, openSidebar }) {
       </section>
 
       {/* Upcoming */}
-      <section className="hm-card glass2">
+      <section key={paperPage+'-upcoming'} className={`hm-card glass2 paper-book upcoming ${paperPage==='upcoming'?'shown':''}`}>
         <div className="hm-card-head">
           <span className="serif hm-card-title">Upcoming</span>
           <button className="hm-plus" onClick={() => { setAdding(adding === 'upcoming' ? null : 'upcoming'); setText('') }}>+</button>

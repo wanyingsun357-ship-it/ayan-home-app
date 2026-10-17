@@ -78,6 +78,7 @@ export default function Memory({ back, goSettings }) {
   const loadEcho = async () => {
     try {
       const d = await (await fetch('/api/echo/items')).json()
+      d.buckets = (d.buckets || []).filter(b => !/第四个家|第六个家/.test(b.title || ''))
       setEchoStats(d)
       if (!echoKey && d.buckets?.length) openEchoBucket(d.buckets[0].key)
     } catch {}

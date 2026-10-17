@@ -1,8 +1,9 @@
+import PaperAvatar from './PaperAvatar.jsx'
 import { useEffect, useRef, useState } from 'react'
 import PixelCat from './PixelCat.jsx'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import { NAMES } from '../config.js'
-import { isApp, callAudio } from '../utils/native.js'
+import { isApp, callAudio, buzz } from '../utils/native.js'
 import './call.css'
 
 // 通话(一期):她打过去 → 响铃 → 他 [ANSWER]/[DECLINE] → 通话中:
@@ -374,7 +375,7 @@ export default function CallOverlay() {
   }
 
   return (
-    <div className={`call ${phase}`}>
+    <div className={`call ${phase} ${phase === 'ringing' && call?.by === 'him' ? 'incoming-paper' : ''}`}>
       <div className="call-top">
         <button className="call-min" onClick={() => setMin(true)}>⌄</button>
         <span className="call-status serif">{status}</span>
@@ -382,7 +383,7 @@ export default function CallOverlay() {
       </div>
       <div className="call-hero">
         <div className={`call-bars him ${speaking ? 'on' : ''}`}>{[0, 1, 2, 3, 4].map((i) => <i key={i} style={{ animationDelay: `${i * 0.12}s` }} />)}</div>
-        <div className={`call-avatar ${phase === 'ringing' ? 'ring' : ''}`}><PixelCat size={70} style={{ display: 'block', margin: 'auto', objectFit: 'contain', imageRendering: 'pixelated' }} /></div>
+        <div className={`call-avatar ${phase === 'ringing' ? 'ring' : ''}`}><span className="original-call-avatar"><PixelCat size={70} style={{ display: 'block', margin: 'auto', objectFit: 'contain', imageRendering: 'pixelated' }} /></span><span className="paper-call-avatar"><PaperAvatar /></span></div>
         <div className="call-side">
           <div className={`call-bars her ${live ? 'on' : ''}`}>{[0, 1, 2, 3, 4].map((i) => <i key={i} style={{ animationDelay: `${i * 0.12}s` }} />)}</div>
           {phase === 'active' && <span className={`call-mic ${micOff() ? 'off' : ''}`}>{muted ? '闭麦' : typing ? '打字中' : playingRef.current ? '他在说' : live ? '在听你说' : '在听'}</span>}

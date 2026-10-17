@@ -7,6 +7,8 @@ import RouterUsage from '../components/RouterUsage.jsx'
 import EngineUsage from '../components/EngineUsage.jsx'
 
 export default function Settings({ back }) {
+  const [visualTheme, setVisualTheme] = useState(document.documentElement.dataset.visual || 'paper')
+  const changeVisualTheme = value => { document.documentElement.dataset.visual=value;localStorage.setItem('visual-theme',value);setVisualTheme(value) }
   const [theme, setTheme] = useState(document.documentElement.dataset.theme)
   const [mcp, setMcp] = useState({ builtin: [], custom: [] })
   const [adding, setAdding] = useState(false)
@@ -193,7 +195,7 @@ export default function Settings({ back }) {
 
       <div className="set-list">
         <div className="set-group">
-          <div className="set-group-name">外观</div>
+          <div className="set-group-name">外观</div><div className="set-row"><span>主题</span><div className="set-seg" role="group" aria-label="界面主题">{[["original","原版"],["paper","绘本纸页"]].map(([v,label])=><button key={v} className={visualTheme===v?"on":""} aria-pressed={visualTheme===v} onClick={()=>changeVisualTheme(v)}>{label}</button>)}</div></div>
           <div className="set-row">
             <span>主题</span>
             <div className="set-seg">

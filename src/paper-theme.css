@@ -1,0 +1,91 @@
+/* Paper theme: shared day/night tokens and scoped adapters for existing components. */
+:root[data-visual='paper'] {
+  --paper-brand:#95505B; --paper-page:#F8F4EF;
+  --paper-text:#352E30; --paper-secondary:#827778; --paper-muted:#A99B9B;
+  --paper-divider:#DED1CD; --paper-him:#F7F3EE; --paper-her:#F3E1DD;
+  --paper-bubble-border:#E6D8D3; --paper-time:#988A8B; --paper-status-icon:#96858A;
+  --paper-composer:#FFFAF6; --paper-focus:#95505B; --paper-input-border:#E6D4CE;
+  --paper-model:#F7F0EB; --paper-quote:#EACBC8; --paper-favorite:#FFFAF5;
+  --paper-send:#95505B; --paper-on-send:#FFFAF6; --paper-disabled:#D8CAC6; --paper-popup:#F9F2EE;
+  --paper-leaf:#A86C74; --paper-leaf-opacity:.35; --paper-moon:#A7A7B4;
+  --paper-redline:#95505B; --paper-iris:#A9ABB9;
+  --paper-card:#FFFAF6; --paper-small-card:#F7F0EB; --paper-card-border:#E9DBD5;
+  --paper-selected:#F5E3DF; --paper-tab:#FAF5F0; --paper-sidebar:#F1DDD7;
+  --paper-date-selected:#95505B; --paper-field:#FFFDF9; --paper-overlay:#2B222B59;
+  --paper-online:#719B7C; --paper-shadow:0 2px 9px #352e3006;
+}
+:root[data-visual='paper'][data-theme='night'] {
+  --paper-brand:#D59A9E; --paper-page:#211B25;
+  --paper-text:#F2E9E5; --paper-secondary:#B6A8AA; --paper-muted:#91838D;
+  --paper-divider:#51444D; --paper-him:#393139; --paper-her:#4A3138;
+  --paper-bubble-border:#59444E; --paper-time:#B6A1A8; --paper-status-icon:#A995A0;
+  --paper-composer:#241F26; --paper-focus:#A96370; --paper-input-border:#55434C;
+  --paper-model:#302830; --paper-quote:#60414B; --paper-favorite:#302830;
+  --paper-send:#A95763; --paper-disabled:#51454D; --paper-popup:#29232B;
+  --paper-leaf:#B9848E; --paper-moon:#C9C8D3; --paper-redline:#B87480; --paper-iris:#777C9A;
+  --paper-card:#342B34; --paper-small-card:#302830; --paper-card-border:#58464F;
+  --paper-selected:#46313B; --paper-tab:#302830; --paper-sidebar:#29212B;
+  --paper-date-selected:#C98791; --paper-field:#241F26; --paper-overlay:#09070C8C;
+  --paper-online:#78A48A; --paper-shadow:0 2px 9px #09070c0a;
+}
+/* Legacy aliases let existing pages share the palette during incremental migration. */
+:root[data-visual='paper']:not([data-paper-background-only='true']) {
+  --bg:var(--paper-page); --bg-img:none; --bg-overlay:transparent;
+  --text:var(--paper-text); --text-soft:var(--paper-secondary); --text-dim:var(--paper-muted);
+  --accent:var(--paper-brand); --accent-text:var(--paper-brand); --accent-soft:var(--paper-leaf);
+  --accent-glow:transparent; --silver:var(--paper-moon); --moon:var(--paper-moon);
+  --line-red:var(--paper-redline); --hairline:var(--paper-divider); --shadow:var(--paper-shadow);
+  --card:var(--paper-card); --card-border:var(--paper-card-border); --overlay:var(--paper-overlay);
+  --g1:var(--paper-him); --g2:var(--paper-card); --g3:var(--paper-popup);
+  --g1-border:var(--paper-bubble-border); --g2-border:var(--paper-card-border); --g3-border:var(--paper-divider);
+  --g1-blur:none; --g2-blur:none; --g3-blur:none; --tint-him:transparent; --tint-her:transparent;
+}
+:root[data-visual='paper'] .bubble.assistant {background:var(--paper-him);}
+:root[data-visual='paper'] .bubble.user {background:var(--paper-her);}
+:root[data-visual='paper'] .bubble {color:var(--paper-text);border-color:var(--paper-bubble-border);box-shadow:var(--paper-shadow);background-image:none;}
+:root[data-visual='paper'] .msg-meta > span {color:var(--paper-time);}
+:root[data-visual='paper'] .cloud-btn {color:var(--paper-status-icon);}
+:root[data-visual='paper'] .chat-moon {color:var(--paper-moon);}
+:root[data-visual='paper'] .chat-dot.on {background:var(--paper-online);}
+:root[data-visual='paper'] .chat-input-wrap {background:var(--paper-composer);border-color:var(--paper-input-border);box-shadow:var(--paper-shadow);}
+:root[data-visual='paper'] .chat-input-wrap:focus-within {border-color:var(--paper-focus);box-shadow:var(--paper-shadow);}
+:root[data-visual='paper'] .model-chip {background:var(--paper-model);color:var(--paper-text);border-color:var(--paper-input-border);}
+:root[data-visual='paper'] .cbtn.send.ready {background:var(--paper-send);border-color:var(--paper-send);color:var(--paper-on-send);box-shadow:none;}
+:root[data-visual='paper'] .cbtn.send:disabled {background:var(--paper-disabled);border-color:var(--paper-disabled);color:var(--paper-secondary);opacity:1;}
+:root[data-visual='paper'] .sheet.thought.artifacts-sheet {background:var(--paper-popup);border-color:var(--paper-divider);backdrop-filter:none;}
+:root[data-visual='paper'] .favorite-card {background:var(--paper-favorite);border-color:var(--paper-card-border);}
+:root[data-visual='paper'] .favorite-copy {border-left:1px solid var(--paper-redline);padding-left:12px;}
+:root[data-visual='paper'] .sdrawer {background:var(--paper-sidebar);}
+/* Decorative branch is independent of the interactive split-reply leaf.
+   Isolate layers so it stays behind text and never intercepts gestures. */
+:root[data-visual='paper'] .chat {position:relative;isolation:isolate;}
+:root[data-visual='paper'][data-theme='night'] .chat::before {
+  content:'';position:absolute;left:0;top:30%;width:72px;height:285px;
+  background:url('/decor/paper-sprig.svg') left center / contain no-repeat;
+  opacity:var(--paper-edge-leaf-opacity,.22);pointer-events:none;z-index:-1;
+}
+
+:root[data-visual="paper"] .wetglass-bg {background-image:url("/paper-backgrounds/chat-day.webp")}
+:root[data-visual="paper"][data-paper-surface="home"] .wetglass-bg {background-image:url("/paper-backgrounds/home-day.webp")}
+:root[data-visual="paper"][data-theme="night"] .wetglass-bg {background-image:url("/paper-backgrounds/chat-night.webp")}
+:root[data-visual="paper"][data-theme="night"][data-paper-surface="home"] .wetglass-bg {background-image:url("/paper-backgrounds/home-night.webp")}
+:root[data-visual='paper'] .ctx-panel-num.warn{color:var(--paper-brand)}
+/* Empty or uploading: keep the arrow unfilled; readiness remains owned by Chat. */
+:root[data-visual='paper'] .cbtn.send:disabled{background:transparent;border-color:var(--paper-input-border);color:var(--paper-muted);opacity:.6}
+/* Read and Gallery keep their original geometry, controls and content. */
+:root[data-visual='paper'] .read{--read-bg:var(--paper-page);--read-text:var(--paper-text)}
+:root[data-visual='paper'] .read.reading,:root[data-visual='paper'] .read-page{background:color-mix(in srgb,var(--paper-page) 94%,transparent)}
+:root[data-visual='paper'] :is(.read-book,.gl-album,.gl-view-paper){background:var(--paper-card);border-color:var(--paper-card-border);box-shadow:var(--paper-shadow);backdrop-filter:none;-webkit-backdrop-filter:none}
+:root[data-visual='paper'] :is(.gl-cell,.gl-home,.gl-ico,.read-add){background:var(--paper-small-card);border-color:var(--paper-card-border)}
+:root[data-visual='paper'] .gl-home.on{background:var(--paper-selected);border-color:var(--paper-brand)}
+/* Mind: a silver moon printed on a quiet paper page, retaining the existing breath. */
+:root[data-visual='paper'] .mind{--moon-hi:#F3F0EB;--moon-mid:#D1CBD1;--moon-lo:#AEA7B4}
+:root[data-visual='paper'][data-theme='night'] .mind{--moon-hi:#F2EDEB;--moon-mid:#C9C4CF;--moon-lo:#9690A3}
+:root[data-visual='paper'] .mind-veil{background:radial-gradient(ellipse at 50% 28%,#f8f4ef60,transparent 48%),url('/paper-backgrounds/chat-day.webp') center/cover}
+:root[data-visual='paper'][data-theme='night'] .mind-veil{background:radial-gradient(ellipse at 50% 28%,#c9c4cf0d,transparent 45%),url('/paper-backgrounds/chat-night.webp') center/cover}
+:root[data-visual='paper'] .mind-moon-body{filter:drop-shadow(0 3px 8px #51444d14)}
+:root[data-visual='paper'][data-theme='night'] .mind-moon-body{filter:drop-shadow(0 0 13px #c9c8d31a)}
+:root[data-visual='paper'] .mind-moon-rim{stroke:var(--paper-moon);opacity:.35}
+:root[data-visual='paper'] :is(.mind-sense,.mind-card){background:var(--paper-card);border:1px solid var(--paper-card-border);box-shadow:var(--paper-shadow);backdrop-filter:none;-webkit-backdrop-filter:none}
+:root[data-visual='paper'] .mind-mood-chip{background:var(--paper-selected);color:var(--paper-brand)}
+@media(prefers-reduced-motion:reduce){:root[data-visual='paper'] .mind-moon-body{animation:none}}

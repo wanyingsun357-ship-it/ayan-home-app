@@ -1,3 +1,4 @@
+import PaperAvatar from '../components/PaperAvatar.jsx'
 import useHouseDraft from '../utils/useHouseDraft.js'
 import FavoritesSheet from '../components/FavoritesSheet.jsx'
 import { useEffect, useRef, useState } from 'react'
@@ -246,6 +247,10 @@ export default function Chat({ back }) {
 
   // ---- 聊天记录搜索(微信式) ----
   const [searchOpen, setSearchOpen] = useState(false)
+  const [searchKind,setSearchKind]=useState('all')
+  const [mediaBefore,setMediaBefore]=useState(undefined)
+  const [searchBusy,setSearchBusy]=useState(false)
+  const searchSequence=useRef(0)
   const [searchQ, setSearchQ] = useState('')
   const [searchHits, setSearchHits] = useState(null)
   const [searchCtx, setSearchCtx] = useState(null)
@@ -282,17 +287,34 @@ export default function Chat({ back }) {
     }catch(e){if(request===historyRequest.current)showToast(e.message)}
     finally{if(request===historyRequest.current)setJumpBusy(false)}
   }
-  const doSearch = async () => {
-    const q = searchQ.trim()
-    if (!q) return
-    const sid = sessionRef.current ? `&session=${sessionRef.current}` : ''
-    const isDate = /^\d{4}-\d{2}-\d{2}$/.test(q)
-    if(isDate){jumpHistory({date:q});return}
-    const param = isDate ? `date=${q}` : `q=${encodeURIComponent(q)}`
+  const doSearch = async (kindOverride, append=false) => {
+    const kind=typeof kindOverride==='string'?kindOverride:searchKind,q=searchQ.trim(),seq=++searchSequence.current
+    setSearchKind(kind);setCalendarOpen(false);setSearchBusy(true)
+    if (!q && kind==='all') {setSearchHits(null);setSearchBusy(false);return}
+    if (/^\d{4}-\d{2}-\d{2}$/.test(q)){setSearchBusy(false);jumpHistory({date:q});return}
     try {
-      const d = await (await fetch(`/api/chat-search?${param}${sid}&limit=500`)).json() // 她这边一次拉全(最多500条),从近到远
-      setSearchHits(d.hits || [])
-    } catch { setSearchHits([]) }
+      if(kind==='all'){
+        const params=new URLSearchParams({q,session:sessionRef.current,limit:'500'})
+        const r=await fetch('/api/chat-search?'+params);if(!r.ok)throw Error();const d=await r.json()
+        if(seq===searchSequence.current){setSearchHits(d.hits||[]);setMediaBefore(undefined)}
+      } else {
+        let before=append?mediaBefore:undefined,hits=[]
+        for(let page=0;page<5;page++){
+          const params=new URLSearchParams({session:sessionRef.current,before:String(before ?? Number.MAX_SAFE_INTEGER)})
+          const r=await fetch('/api/chat-window?'+params);if(!r.ok)throw Error();const d=await r.json();if(seq!==searchSequence.current)return
+          for(const m of [...(d.msgs||[])].reverse()){
+            const text=String(m.content||''),atts=m.attachments||[]
+            const image=atts.some(x=>/^image\//.test(x.type||x.mime||'')||/\.(png|jpe?g|webp|gif)(?:$|\?)/i.test(x.url||x.name||''))||/!\[[^\]]*\]\(/.test(text)
+            const voice=!!m.voice||text.includes('[VOICE]'),call=!!m.call
+            const file=atts.some(x=>!/^image\//.test(x.type||x.mime||'')&&!/\.(png|jpe?g|webp|gif)(?:$|\?)/i.test(x.url||x.name||''))||/\[[^\]]+\]\([^)]*\/(?:made|uploads)\//.test(text)
+            if(({image,voice,call,file})[kind]&&(!q||text.includes(q)))hits.push({i:m.i,role:m.role,timestamp:m.timestamp,snippet:text.slice(0,240)||({image:'图片',voice:'语音',call:'通话记录',file:'文件'})[kind]})
+          }
+          before=d.before;if(before==null||hits.length>=50)break
+        }
+        if(seq===searchSequence.current){setMediaBefore(before);setSearchHits(old=>append?[...(old||[]),...hits]:hits)}
+      }
+    }catch{if(seq===searchSequence.current)showToast('搜索暂时没取到，请重试')}
+    finally{if(seq===searchSequence.current)setSearchBusy(false)}
   }
   const openHit = i => jumpHistory({i:String(i)})
   const fmtSearchTs = (t) => {
@@ -962,7 +984,7 @@ export default function Chat({ back }) {
     if(browsingRef.current){showToast('回到最新聊天后再发送');return}
     const text = input.trim()
     const atts = pending.filter((x) => x.url && !x.uploading)
-    if ((!text && !draftSegments.length && !atts.length) || waiting) return
+    if ((!text && !draftSegments.length && !atts.length) || waiting || historyView || pending.some(x=>x.uploading)) return
     if (pending.some((x) => x.uploading)) { showToast('图片还在上传,等一下下'); return }
     const reply = replying ? { ...replying, content: replying.content.slice(0, 1000) } : null
     let outgoingSegments = draftSegments
@@ -1461,8 +1483,7 @@ export default function Chat({ back }) {
   // 发送就绪:有字或有传完的附件,且没有还在传的
   const sendReady =
     (input.trim() || draftSegments.length || pending.some((x) => x.url)) &&
-    !pending.some((x) => x.uploading) &&
-    !waiting
+    !pending.some((x) => x.uploading) && !waiting && !historyView
 
   // 会话分组:今天 / 这周 / 更早
   const groupSessions = () => {
@@ -1491,8 +1512,8 @@ export default function Chat({ back }) {
         </div>
         <div className="chat-head-r">
           <button className="chat-back chat-call" onClick={() => window.dispatchEvent(new CustomEvent('call:start', { detail: { session: sessionRef.current, model: modelId() } }))}>☏</button>
-          <button className="chat-back chat-search" onClick={() => { setSearchOpen(true); setSearchCtx(null) }}>🔍</button>
-          <button className="chat-back sessions-btn" onClick={openDrawer}>☾</button>
+          <button className="chat-back chat-search" onClick={() => { setSearchOpen(true); setSearchCtx(null) }} aria-label="搜索聊天"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg></button>
+          <button className="chat-back sessions-btn" aria-label="聊天窗口" onClick={openDrawer}><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 15A9 9 0 0 1 9 3a9.5 9.5 0 1 0 11.5 12Z"/></svg></button>
         </div>
       </header>
 
@@ -1511,7 +1532,7 @@ export default function Chat({ back }) {
 
       {historyView && <div className="chat-history-banner"><span>正在翻看聊天记录</span><button onClick={returnLatest}>回到最新 ↓</button></div>}
       {/* 消息区 */}
-      <div className="chat-list" ref={listRef}>
+      <div className={`chat-list ${historyView ? 'reading-history' : ''}`} ref={listRef}>
         {!histLoading && (messages.find((m) => m.absIdx !== undefined)?.absIdx > 0) && (
           <button className="hist-more" onClick={loadEarlier} disabled={histMoreBusy || jumpBusy}>
             {histMoreBusy ? '翻着呢…' : '↑ 更早的对话'}
@@ -1521,7 +1542,7 @@ export default function Chat({ back }) {
           <div className="chat-empty-cat">
             <PixelCat size={96} />
             <span className="txt serif">
-              {histLoading ? 'remembering…' : 'say something.'}
+              {histLoading ? 'waiting…' : 'say something.'}
             </span>
           </div>
         )}
@@ -1538,7 +1559,7 @@ export default function Chat({ back }) {
             </div>
           )}
           <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
-            <div className="msg-meta">
+            <PaperAvatar who={m.role==='user'?'me':'him'} /><div className="msg-meta">
               <span>{m.time}</span>
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
                 <button className="cloud-btn" onClick={() => openThought(m)}><CloudIcon /></button>
@@ -1688,9 +1709,9 @@ export default function Chat({ back }) {
         )}
       </div>
 
-      {historyView && <div className="chat-history-compose">上下翻看这段记录，点「回到最新」继续聊天</div>}
+      {historyView && <div className="paper-latest-wrap"><button className="paper-latest" aria-label="回到最新聊天" onClick={returnLatest}>↓</button></div>}
       {/* 输入区 */}
-      <div className={`chat-input-wrap ${draftSegments.length ? 'has-segments' : ''}`} style={historyView?{display:'none'}:undefined}>
+      <div className={`chat-input-wrap ${draftSegments.length ? 'has-segments' : ''}`} data-history={historyView ? 'true' : undefined}>
         {draftSegments.length > 0 && editing == null && (
           <div className="segment-dock" aria-label="待发送的分段">
             {draftSegments.map((segment, index) => {
@@ -1715,7 +1736,7 @@ export default function Chat({ back }) {
           </div>
         )}
         <button className={`segment-feather ${input.trim() ? 'awake' : ''} ${featherSweep ? 'sweep' : ''}`}
-          aria-label="用小羽毛收好这一段" title="收好这一段"
+          aria-label="用羽毛笔收好这一段" title="收好这一段"
           onClick={collectSegment} disabled={!input.trim() || waiting || editing != null}>
           <FeatherIcon /><i />
         </button>
@@ -1747,10 +1768,11 @@ export default function Chat({ back }) {
           ref={inputRef}
           className="chat-ta"
           rows={1}
-          placeholder={recording ? '在听…' : 'Message…'}
+          placeholder={recording ? '在听…' : 'Message...'}
+          readOnly={!!historyView}
           value={input}
           onChange={onInput}
-          onFocus={() => { setTimeout(scrollBottom, 120); setTimeout(scrollBottom, 400) }}
+          onFocus={() => { if(historyView)return; setTimeout(scrollBottom, 120); setTimeout(scrollBottom, 400) }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
           }}
@@ -1763,7 +1785,7 @@ export default function Chat({ back }) {
           <div className="chat-bar-sp" />
           <button
             className={`cbtn mic ${recording ? 'rec' : ''}`}
-            onPointerDown={startRec}
+            onPointerDown={e=>{if(!historyView)startRec(e)}}
             onContextMenu={(e) => e.preventDefault()}
             style={{ touchAction: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
           >⌇</button>
@@ -1838,7 +1860,7 @@ export default function Chat({ back }) {
         <div className="sheet-mask" onClick={() => !compacting && setCtxOpen(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="ctx-panel-num serif">
+            <div className={`ctx-panel-num serif ${(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 150000) ? 'warn' : ''}`}>
               {ctxEstimated && !ctx ? '待下一轮' : `${ctxEstimated ? '约 ' : ''}${Math.round(ctx / 1000)}k`} <span className="ctx-panel-sub">{ctxLimit ? `/ ${Math.round(ctxLimit / 1000)}k` : '/ 等待模型返回窗口'}</span>
             </div>
             <div className="ctx-panel-hint">
@@ -1936,7 +1958,7 @@ export default function Chat({ back }) {
       {/* 长按菜单 */}
       {pressed && (
         <div className="sheet-mask" onClick={() => setPressed(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+          <div className="sheet paper-letter-menu" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="press-preview">{(pressed.voiceText || pressed.segmentText || pressed.m.content).slice(0, 60)}</div>
             <button className="sheet-item" disabled={pressed.m.streaming || favoriteChoiceFor(pressed)} onClick={() => {
@@ -1946,6 +1968,7 @@ export default function Chat({ back }) {
               <button className="sheet-item" onClick={replyToPressed}>↩ {(pressed.voiceText || pressed.segmentText) ? '回复这段' : '回复这条'}</button>
             )}
             <button className="sheet-item" onClick={doCopy}>⧉ {(pressed.voiceText || pressed.segmentText) ? '复制这段' : '复制整条'}</button>
+            <details className="paper-extra-actions"><summary>更多操作</summary>
             {pressed.m.role === 'user' && (
               <button className="sheet-item" onClick={doEdit}>✎ 编辑并重新发送</button>
             )}
@@ -1966,7 +1989,7 @@ export default function Chat({ back }) {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ q: String(m.content).slice(0, 120), note: note.trim() }),
               }).then(() => showToast('记下了,谢谢告状 📋')).catch(() => showToast('没记上'))
-            }}>🔍 他该想起某事</button>
+            }}>🔍 他该想起某事</button></details>
           </div>
         </div>
       )}
@@ -2073,16 +2096,18 @@ export default function Chat({ back }) {
           <div className="csearch-head">
             <input
               value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="关键词,或日期 2026-09-03"
+              placeholder="搜索关键词"
               onKeyDown={(e) => { if (e.key === 'Enter') doSearch() }} autoFocus
             />
             <button onClick={doSearch}>搜</button>
-            <button onClick={() => { setSearchOpen(false); setSearchHits(null); setSearchCtx(null) }}>✕</button>
+            <button onClick={() => { searchSequence.current++; setSearchBusy(false); setSearchOpen(false); setSearchHits(null); setSearchCtx(null) }}>✕</button>
           </div>
-          <button className="csearch-calendar-toggle" onClick={()=>setCalendarOpen(v=>!v)}>▦ 按日期查找</button>
+          <div className="paper-search-types">{[['all','全部'],['image','图片'],['voice','语音'],['call','通话记录'],['file','文件']].map(([kind,label])=><button key={kind} aria-pressed={searchKind===kind&&!calendarOpen} onClick={()=>doSearch(kind)}>{label}</button>)}<button aria-pressed={calendarOpen} onClick={()=>{searchSequence.current++;setSearchBusy(false);setCalendarOpen(v=>!v)}}>日期</button></div>
+          {searchBusy&&<div className="csearch-empty">查找中…</div>}
+          {searchKind!=='all'&&mediaBefore!=null&&!calendarOpen&&<button className="csearch-more" disabled={searchBusy} onClick={()=>doSearch(searchKind,true)}>继续查找更早的记录</button>}
           {calendarOpen && <ChatCalendar session={sessionRef.current} onPick={date=>jumpHistory({date})} busy={jumpBusy} />}
           {jumpBusy && <div className="csearch-empty">正在回到那一天…</div>}
-          {!searchCtx && searchHits && (
+          {!calendarOpen && !searchCtx && searchHits && (
             <div className="csearch-list">
               {searchHits.length === 0 && <div className="csearch-empty">没有找到,换个词试试?</div>}
               {searchHits.map((h) => (
