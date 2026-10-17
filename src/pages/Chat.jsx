@@ -76,6 +76,7 @@ const MemIcon = () => (
   </svg>
 )
 
+const PaperQuillIcon = () => (<svg viewBox="0 0 44 62" aria-hidden="true"><path d="M8 58 34 5C21 9 10 21 11 35c0 6 3 9 5 10C31 38 37 23 34 5M16 45l-4 8-4 5 1-6M16 43l-3-12m6 6-3-14m7 6-2-12m5 5-1-9m-8 28 12-6m-8-1 13-8m-9 1 11-8m-6 0 7-7"/><path d="M9 55 5 61"/></svg>)
 const FeatherIcon = () => (
   <svg viewBox="0 0 28 28" fill="none" stroke="currentColor"
     strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -182,6 +183,7 @@ export default function Chat({ back }) {
   const [draftSegments, setDraftSegments] = useState([])
   const [editingDraftId, setEditingDraftId] = useState(null)
   const [featherSweep, setFeatherSweep] = useState(false)
+  const [fallingFeather,setFallingFeather] = useState(0)
   const [draggingDraftId, setDraggingDraftId] = useState(null)
   const draftSessionRef = useRef(null)
   const draftHydratingRef = useRef(false)
@@ -898,6 +900,7 @@ export default function Chat({ back }) {
     setDraftSegments((items) => editingDraftId
       ? items.map((item) => item.id === editingDraftId ? next : item)
       : [...items, next])
+    setFallingFeather(n=>n+1)
     setFeatherSweep(false)
     requestAnimationFrame(() => setFeatherSweep(true))
     setTimeout(() => setFeatherSweep(false), 620)
@@ -1738,8 +1741,9 @@ export default function Chat({ back }) {
         <button className={`segment-feather ${input.trim() ? 'awake' : ''} ${featherSweep ? 'sweep' : ''}`}
           aria-label="用羽毛笔收好这一段" title="收好这一段"
           onClick={collectSegment} disabled={!input.trim() || waiting || editing != null}>
-          <FeatherIcon /><i />
+          <span className="original-feather-icon"><FeatherIcon /></span><span className="paper-quill-icon"><PaperQuillIcon /></span><i />
         </button>
+        {fallingFeather > 0 && <span key={fallingFeather} className="paper-falling-feather" aria-hidden="true"><PaperQuillIcon /></span>}
         {editing != null && (
           <div className="edit-tip">
             正在编辑那条消息 <button onClick={() => { setEditing(null); setInput('') }}>取消</button>

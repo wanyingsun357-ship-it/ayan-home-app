@@ -5,7 +5,7 @@
 .paper-avatar img{width:100%;height:100%;object-fit:cover}
 :root[data-visual=paper] .paper-portraits{display:flex;justify-content:center;gap:8px;margin-top:20px}
 :root[data-visual=paper] .paper-portraits .paper-avatar{width:49px;height:49px}
-:root[data-visual=paper] .hm-head{flex-direction:row-reverse;justify-content:flex-end}
+:root[data-visual=paper] .hm-head{flex-direction:row;justify-content:flex-end}
 :root[data-visual=paper] .hm-days-label,:root[data-visual=paper] .hm-quote-by{display:none}
 :root[data-visual=paper] .hm-hero{display:flex;flex-direction:column}
 :root[data-visual=paper] .hm-quote{order:-1;color:var(--paper-brand);font-size:20px;line-height:1.6;margin:10px auto 22px}
@@ -21,7 +21,7 @@
 :root[data-visual=paper] .sb{background:var(--paper-sidebar)}
 :root[data-visual=paper] .chat-head{position:relative;min-height:70px}
 :root[data-visual=paper] .chat-title{position:absolute;left:50%;transform:translate(-50%,-50%);white-space:nowrap;gap:6px}
-:root[data-visual=paper] .chat-head-r{margin-left:auto;gap:2px}
+:root[data-visual=paper] .chat-head-r{margin-left:auto;gap:8px}
 :root[data-visual=paper] .chat-back{display:flex;align-items:center;justify-content:center;width:30px;padding:0}
 :root[data-visual=paper] .chat-dot:not(.on){background:var(--paper-muted)}
 :root[data-visual=paper] .msg-row{position:relative;padding-left:42px;min-height:53px}
@@ -53,7 +53,7 @@
 :root[data-visual=paper] .voice-bubble{background:var(--paper-small-card);border-color:var(--paper-card-border)}
 :root[data-visual=paper] .sheet.thought{background:var(--paper-popup)}
 :root[data-visual=paper] .thought-head{position:relative;justify-content:center}
-:root[data-visual=paper] .thought-head>button:first-child{position:absolute;right:0;top:0}
+:root[data-visual=paper] .thought-head>button:first-child{position:absolute;left:0;right:auto;top:0}
 :root[data-visual=paper] .call{background:var(--paper-page)}
 :root[data-visual=paper] .original-call-avatar{display:none}
 :root[data-visual=paper] .paper-call-avatar{display:block;width:100%;height:100%}
@@ -80,3 +80,32 @@
 
 :root[data-visual=paper] .hm-num{text-align:center}
 :root[data-visual=paper] .chat-input-wrap,:root[data-visual=paper] .chat-input-wrap:focus-within{border:1px solid var(--paper-input-border);outline:none}
+
+/* Keep scrolling inside the message viewport, including on mobile Safari. */
+:root[data-visual=paper] .chat{position:fixed;top:0;left:0;right:0;width:100%;overflow:hidden;min-height:0}
+:root[data-visual=paper] .chat-list{min-height:0;overflow-x:hidden;overscroll-behavior:contain;overflow-anchor:none}
+:root[data-visual=paper] .chat-head{flex-shrink:0}
+:root[data-visual=paper] .msg-row{min-width:0;max-width:100%}
+:root[data-visual=paper] .bubble.assistant,:root[data-visual=paper] .bubble.user{border-radius:20px;overflow-wrap:anywhere}
+:root[data-visual=paper] .chat-head-r .chat-back{background:none;border:0;border-radius:0;box-shadow:none;width:32px;height:40px}
+:root[data-visual=paper] .thought-head{min-height:46px;padding-left:42px;padding-right:42px}
+:root[data-visual=paper] .thought-head>div:last-child:not(.thought-title){display:none}
+:root[data-visual=paper] .thought-title{width:100%;text-align:center}
+:root[data-visual=paper] .thought-x{border:0;border-radius:0;background:none;box-shadow:none;display:grid;place-items:center;padding:0}
+:root[data-visual=paper] .sheet-handle{flex-shrink:0;align-self:center}
+:root[data-visual=paper] .ctx-fill:not(.warn){background:#9B9BA1;opacity:.55}
+:root[data-visual=paper] .ctx-panel-num:not(.warn){color:#9B9BA1}
+.paper-quill-icon,.paper-falling-feather{display:none}
+:root[data-visual=paper] .segment-feather{right:12px;top:-35px;width:48px;height:49px;border:0;background:none;box-shadow:none;color:var(--paper-leaf);padding:2px;transform:rotate(10deg);animation:none}
+:root[data-visual=paper] .segment-feather .original-feather-icon,:root[data-visual=paper] .segment-feather>i{display:none}
+:root[data-visual=paper] .paper-quill-icon{display:block;width:100%;height:100%}
+:root[data-visual=paper] .paper-quill-icon svg,:root[data-visual=paper] .paper-falling-feather svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:.85;stroke-linecap:round;stroke-linejoin:round}
+:root[data-visual=paper] .segment-feather:disabled{opacity:.4}
+:root[data-visual=paper] .segment-feather.awake .paper-quill-icon{animation:paper-quill-float 3s ease-in-out infinite}
+:root[data-visual=paper] .segment-feather.sweep .paper-quill-icon{animation:paper-quill-sweep .55s ease}
+:root[data-visual=paper] .paper-falling-feather{display:block;pointer-events:none;position:absolute;right:23px;top:-24px;width:21px;height:34px;color:var(--paper-leaf);animation:paper-quill-fall 1.5s ease-out both;z-index:6}
+@keyframes paper-quill-float{50%{transform:translateY(-3px) rotate(-4deg)}}
+@keyframes paper-quill-sweep{50%{transform:translate(-7px,5px) rotate(-18deg)}}
+@keyframes paper-quill-fall{0%{opacity:.7;transform:translate(0,0) rotate(0)}50%{opacity:.5;transform:translate(-18px,27px) rotate(-35deg)}100%{opacity:0;transform:translate(-7px,63px) rotate(25deg)}}
+@media(max-width:360px){:root[data-visual=paper] .chat-head-r{gap:2px}:root[data-visual=paper] .chat-head-r .chat-back{width:28px}}
+@media(prefers-reduced-motion:reduce){:root[data-visual=paper] .paper-quill-icon{animation:none!important}:root[data-visual=paper] .paper-falling-feather{display:none}}
