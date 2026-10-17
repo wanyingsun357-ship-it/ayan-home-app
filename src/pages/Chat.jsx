@@ -1894,14 +1894,14 @@ export default function Chat({ back }) {
       {/* + 菜单 */}
       {menuOpen && (
         <div className="sheet-mask" onClick={() => setMenuOpen(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-handle" />
-            <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('image/*') }}>🖼 图片</button>
-            <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('*/*') }}>📄 文件</button>
-            <button className="sheet-item" onClick={() => { setMenuOpen(false); setArtifactsOpen(true) }}><span className="artifacts-menu-icon" aria-hidden="true">📂</span> Artifacts</button>
-            <button className="sheet-item" onClick={() => { setMenuOpen(false); setFavoritesOpen(true) }}>⭐ Favorites</button>
-            <button className="sheet-item" onClick={() => { setMenuOpen(false); openUploads() }}>🗂 附件管理</button>
-            <button className="sheet-item" onClick={() => { setMenuOpen(false); newSession() }}>✦ 新对话</button>
+          <div className="sheet paper-attachment-menu" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-handle" /><div className="paper-attachment-heading"><button aria-label="关闭附件菜单" onClick={() => setMenuOpen(false)}>×</button><span>随信附上</span></div>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('image/*') }}><span className="attachment-old-icon" aria-hidden="true">🖼</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3z M3 16l6-6 5 5 3-3 4 4 M16 7h.01"/></svg><span>图片</span></button>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('*/*') }}><span className="attachment-old-icon" aria-hidden="true">📄</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l5 5v15H6z M14 2v6h5 M9 12h7 M9 16h7"/></svg><span>文件</span></button>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); setArtifactsOpen(true) }}><span className="attachment-old-icon" aria-hidden="true">📂</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h8l2 3h10l-2 12H3z M2 6V3h8l2 3h8v3"/></svg><span>Artifacts</span></button>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); setFavoritesOpen(true) }}><span className="attachment-old-icon" aria-hidden="true">⭐</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg><span>Favorites</span></button>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); openUploads() }}><span className="attachment-old-icon" aria-hidden="true">🗂</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v5H3z M5 8v13h14V8 M9 12h6"/></svg><span>附件管理</span></button>
+            <button className="sheet-item" onClick={() => { setMenuOpen(false); newSession() }}><span className="attachment-old-icon" aria-hidden="true">✦</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h8 M4 4v16h16v-8 M10 14l1-4 9-9 3 3-9 9z"/></svg><span>新对话</span></button>
           </div>
         </div>
       )}
