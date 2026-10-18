@@ -117,8 +117,8 @@ export default function Mind({ back }) {
       </section>
 
       {chapter && <div className="mind-sheet-layer" onClick={() => setChapter(null)}>
-        <section className="mind-sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-          <header><button onClick={() => setChapter(null)}>‹</button><div><strong className="serif">{current?.title}</strong><small>{current?.en}</small></div><i className="serif">只读</i></header>
+        <section className={`mind-sheet mind-sheet-${chapter}`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+          <header><button onClick={() => setChapter(null)}>‹</button><div><strong className="serif">{current?.title}</strong><small>{current?.en}</small></div><i className="mind-sheet-index"><b className="serif">{current?.no}</b><span>只读</span></i></header>
           <div className="mind-sheet-body">
             {chapter === 'thoughts' && <>
               {!threads.length && !book.locked?.thoughts && <Empty>我还没有留下需要越过这一轮的念头。</Empty>}
