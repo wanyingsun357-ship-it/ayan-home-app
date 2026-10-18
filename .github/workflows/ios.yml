@@ -15,6 +15,10 @@ on:
       - 'fastlane/**'
       - '.github/workflows/ios.yml'
       - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
 
 concurrency:
   group: ios-build
