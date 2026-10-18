@@ -68,3 +68,11 @@
 - 网页已部署至 `/root/ayan/bridge/public`，旧入口备份 `/root/ayan/bridge/public/index.html.bak-native-notify-20261018`。新 JS/CSS 资源与站点入口均返回 200；没有删除旧哈希资源或用户上传内容。
 - 本地和隔离分支 `npm run build`、`npx cap sync ios` 与 `git diff --check` 通过。GitHub Actions iOS TestFlight run 21（commit `e0f7e31`）Fastlane 上传成功，IPA 已由工作流保存；TestFlight 处理和用户安装可能需等待。未做真机横幅/冷启动验收。
 - “标签”按现有 Diary 便签评论事件实现；未发现单独 tag 通知事件。Live Activity／灵动岛未实现。
+
+
+## 2026-10-18 开屏英文题签手写体（待确认发布）
+
+- “I'm here.” 与 “You're back.” 已改为 Allura 轻柔连笔手写字形，保留两句原有的逐笔显现和颜色。
+- 字体转换为 SVG 轮廓路径，运行时不依赖系统字体或联网加载；随项目附 Allura OFL 许可文本 `public/fonts/OFL-Allura.txt`，未打包原始字体文件。
+- 从最新发布提交 `908e2aa` 的隔离工作树修改；`npm run build` 与 `git diff --check` 通过。字形预览已生成并供用户确认。
+- 已在隔离分支提交；尚未推送或部署。iPhone 真机字形动画尚未复核。
