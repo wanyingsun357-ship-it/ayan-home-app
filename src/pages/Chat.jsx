@@ -33,6 +33,17 @@ const newMsg = (role, content, extra = {}) => {
 }
 
 const TIME_DIVIDER_GAP = 30 * 60 * 1000
+const TOUCH_ICONS = ['orbit', 'star', 'petal', 'bow', 'paw']
+const TOUCH_PRESETS = ['拍了拍', '戳了一下', '捏了一下', '揉了揉', '抱了一下']
+const cleanTouchAction = (value) => String(value || '').replace(/[\[\]<>]/g, '').trim().slice(0, 12) || '拍了拍'
+const touchMessage = (action, icon) => `[TOUCH:${TOUCH_ICONS.includes(icon) ? icon : 'orbit'}]${cleanTouchAction(action)}[/TOUCH]`
+const parseTouchMessage = (m) => {
+  const content = String(m?.content || '').trim()
+  if (m?.role === 'user' && content === '（婉莹拍了拍阿晏）') return { icon: 'orbit', action: '拍了拍' }
+  const match = content.match(/^\[TOUCH:([a-z]+)\]([\s\S]{1,24})\[\/TOUCH\]$/)
+  if (!match) return null
+  return { icon: TOUCH_ICONS.includes(match[1]) ? match[1] : 'orbit', action: cleanTouchAction(match[2]) }
+}
 const localDayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 const dividerLabel = (messages, idx) => {
   const currentMs = messages[idx]?.timeMs
@@ -74,6 +85,17 @@ const MemIcon = () => (
     <circle cx="16.8" cy="16.8" r="1.6" />
   </svg>
 )
+
+const TouchGlyph = ({ kind = 'orbit' }) => {
+  const paths = {
+    orbit: <><circle cx="12" cy="12" r="3.1"/><path d="M4.4 13.4c1.7 4.8 8.8 7.2 13.4 2.7 3.7-3.6 1.1-9.2-3.4-10.1-3.8-.8-7.2 1.1-8.5 3.8"/><circle cx="5.4" cy="10.6" r="1" fill="currentColor" stroke="none"/></>,
+    star: <><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7Z"/><path d="m18.5 16 .7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7Z"/></>,
+    petal: <><path d="M12 12C6.2 11.3 5.1 6.7 7.2 4.5c2.2-2.2 5.1.2 4.8 7.5Z"/><path d="M12 12c.7-5.8 5.3-6.9 7.5-4.8 2.2 2.2-.2 5.1-7.5 4.8ZM12 12c5.8.7 6.9 5.3 4.8 7.5-2.2 2.2-5.1-.2-4.8-7.5ZM12 12c-.7 5.8-5.3 6.9-7.5 4.8-2.2-2.2.2-5.1 7.5-4.8Z"/><circle cx="12" cy="12" r="1.5"/></>,
+    bow: <><path d="M11 10C8.2 5.9 4.2 5.6 4 8.9c-.2 3 3.8 3.4 7 2.1M13 10c2.8-4.1 6.8-4.4 7-.9.2 3-3.8 3.4-7 2.1"/><path d="M10.7 10h2.6v3h-2.6zM10.8 13l-3.2 6M13.2 13l3.2 6"/></>,
+    paw: <><path d="M8.1 13.2c2.1-2.5 5.7-2.5 7.8 0 2 2.4.2 5.3-3.9 5.3s-5.9-2.9-3.9-5.3Z"/><ellipse cx="6.6" cy="9.5" rx="1.7" ry="2.2"/><ellipse cx="10.4" cy="6.7" rx="1.7" ry="2.2"/><ellipse cx="14.8" cy="6.9" rx="1.7" ry="2.2"/><ellipse cx="18" cy="10" rx="1.7" ry="2.2"/></>,
+  }
+  return <svg className="touch-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[kind] || paths.orbit}</svg>
+}
 
 const PaperQuillIcon = () => (<svg viewBox="0 0 44 62" aria-hidden="true"><path d="M8 58 34 5C21 9 10 21 11 35c0 6 3 9 5 10C31 38 37 23 34 5M16 45l-4 8-4 5 1-6M16 43l-3-12m6 6-3-14m7 6-2-12m5 5-1-9m-8 28 12-6m-8-1 13-8m-9 1 11-8m-6 0 7-7"/><path d="M9 55 5 61"/></svg>)
 const FeatherIcon = () => (
@@ -199,6 +221,12 @@ export default function Chat({ back }) {
   useEffect(() => { waitingRef.current = waiting; if (!waiting && voiceQueueRef.current.length) { const [t, v] = voiceQueueRef.current.shift(); sendVoice(t, v) } }, [waiting])
   const [histLoading, setHistLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [touchOpen, setTouchOpen] = useState(false)
+  const [touchAction, setTouchAction] = useState(() => cleanTouchAction(localStorage.getItem('chat-touch-action') || '拍了拍'))
+  const [touchIcon, setTouchIcon] = useState(() => {
+    const saved = localStorage.getItem('chat-touch-icon')
+    return TOUCH_ICONS.includes(saved) ? saved : 'orbit'
+  })
   const [thought, setThought] = useState(null)
   const [thoughtFull, setThoughtFull] = useState(false)
   const touchYRef = useRef(0)
@@ -364,6 +392,10 @@ export default function Chat({ back }) {
   const recogRef = useRef(null)
   const audioRef = useRef(null)
   const pressTimer = useRef(null)
+  const bubbleTapRef = useRef({ key: '', at: 0 })
+  const touchTimerRef = useRef(null)
+  const incomingTouchRef = useRef('')
+  const [touchedMessageKey, setTouchedMessageKey] = useState('')
 
   const freshDraftId = () => `seg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
   const cleanDraftReply = (reply) => reply ? { ...reply, content: String(reply.content || '').slice(0, 1000) } : null
@@ -1083,6 +1115,57 @@ export default function Chat({ back }) {
   }
   const cancelPress = () => clearTimeout(pressTimer.current)
 
+  // ---- 碰一碰：双击用默认动作；也可以从输入栏挑动作和图案 ----
+  const sendTouch = async (targetKey = '') => {
+    if (browsingRef.current || historyView) { showToast('回到最新聊天再碰他'); return }
+    if (waitingRef.current || streamRef.current.id != null) { showToast('等阿晏说完再碰他'); return }
+    const action = cleanTouchAction(touchAction)
+    const icon = TOUCH_ICONS.includes(touchIcon) ? touchIcon : 'orbit'
+    const content = touchMessage(action, icon)
+    localStorage.setItem('chat-touch-action', action)
+    localStorage.setItem('chat-touch-icon', icon)
+    setTouchAction(action)
+    setTouchOpen(false)
+    const latestAssistant = [...messages].reverse().find((m) => m.role === 'assistant' && !parseTouchMessage(m))
+    const animatedKey = targetKey || (latestAssistant ? String(latestAssistant.absIdx ?? latestAssistant.id) : '')
+    clearTimeout(touchTimerRef.current)
+    setTouchedMessageKey(animatedKey)
+    touchTimerRef.current = setTimeout(() => setTouchedMessageKey(''), 720)
+    buzz('light')
+    setMessages((ms) => [...ms, newMsg('user', content, { touch: true })])
+    setWaiting(true)
+    streamedRef.current = false
+    streamRef.current = { id: null, reasoning: '', reply: null }
+    scrollBottom()
+    const sentSession = sessionRef.current
+    try {
+      const r = await fetch('/api/message', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: content, model: modelId(), session: sentSession, ...reasonArgs() }),
+      })
+      const data = await r.json()
+      if (sentSession !== sessionRef.current) return
+      if (data.response && !streamedRef.current) setMessages((ms) => [...ms, newMsg('assistant', data.response)])
+    } catch {
+      if (sentSession !== sessionRef.current) return
+      showToast('这一下没碰到，正在核对')
+      refreshTail()
+    }
+    setWaiting(false)
+    scrollBottom()
+  }
+  const handleBubbleTap = (e, m) => {
+    if (m.role !== 'assistant' || e.target.closest('a, button, audio, img, .file-card')) return
+    const key = String(m.absIdx ?? m.id)
+    const now = Date.now()
+    const last = bubbleTapRef.current
+    bubbleTapRef.current = { key, at: now }
+    if (last.key === key && now - last.at < 360) {
+      bubbleTapRef.current = { key: '', at: 0 }
+      sendTouch(key)
+    }
+  }
+
   const doCopy = async () => {
     const text = pressed.voiceText || pressed.segmentText || pressed.m.content
     try { await navigator.clipboard.writeText(text) ; showToast((pressed.voiceText || pressed.segmentText) ? '已复制这段' : '已复制') }
@@ -1487,6 +1570,23 @@ export default function Chat({ back }) {
     (input.trim() || draftSegments.length || pending.some((x) => x.url)) &&
     !pending.some((x) => x.uploading) && !waiting && !historyView
 
+  // 他发来的触碰消息落下时，让她最近的一只气泡也轻轻回应一下。
+  useEffect(() => {
+    const last = messages[messages.length - 1]
+    const touch = parseTouchMessage(last)
+    if (!touch || last.role !== 'assistant' || last.streaming || Date.now() - (last.timeMs || 0) > 15000) return
+    const touchKey = String(last.absIdx ?? last.id)
+    if (incomingTouchRef.current === touchKey) return
+    incomingTouchRef.current = touchKey
+    const target = [...messages].reverse().find((m) => m.role === 'user' && !parseTouchMessage(m))
+    if (target) {
+      clearTimeout(touchTimerRef.current)
+      setTouchedMessageKey(String(target.absIdx ?? target.id))
+      touchTimerRef.current = setTimeout(() => setTouchedMessageKey(''), 720)
+    }
+    buzz('light')
+  }, [messages])
+
   // 会话分组:今天 / 这周 / 更早
   const groupSessions = () => {
     const now = new Date()
@@ -1548,10 +1648,17 @@ export default function Chat({ back }) {
             </span>
           </div>
         )}
-        {messages.map((m, idx) => (
-          m.role === 'system' ? (
+        {messages.map((m, idx) => {
+          const touch = parseTouchMessage(m)
+          return m.role === 'system' ? (
             <div key={m.id} data-message-index={m.absIdx} className="sys-divider">
               <span>{m.content}</span>
+            </div>
+          ) : touch ? (
+            <div key={m.id} data-message-index={m.absIdx} className={`touch-notice ${m.role}`} aria-label={`${m.role === 'assistant' ? NAMES.me : NAMES.her}${touch.action}${m.role === 'assistant' ? NAMES.her : NAMES.me}`}>
+              <span className="touch-mark"><TouchGlyph kind={touch.icon} /></span>
+              <span><b>{m.role === 'assistant' ? NAMES.me : NAMES.her}</b>{touch.action}<b>{m.role === 'assistant' ? NAMES.her : NAMES.me}</b></span>
+              <time>{m.time}</time>
             </div>
           ) : (
           <div key={m.id} className="msg-group">
@@ -1560,7 +1667,7 @@ export default function Chat({ back }) {
               <span>{dividerLabel(messages, idx)}</span>
             </div>
           )}
-          <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
+          <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${touchedMessageKey === String(m.absIdx ?? m.id) ? 'being-touched' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
             <div className="msg-meta">
               <span>{m.time}</span>
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
@@ -1674,6 +1781,7 @@ export default function Chat({ back }) {
                 ) : (
                   <div key={seg.draftId || i} className={`message-segment-block ${m.role}`}>
                     <div className={`bubble ${m.role} message-text-segment`}
+                      onClick={(e) => handleBubbleTap(e, m)}
                       onPointerDown={(e) => { e.stopPropagation(); startPress(e, m, idx, seg.text) }}
                       onPointerUp={(e) => { e.stopPropagation(); cancelPress() }}
                       onPointerMove={(e) => { e.stopPropagation(); cancelPress() }}
@@ -1700,7 +1808,7 @@ export default function Chat({ back }) {
           </div>
           </div>
           )
-        ))}
+        })}
         {historyView?.after != null && <button className="hist-more" disabled={jumpBusy} onClick={()=>jumpHistory({after:String(historyView.after)},'after')}>{jumpBusy?'翻着呢…':'↓ 后面的对话'}</button>}
         {!historyView && waiting && (
           <div className="msg-row assistant waiting-reply">
@@ -1786,6 +1894,9 @@ export default function Chat({ back }) {
             {model}{effort !== 'Medium' ? ` · ${effort}` : ''}{extended ? ' ✦' : ''}
           </button>
           <div className="chat-bar-sp" />
+          <button className="cbtn touch-btn" aria-label="碰一碰阿晏" title="碰一碰" onClick={() => setTouchOpen(true)}>
+            <TouchGlyph kind={touchIcon} />
+          </button>
           <button
             className={`cbtn mic ${recording ? 'rec' : ''}`}
             onPointerDown={e=>{if(!historyView)startRec(e)}}
@@ -1799,6 +1910,31 @@ export default function Chat({ back }) {
           >↑</button>
         </div>
       </div>
+
+      {/* 双向触碰：动作和图案都是她自己选的，双击气泡沿用当前选择 */}
+      {touchOpen && (
+        <div className="sheet-mask" onClick={() => setTouchOpen(false)}>
+          <div className="sheet touch-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="touch-sheet-title">碰一碰</div>
+            <div className="touch-preview">
+              <span className="touch-mark"><TouchGlyph kind={touchIcon} /></span>
+              <span><b>{NAMES.her}</b>{cleanTouchAction(touchAction)}<b>{NAMES.me}</b></span>
+            </div>
+            <div className="touch-label">动作</div>
+            <div className="touch-presets">
+              {TOUCH_PRESETS.map((action) => <button key={action} className={touchAction === action ? 'on' : ''} onClick={() => setTouchAction(action)}>{action}</button>)}
+            </div>
+            <label className="touch-custom"><span>{NAMES.her}</span><input value={touchAction} maxLength={12} onChange={(e) => setTouchAction(e.target.value)} aria-label="自定义触碰动作"/><span>{NAMES.me}</span></label>
+            <div className="touch-label">小标志</div>
+            <div className="touch-icons">
+              {TOUCH_ICONS.map((icon) => <button key={icon} className={touchIcon === icon ? 'on' : ''} aria-label={`选择${icon}图案`} onClick={() => setTouchIcon(icon)}><TouchGlyph kind={icon} /></button>)}
+            </div>
+            <button className="touch-send" onClick={() => sendTouch()} disabled={!touchAction.trim() || waiting}>就这样碰他一下</button>
+            <div className="touch-hint">双击他的任意文字气泡，会直接使用这一组动作与标志</div>
+          </div>
+        </div>
+      )}
 
       {/* Projects 面板 */}
       {projOpen && (
