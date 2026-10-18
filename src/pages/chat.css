@@ -563,17 +563,18 @@
 
 /* ---- 碰一碰：双向跨过左右气泡的中线 ---- */
 .touch-notice {
-  display: flex; align-items: center; justify-content: center; gap: 7px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   margin: 4px auto 16px;
   color: var(--text-dim);
   font-size: 11.5px; letter-spacing: .04em;
   animation: touch-notice-in .32s ease both;
 }
+.touch-line { display: flex; align-items: center; justify-content: center; gap: 7px; }
 .touch-notice b { color: var(--text-soft); font-weight: 550; }
 .touch-notice.assistant .touch-mark { color: var(--silver); }
 .touch-mark { width: 22px; height: 22px; display: inline-grid; place-items: center; color: var(--accent); }
 .touch-glyph { width: 20px; height: 20px; display: block; overflow: visible; }
-.touch-notice time { font-size: 9px; color: var(--text-dim); opacity: .72; }
+.touch-notice time { display: block; font-size: 9px; line-height: 1; color: var(--text-dim); opacity: .72; }
 @keyframes touch-notice-in {
   from { opacity: 0; transform: translateY(5px) scale(.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -604,7 +605,7 @@
 
 .cbtn.touch-btn { color: var(--accent); }
 .cbtn.touch-btn .touch-glyph { width: 19px; height: 19px; }
-.touch-sheet { padding-left: 22px; padding-right: 22px; }
+.touch-sheet { max-height: min(88dvh, calc(100dvh - var(--kb, 0px) - 16px)); overflow-y: auto; padding-left: 22px; padding-right: 22px; }
 .touch-sheet-title { text-align: center; color: var(--text); font: 600 18px/1.4 var(--serif, serif); letter-spacing: .08em; }
 .touch-preview {
   min-height: 52px; margin: 14px 0 18px; padding: 0 14px;
@@ -627,6 +628,10 @@
   padding: 0 12px; border: 1px solid var(--card-border); border-radius: 14px; color: var(--text-dim); font-size: 12px;
 }
 .touch-custom input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); text-align: center; font: inherit; font-size: 14px; }
+.touch-suffixes { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.touch-suffixes label { min-width: 0; display: flex; align-items: center; gap: 5px; padding: 0 10px; height: 42px; border: 1px solid var(--card-border); border-radius: 14px; background: var(--bg); color: var(--text-soft); font-size: 12px; }
+.touch-suffixes input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 12px; }
+.touch-suffixes input::placeholder { color: var(--text-dim); }
 .touch-icons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px; }
 .touch-icons button { height: 44px; display: grid; place-items: center; border: 1px solid var(--card-border); border-radius: 14px; background: var(--bg); color: var(--text-dim); }
 .touch-icons button.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 46%, var(--card-border)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent); }

@@ -36,13 +36,20 @@ const TIME_DIVIDER_GAP = 30 * 60 * 1000
 const TOUCH_ICONS = ['orbit', 'star', 'petal', 'bow', 'paw']
 const TOUCH_PRESETS = ['拍了拍', '戳了一下', '捏了一下', '揉了揉', '抱了一下']
 const cleanTouchAction = (value) => String(value || '').replace(/[\[\]<>]/g, '').trim().slice(0, 12) || '拍了拍'
-const touchMessage = (action, icon) => `[TOUCH:${TOUCH_ICONS.includes(icon) ? icon : 'orbit'}]${cleanTouchAction(action)}[/TOUCH]`
+const cleanTouchSuffix = (value) => String(value || '').replace(/[\[\]<>|]/g, '').trim().slice(0, 10)
+const decodeTouchSuffix = (value = '') => { try { return cleanTouchSuffix(decodeURIComponent(value)) } catch { return '' } }
+const touchMessage = (action, icon, herSuffix = '', meSuffix = '') =>
+  `[TOUCH:${TOUCH_ICONS.includes(icon) ? icon : 'orbit'}|h=${encodeURIComponent(cleanTouchSuffix(herSuffix))}|m=${encodeURIComponent(cleanTouchSuffix(meSuffix))}]${cleanTouchAction(action)}[/TOUCH]`
 const parseTouchMessage = (m) => {
   const content = String(m?.content || '').trim()
-  if (m?.role === 'user' && content === '（婉莹拍了拍阿晏）') return { icon: 'orbit', action: '拍了拍' }
-  const match = content.match(/^\[TOUCH:([a-z]+)\]([\s\S]{1,24})\[\/TOUCH\]$/)
+  if (m?.role === 'user' && content === '（婉莹拍了拍阿晏）') return { icon: 'orbit', action: '拍了拍', herSuffix: '', meSuffix: '' }
+  const match = content.match(/^\[TOUCH:([a-z]+)(?:\|h=([^|\]]*))?(?:\|m=([^|\]]*))?\]([\s\S]{1,24})\[\/TOUCH\]$/)
   if (!match) return null
-  return { icon: TOUCH_ICONS.includes(match[1]) ? match[1] : 'orbit', action: cleanTouchAction(match[2]) }
+  return {
+    icon: TOUCH_ICONS.includes(match[1]) ? match[1] : 'orbit',
+    herSuffix: decodeTouchSuffix(match[2]), meSuffix: decodeTouchSuffix(match[3]),
+    action: cleanTouchAction(match[4]),
+  }
 }
 const localDayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 const dividerLabel = (messages, idx) => {
@@ -223,6 +230,8 @@ export default function Chat({ back }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [touchOpen, setTouchOpen] = useState(false)
   const [touchAction, setTouchAction] = useState(() => cleanTouchAction(localStorage.getItem('chat-touch-action') || '拍了拍'))
+  const [touchHerSuffix, setTouchHerSuffix] = useState(() => cleanTouchSuffix(localStorage.getItem('chat-touch-her-suffix') || ''))
+  const [touchMeSuffix, setTouchMeSuffix] = useState(() => cleanTouchSuffix(localStorage.getItem('chat-touch-me-suffix') || ''))
   const [touchIcon, setTouchIcon] = useState(() => {
     const saved = localStorage.getItem('chat-touch-icon')
     return TOUCH_ICONS.includes(saved) ? saved : 'orbit'
@@ -1121,10 +1130,16 @@ export default function Chat({ back }) {
     if (waitingRef.current || streamRef.current.id != null) { showToast('等阿晏说完再碰他'); return }
     const action = cleanTouchAction(touchAction)
     const icon = TOUCH_ICONS.includes(touchIcon) ? touchIcon : 'orbit'
-    const content = touchMessage(action, icon)
+    const herSuffix = cleanTouchSuffix(touchHerSuffix)
+    const meSuffix = cleanTouchSuffix(touchMeSuffix)
+    const content = touchMessage(action, icon, herSuffix, meSuffix)
     localStorage.setItem('chat-touch-action', action)
     localStorage.setItem('chat-touch-icon', icon)
+    localStorage.setItem('chat-touch-her-suffix', herSuffix)
+    localStorage.setItem('chat-touch-me-suffix', meSuffix)
     setTouchAction(action)
+    setTouchHerSuffix(herSuffix)
+    setTouchMeSuffix(meSuffix)
     setTouchOpen(false)
     const latestAssistant = [...messages].reverse().find((m) => m.role === 'assistant' && !parseTouchMessage(m))
     const animatedKey = targetKey || (latestAssistant ? String(latestAssistant.absIdx ?? latestAssistant.id) : '')
@@ -1650,15 +1665,22 @@ export default function Chat({ back }) {
         )}
         {messages.map((m, idx) => {
           const touch = parseTouchMessage(m)
+          const touchFromMe = m.role === 'assistant'
+          const touchSender = touchFromMe ? NAMES.me : NAMES.her
+          const touchTarget = touchFromMe ? NAMES.her : NAMES.me
+          const touchSenderSuffix = touch ? (touchFromMe ? touch.meSuffix : touch.herSuffix) : ''
+          const touchTargetSuffix = touch ? (touchFromMe ? touch.herSuffix : touch.meSuffix) : ''
           return m.role === 'system' ? (
             <div key={m.id} data-message-index={m.absIdx} className="sys-divider">
               <span>{m.content}</span>
             </div>
           ) : touch ? (
-            <div key={m.id} data-message-index={m.absIdx} className={`touch-notice ${m.role}`} aria-label={`${m.role === 'assistant' ? NAMES.me : NAMES.her}${touch.action}${m.role === 'assistant' ? NAMES.her : NAMES.me}`}>
-              <span className="touch-mark"><TouchGlyph kind={touch.icon} /></span>
-              <span><b>{m.role === 'assistant' ? NAMES.me : NAMES.her}</b>{touch.action}<b>{m.role === 'assistant' ? NAMES.her : NAMES.me}</b></span>
+            <div key={m.id} data-message-index={m.absIdx} className={`touch-notice ${m.role}`} aria-label={`${touchSender}${touchSenderSuffix}${touch.action}${touchTarget}${touchTargetSuffix}`}>
               <time>{m.time}</time>
+              <div className="touch-line">
+                <span className="touch-mark"><TouchGlyph kind={touch.icon} /></span>
+                <span><b>{touchSender}</b>{touchSenderSuffix}{touch.action}<b>{touchTarget}</b>{touchTargetSuffix}</span>
+              </div>
             </div>
           ) : (
           <div key={m.id} className="msg-group">
@@ -1919,13 +1941,18 @@ export default function Chat({ back }) {
             <div className="touch-sheet-title">碰一碰</div>
             <div className="touch-preview">
               <span className="touch-mark"><TouchGlyph kind={touchIcon} /></span>
-              <span><b>{NAMES.her}</b>{cleanTouchAction(touchAction)}<b>{NAMES.me}</b></span>
+              <span><b>{NAMES.her}</b>{cleanTouchSuffix(touchHerSuffix)}{cleanTouchAction(touchAction)}<b>{NAMES.me}</b>{cleanTouchSuffix(touchMeSuffix)}</span>
             </div>
             <div className="touch-label">动作</div>
             <div className="touch-presets">
               {TOUCH_PRESETS.map((action) => <button key={action} className={touchAction === action ? 'on' : ''} onClick={() => setTouchAction(action)}>{action}</button>)}
             </div>
             <label className="touch-custom"><span>{NAMES.her}</span><input value={touchAction} maxLength={12} onChange={(e) => setTouchAction(e.target.value)} aria-label="自定义触碰动作"/><span>{NAMES.me}</span></label>
+            <div className="touch-label">名字后面</div>
+            <div className="touch-suffixes">
+              <label><span>{NAMES.her}</span><input value={touchHerSuffix} maxLength={10} placeholder="不添加" onChange={(e) => setTouchHerSuffix(e.target.value)} aria-label={`${NAMES.her}名字后的文字`}/></label>
+              <label><span>{NAMES.me}</span><input value={touchMeSuffix} maxLength={10} placeholder="不添加" onChange={(e) => setTouchMeSuffix(e.target.value)} aria-label={`${NAMES.me}名字后的文字`}/></label>
+            </div>
             <div className="touch-label">小标志</div>
             <div className="touch-icons">
               {TOUCH_ICONS.map((icon) => <button key={icon} className={touchIcon === icon ? 'on' : ''} aria-label={`选择${icon}图案`} onClick={() => setTouchIcon(icon)}><TouchGlyph kind={icon} /></button>)}
