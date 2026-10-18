@@ -406,6 +406,7 @@ export default function Chat({ back }) {
   const pressTimer = useRef(null)
   const bubbleTapRef = useRef({ key: '', at: 0 })
   const touchTimerRef = useRef(null)
+  const touchButtonPressRef = useRef(null)
   const incomingTouchRef = useRef('')
   const [touchedMessageKey, setTouchedMessageKey] = useState('')
 
@@ -1220,6 +1221,38 @@ export default function Chat({ back }) {
     setWaiting(false)
     scrollBottom()
   }
+  const startTouchButtonPress = (e) => {
+    if (e.button != null && e.button !== 0) return
+    const press = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, long: false, node: e.currentTarget }
+    press.timer = setTimeout(() => {
+      press.long = true
+      setTouchDraftId(null)
+      setTouchOpen(true)
+      buzz('light')
+    }, 420)
+    touchButtonPressRef.current = press
+    try { press.node.setPointerCapture(press.pointerId) } catch {}
+  }
+  const moveTouchButtonPress = (e) => {
+    const press = touchButtonPressRef.current
+    if (!press || press.long) return
+    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8) {
+      clearTimeout(press.timer)
+      touchButtonPressRef.current = null
+    }
+  }
+  const endTouchButtonPress = () => {
+    const press = touchButtonPressRef.current
+    if (!press) return
+    clearTimeout(press.timer)
+    touchButtonPressRef.current = null
+    if (!press.long) queueTouch()
+  }
+  const cancelTouchButtonPress = () => {
+    const press = touchButtonPressRef.current
+    if (press) clearTimeout(press.timer)
+    touchButtonPressRef.current = null
+  }
   const handleBubbleTap = (e, m) => {
     if (m.role !== 'assistant' || e.target.closest('a, button, audio, img, .file-card')) return
     const key = String(m.absIdx ?? m.id)
@@ -1981,7 +2014,13 @@ export default function Chat({ back }) {
             {model}{effort !== 'Medium' ? ` · ${effort}` : ''}{extended ? ' ✦' : ''}
           </button>
           <div className="chat-bar-sp" />
-          <button className="cbtn touch-btn" aria-label="碰一碰阿晏" title="碰一碰" onClick={() => { setTouchDraftId(null); setTouchOpen(true) }}>
+          <button className="cbtn touch-btn" aria-label="轻点放进分段，长按修改碰一碰" title="轻点放进分段，长按修改"
+            onPointerDown={startTouchButtonPress}
+            onPointerMove={moveTouchButtonPress}
+            onPointerUp={endTouchButtonPress}
+            onPointerCancel={cancelTouchButtonPress}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ touchAction: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
             <TouchGlyph kind={touchIcon} />
           </button>
           <button
@@ -2022,13 +2061,10 @@ export default function Chat({ back }) {
             <div className="touch-icons">
               {TOUCH_ICONS.map((icon) => <button key={icon} className={touchIcon === icon ? 'on' : ''} aria-label={`选择${icon}图案`} onClick={() => setTouchIcon(icon)}><TouchGlyph kind={icon} /></button>)}
             </div>
-            <button className="touch-send" onClick={(input.trim() || draftSegments.length || touchDraftId) ? queueTouch : () => sendTouch()} disabled={!touchAction.trim() || waiting}>
-              {touchDraftId ? '保存这一下' : (input.trim() || draftSegments.length) ? '放进这一组' : '就这样碰他一下'}
+            <button className="touch-send" onClick={queueTouch} disabled={!touchAction.trim() || waiting}>
+              {touchDraftId ? '保存这一下' : '改好，放进托盘'}
             </button>
-            {!touchDraftId && !input.trim() && !draftSegments.length && (
-              <button className="touch-queue" onClick={queueTouch} disabled={!touchAction.trim() || waiting}>放进分段，继续写</button>
-            )}
-            <div className="touch-hint">双击他的任意文字气泡，会直接使用这一组动作与标志</div>
+            <div className="touch-hint">输入栏轻点直接放进分段；双击他的文字气泡会立即使用这一组设置</div>
           </div>
         </div>
       )}

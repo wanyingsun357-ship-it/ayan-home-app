@@ -642,8 +642,6 @@
 .touch-icons .touch-glyph { width: 23px; height: 23px; }
 .touch-send { width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 16px; background: var(--text); color: var(--bg); font-size: 14px; letter-spacing: .04em; }
 .touch-send:disabled { opacity: .4; }
-.touch-queue { width: 100%; margin-top: 8px; padding: 8px; border: 0; background: transparent; color: var(--text-dim); font-size: 12px; }
-.touch-queue:disabled { opacity: .4; }
 .touch-hint { padding: 9px 0 0; text-align: center; color: var(--text-dim); font-size: 10.5px; }
 
 /* ---- 婉莹的语音条 ---- */
