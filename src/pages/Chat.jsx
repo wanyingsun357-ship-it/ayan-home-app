@@ -1696,7 +1696,7 @@ export default function Chat({ back }) {
           {touchNotice}
           <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${touchedMessageKey === String(m.absIdx ?? m.id) ? 'being-touched' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
             <div className="msg-meta">
-              {!touch && <span>{m.time}</span>}
+              {(!touch || touch.rest) && <span>{m.time}</span>}
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
                 <button className="cloud-btn" onClick={() => openThought(m)}><CloudIcon /></button>
               )}
