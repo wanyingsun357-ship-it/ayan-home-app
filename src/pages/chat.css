@@ -575,6 +575,10 @@
 .touch-mark { width: 22px; height: 22px; display: inline-grid; place-items: center; color: var(--accent); }
 .touch-glyph { width: 20px; height: 20px; display: block; overflow: visible; }
 .touch-notice time { display: block; font-size: 9px; line-height: 1; color: var(--text-dim); opacity: .72; }
+.touch-inline-segs { width: 100%; max-width: 100%; }
+.touch-inline-segs .message-segment-block { max-width: 82%; }
+.inline-touch-wrap { width: 100%; align-self: center; }
+.inline-touch-wrap .touch-notice { width: 100%; margin-top: 8px; }
 @keyframes touch-notice-in {
   from { opacity: 0; transform: translateY(5px) scale(.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
