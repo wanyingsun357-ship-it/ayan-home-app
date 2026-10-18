@@ -42,13 +42,13 @@ const touchMessage = (action, icon, herSuffix = '', meSuffix = '') =>
   `[TOUCH:${TOUCH_ICONS.includes(icon) ? icon : 'orbit'}|h=${encodeURIComponent(cleanTouchSuffix(herSuffix))}|m=${encodeURIComponent(cleanTouchSuffix(meSuffix))}]${cleanTouchAction(action)}[/TOUCH]`
 const parseTouchMessage = (m) => {
   const content = String(m?.content || '').trim()
-  if (m?.role === 'user' && content === '（婉莹拍了拍阿晏）') return { icon: 'orbit', action: '拍了拍', herSuffix: '', meSuffix: '' }
-  const match = content.match(/^\[TOUCH:([a-z]+)(?:\|h=([^|\]]*))?(?:\|m=([^|\]]*))?\]([\s\S]{1,24})\[\/TOUCH\]$/)
+  if (m?.role === 'user' && content === '（婉莹拍了拍阿晏）') return { icon: 'orbit', action: '拍了拍', herSuffix: '', meSuffix: '', rest: '' }
+  const match = content.match(/^\[TOUCH:([a-z]+)(?:\|h=([^|\]]*))?(?:\|m=([^|\]]*))?\]([\s\S]{1,24}?)\[\/TOUCH\](?:\s*\n\s*)?/)
   if (!match) return null
   return {
     icon: TOUCH_ICONS.includes(match[1]) ? match[1] : 'orbit',
     herSuffix: decodeTouchSuffix(match[2]), meSuffix: decodeTouchSuffix(match[3]),
-    action: cleanTouchAction(match[4]),
+    action: cleanTouchAction(match[4]), rest: content.slice(match[0].length).trim(),
   }
 }
 const localDayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
@@ -1670,18 +1670,22 @@ export default function Chat({ back }) {
           const touchTarget = touchFromMe ? NAMES.her : NAMES.me
           const touchSenderSuffix = touch ? (touchFromMe ? touch.meSuffix : touch.herSuffix) : ''
           const touchTargetSuffix = touch ? (touchFromMe ? touch.herSuffix : touch.meSuffix) : ''
-          return m.role === 'system' ? (
-            <div key={m.id} data-message-index={m.absIdx} className="sys-divider">
-              <span>{m.content}</span>
-            </div>
-          ) : touch ? (
-            <div key={m.id} data-message-index={m.absIdx} className={`touch-notice ${m.role}`} aria-label={`${touchSender}${touchSenderSuffix}${touch.action}${touchTarget}${touchTargetSuffix}`}>
+          const visibleContent = touch?.rest || m.content
+          const touchNotice = touch ? (
+            <div data-message-index={m.absIdx} className={`touch-notice ${m.role}`} aria-label={`${touchSender}${touchSenderSuffix}${touch.action}${touchTarget}${touchTargetSuffix}`}>
               <time>{m.time}</time>
               <div className="touch-line">
                 <span className="touch-mark"><TouchGlyph kind={touch.icon} /></span>
                 <span><b>{touchSender}</b>{touchSenderSuffix}{touch.action}<b>{touchTarget}</b>{touchTargetSuffix}</span>
               </div>
             </div>
+          ) : null
+          return m.role === 'system' ? (
+            <div key={m.id} data-message-index={m.absIdx} className="sys-divider">
+              <span>{m.content}</span>
+            </div>
+          ) : touch && !touch.rest ? (
+            <div key={m.id}>{touchNotice}</div>
           ) : (
           <div key={m.id} className="msg-group">
           {dividerLabel(messages, idx) && (
@@ -1689,9 +1693,10 @@ export default function Chat({ back }) {
               <span>{dividerLabel(messages, idx)}</span>
             </div>
           )}
+          {touchNotice}
           <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${touchedMessageKey === String(m.absIdx ?? m.id) ? 'being-touched' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
             <div className="msg-meta">
-              <span>{m.time}</span>
+              {!touch && <span>{m.time}</span>}
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
                 <button className="cloud-btn" onClick={() => openThought(m)}><CloudIcon /></button>
               )}
@@ -1777,7 +1782,7 @@ export default function Chat({ back }) {
               )}
               {!m.voice && !m.call && (m.role === 'user' && Array.isArray(m.segments) && m.segments.length
                 ? m.segments.map((seg) => ({ text: seg.content, reply: seg.reply, draftId: seg.id }))
-                : parseSegments(m.content || (m.streaming ? '…' : ''), m.role === 'assistant')).map((seg, i) =>
+                : parseSegments(visibleContent || (m.streaming ? '…' : ''), m.role === 'assistant')).map((seg, i) =>
                 seg.voice ? (
                   <div key={i} className="voice-wrap"
                     onPointerDown={(e) => { e.stopPropagation(); startPress(e, m, idx, '', seg.voice) }}
