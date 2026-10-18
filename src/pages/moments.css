@@ -26,10 +26,12 @@
   border-bottom: 1px solid var(--card-border);
 }
 .mo-meta {
-  display: flex; align-items: baseline; gap: 10px;
-  padding-bottom: 8px;
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 10px;
 }
-.mo-when { font-size: 13px; color: var(--text-dim); }
+.mo-meta .paper-avatar { width: 34px; height: 34px; }
+.mo-byline { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mo-when { font-size: 11px; color: var(--text-dim); }
 .mo-author { font-size: 13px; color: var(--accent); }
 .mo-del {
   margin-left: auto;

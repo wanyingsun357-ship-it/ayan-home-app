@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NAMES } from '../config.js'
+import PaperAvatar from '../components/PaperAvatar.jsx'
 import { compressImage, postUpload } from '../utils/compressImage.js'
 import './moments.css'
 
@@ -119,8 +120,11 @@ export default function Moments({ back }) {
         {moments.map((m) => (
           <article key={m.id} className="mo-post">
             <div className="mo-meta">
-              <span className="serif mo-when">{fmtWhen(m.created_at)}</span>
-              <span className="serif mo-author">{NAME[m.author]}</span>
+              <PaperAvatar who={m.author === 'wanying' ? 'me' : 'him'} />
+              <div className="mo-byline">
+                <span className="serif mo-author">{NAME[m.author]}</span>
+                <span className="serif mo-when">{fmtWhen(m.created_at)}</span>
+              </div>
               <button className="mo-del" onClick={() => del(m)}>delete</button>
             </div>
             {m.content && <div className="mo-content">{m.content}</div>}
