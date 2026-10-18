@@ -140,6 +140,24 @@ function parseSegments(content, splitPara = false) {
   return segs.filter((s) => s.text || s.voice)
 }
 
+// 一条回复里可以穿插不止一次触碰；每一枚都留在它实际出现的位置。
+function parseTouchSegments(content, role, splitPara = false) {
+  const segs = []
+  let remaining = String(content || '').trim()
+  let guard = 0
+  while (remaining && guard++ < 12) {
+    const touch = parseTouchMessage({ role, content: remaining })
+    if (!touch) {
+      segs.push(...parseSegments(remaining, splitPara))
+      break
+    }
+    if (touch.before) segs.push(...parseSegments(touch.before, splitPara))
+    segs.push({ touchNotice: touch })
+    remaining = touch.rest
+  }
+  return segs
+}
+
 // 他做给她的文件(/made/...):不再是裸链接,画成文件卡。PWA里点裸链接会全屏且没有返回键
 // 下载:PWA独立窗口里<a download>没反应(iOS没有下载管理器)。走系统分享面板(存储到文件/隔空投送),不支持再退回新窗口打开
 const MADE_RE = /^https?:\/\/[^/]+\/(?:made|uploads)\/(.+)$/ // 他做的(made)和她发的(uploads)都画成文件卡
@@ -1752,17 +1770,41 @@ export default function Chat({ back }) {
           const touchFromMe = m.role === 'assistant'
           const touchSender = touchFromMe ? NAMES.me : NAMES.her
           const touchTarget = touchFromMe ? NAMES.her : NAMES.me
-          const touchSenderSuffix = touch ? (touchFromMe ? touch.meSuffix : touch.herSuffix) : ''
-          const touchTargetSuffix = touch ? (touchFromMe ? touch.herSuffix : touch.meSuffix) : ''
-          const touchNotice = touch ? (
-            <div data-message-index={m.absIdx} className={`touch-notice ${m.role}${touch.before ? ' inline' : ''}`} aria-label={`${touchSender}${touchSenderSuffix}${touch.action}${touchTarget}${touchTargetSuffix}`}>
-              {!touch.before && <time>{m.time}</time>}
+          const makeTouchNotice = (item, { showTime = false, inline = false } = {}) => {
+            if (!item) return null
+            const senderSuffix = touchFromMe ? item.meSuffix : item.herSuffix
+            const targetSuffix = touchFromMe ? item.herSuffix : item.meSuffix
+            return (
+            <div data-message-index={m.absIdx} className={`touch-notice ${m.role}${inline ? ' inline' : ''}`} aria-label={`${touchSender}${senderSuffix}${item.action}${touchTarget}${targetSuffix}`}>
+              {showTime && <time>{m.time}</time>}
               <div className="touch-line">
-                <span className="touch-mark"><TouchGlyph kind={touch.icon} /></span>
-                <span><b>{touchSender}</b>{touchSenderSuffix}{touch.action}<b>{touchTarget}</b>{touchTargetSuffix}</span>
+                <span className="touch-mark"><TouchGlyph kind={item.icon} /></span>
+                <span><b>{touchSender}</b>{senderSuffix}{item.action}<b>{touchTarget}</b>{targetSuffix}</span>
               </div>
             </div>
-          ) : null
+            )
+          }
+          const touchNotice = makeTouchNotice(touch, { showTime: Boolean(touch && !touch.before), inline: Boolean(touch?.before) })
+          const savedSegments = m.role === 'user' && Array.isArray(m.segments) && m.segments.length ? m.segments : null
+          let skippedTopTouch = false
+          const contentSegments = touch
+            ? savedSegments
+              ? savedSegments.flatMap((seg) => {
+                  const segmentTouch = parseTouchMessage({ role: m.role, content: seg.content })
+                  if (segmentTouch && !segmentTouch.before && !segmentTouch.rest) {
+                    if (!touch.before && !skippedTopTouch) { skippedTopTouch = true; return [] }
+                    return [{ touchNotice: segmentTouch, draftId: seg.id }]
+                  }
+                  return [{ text: seg.content, reply: seg.reply, draftId: seg.id }]
+                })
+              : [
+                  ...(touch.before ? [...parseSegments(touch.before, m.role === 'assistant'), { touchNotice: touch }] : []),
+                  ...parseTouchSegments(touch.rest, m.role, m.role === 'assistant'),
+                ]
+            : savedSegments
+              ? savedSegments.map((seg) => ({ text: seg.content, reply: seg.reply, draftId: seg.id }))
+              : parseSegments(m.content || (m.streaming ? '…' : ''), m.role === 'assistant')
+          const hasInlineTouch = contentSegments.some((seg) => seg.touchNotice)
           return m.role === 'system' ? (
             <div key={m.id} data-message-index={m.absIdx} className="sys-divider">
               <span>{m.content}</span>
@@ -1791,7 +1833,7 @@ export default function Chat({ back }) {
               </button>
             </div>
             <div
-              className={`msg-segs ${touch?.before ? 'touch-inline-segs' : ''}`}
+              className={`msg-segs ${hasInlineTouch ? 'touch-inline-segs' : ''}`}
               onPointerDown={(e) => startPress(e, m, idx)}
               onPointerUp={cancelPress}
               onPointerMove={cancelPress}
@@ -1863,16 +1905,9 @@ export default function Chat({ back }) {
                   )}
                 </div>
               )}
-              {!m.voice && !m.call && (touch
-                ? [
-                    ...(touch.before ? [...parseSegments(touch.before, m.role === 'assistant'), { touchNotice: true }] : []),
-                    ...parseSegments(touch.rest, m.role === 'assistant'),
-                  ]
-                : m.role === 'user' && Array.isArray(m.segments) && m.segments.length
-                  ? m.segments.map((seg) => ({ text: seg.content, reply: seg.reply, draftId: seg.id }))
-                  : parseSegments(m.content || (m.streaming ? '…' : ''), m.role === 'assistant')).map((seg, i) =>
+              {!m.voice && !m.call && contentSegments.map((seg, i) =>
                 seg.touchNotice ? (
-                  <div key={`touch-${i}`} className="inline-touch-wrap">{touchNotice}</div>
+                  <div key={seg.draftId || `touch-${i}`} className="inline-touch-wrap">{makeTouchNotice(seg.touchNotice, { inline: true })}</div>
                 ) : seg.voice ? (
                   <div key={i} className="voice-wrap"
                     onPointerDown={(e) => { e.stopPropagation(); startPress(e, m, idx, '', seg.voice) }}
