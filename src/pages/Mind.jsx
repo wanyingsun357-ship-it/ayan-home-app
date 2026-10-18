@@ -89,9 +89,10 @@ export default function Mind({ back }) {
         <svg viewBox="0 0 360 280">
           <defs><radialGradient id="moonMetal" cx="38%" cy="32%" r="80%"><stop offset="0%" stopColor="var(--moon-hi)" /><stop offset="55%" stopColor="var(--moon-mid)" /><stop offset="100%" stopColor="var(--moon-lo)" /></radialGradient></defs>
           <g className="mind-center">
+            <path className="mind-red-orbit mind-red-orbit-back" d="M103 153 C131 92 234 75 275 113" />
             <circle cx="180" cy="132" r="57" fill="url(#moonMetal)" className="mind-moon-body" />
             <circle cx="180" cy="132" r="57" className="mind-moon-rim" />
-            <path className="mind-red-thread" d="M180 190 C177 208 190 215 180 237" />
+            <path className="mind-red-orbit mind-red-orbit-front" d="M103 153 C138 205 232 181 275 113" />
             <text x="180" y="267" textAnchor="middle" className="mind-center-name">{NAMES.me}</text>
           </g>
         </svg>

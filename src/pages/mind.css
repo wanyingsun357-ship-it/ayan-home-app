@@ -11,7 +11,7 @@
 .mind-center{opacity:0;transform:translateY(4px);transition:opacity .55s ease,transform .7s ease}.entered .mind-center{opacity:1;transform:none}
 .mind-moon-body{animation:moon-breath 6s ease-in-out infinite}.mind-moon-rim{fill:none;stroke:rgba(255,255,255,.55);stroke-width:.8;opacity:.6}
 :root[data-theme='night'] .mind-moon-rim{stroke:rgba(238,240,244,.4)}.mind-center-name{font-size:12.5px;fill:var(--text-soft);letter-spacing:2px}
-.mind-red-thread{fill:none;stroke:var(--accent);stroke-width:1;opacity:.32;stroke-linecap:round}
+.mind-red-orbit{fill:none;stroke:var(--accent);stroke-width:1;stroke-linecap:round}.mind-red-orbit-back{opacity:.18}.mind-red-orbit-front{opacity:.38}
 @keyframes moon-breath{0%,100%{opacity:.9;transform:scale(.99);transform-origin:180px 132px}50%{opacity:1;transform:scale(1.015);transform-origin:180px 132px}}
 .mind-sense{border-radius:14px;padding:12px 15px;margin-bottom:12px;display:flex;flex-direction:column;gap:7px}
 .mind-sense-k{font-size:12px;color:var(--text-soft);display:flex;align-items:center;justify-content:space-between}.mind-sense-k b{font:normal 10.5px var(--sans);font-weight:400;color:var(--accent-text);border:1px solid var(--hairline);border-radius:10px;padding:2px 8px}
