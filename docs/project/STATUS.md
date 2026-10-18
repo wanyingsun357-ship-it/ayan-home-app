@@ -54,15 +54,17 @@
 
 ### 未能从本次证据确定
 
-- iOS 后台能力、通知及 TestFlight 最新原生包状态：需要检查当前原生配置与线上服务；不可只凭早期对话给出完成结论。
+- iOS 通知与 TestFlight 本次已核实并发布；真机前后台横幅、点击跳转和冷启动动画仍待用户安装后验收。
 
 ## 更新约定
 
 新任务完成后写明：日期、修改内容、核实的提交、测试结果、是否部署、备份位置、尚待真机确认之处。用户撤销的决定写在冲突决策区，不继续列为待办。
 
-## 2026-10-18 iOS 原生通知与完整开屏
+## 2026-10-18 iOS 原生通知与完整开屏（已发布；待真机确认）
 
-- 按用户确认，冷启动每次播放完整绘本开屏；仍尊重 iOS“减少动态效果”并可轻触跳过。
-- 前台任务指令与 Diary 新日记/便签/解锁使用 Apple 原生通知横幅；普通聊天回复不增加前台横幅。通知点击分别进入 Chat 或 Diary。Web 端保留页内横幅。
-- 前端与 iOS 插件已在功能分支准备；桥接服务 APNs 补丁需单独更新。Live Activity／灵动岛暂缓。
-- 本地与隔离分支生产构建通过，`git diff --check` 通过；尚无真机验证。服务器部署和 iOS TestFlight 构建/安装结果待后续记录。
+- 按用户确认：Live Activity／灵动岛暂缓；每次冷启动播放完整绘本开屏。仍尊重 iOS“减少动态效果”并保留轻触跳过。
+- 提交 `e0f7e31` 已推送 GitHub `main`。任务指令和 Diary 新日记、便签、解锁在 App 前台使用 Apple 原生横幅；后台沿用 APNs。普通聊天回复不弹前台横幅；Web 端保留页内横幅。通知点击分别进入 Chat 或 Diary。
+- bridge 仅重启该服务；备份 `/root/ayan/bridge/bridge.js.bak-diary-native-push-20261018`。改动前确认无活跃 Claude 进程，`node --check` 通过；重启后 `/api/health` 返回 200。ears/nest 未动。
+- 网页已部署至 `/root/ayan/bridge/public`，旧入口备份 `/root/ayan/bridge/public/index.html.bak-native-notify-20261018`。新 JS/CSS 资源与站点入口均返回 200；没有删除旧哈希资源或用户上传内容。
+- 本地和隔离分支 `npm run build`、`npx cap sync ios` 与 `git diff --check` 通过。GitHub Actions iOS TestFlight run 21（commit `e0f7e31`）Fastlane 上传成功，IPA 已由工作流保存；TestFlight 处理和用户安装可能需等待。未做真机横幅/冷启动验收。
+- “标签”按现有 Diary 便签评论事件实现；未发现单独 tag 通知事件。Live Activity／灵动岛未实现。
