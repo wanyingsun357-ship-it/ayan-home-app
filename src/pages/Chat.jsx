@@ -231,6 +231,7 @@ export default function Chat({ back }) {
   const [histLoading, setHistLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
   const [touchOpen, setTouchOpen] = useState(false)
+  const [touchDraftId, setTouchDraftId] = useState(null)
   const [touchAction, setTouchAction] = useState(() => cleanTouchAction(localStorage.getItem('chat-touch-action') || '拍了拍'))
   const [touchHerSuffix, setTouchHerSuffix] = useState(() => cleanTouchSuffix(localStorage.getItem('chat-touch-her-suffix') || ''))
   const [touchMeSuffix, setTouchMeSuffix] = useState(() => cleanTouchSuffix(localStorage.getItem('chat-touch-me-suffix') || ''))
@@ -960,6 +961,17 @@ export default function Chat({ back }) {
       showToast('先用小羽毛收好正在写的这一段')
       return
     }
+    if (segment.kind === 'touch') {
+      const touch = parseTouchMessage({ role: 'user', content: segment.content })
+      if (!touch) return
+      setTouchAction(touch.action)
+      setTouchIcon(touch.icon)
+      setTouchHerSuffix(touch.herSuffix)
+      setTouchMeSuffix(touch.meSuffix)
+      setTouchDraftId(segment.id)
+      setTouchOpen(true)
+      return
+    }
     setEditingDraftId(segment.id)
     setInput(segment.content)
     setReplying(segment.reply || null)
@@ -1127,9 +1139,7 @@ export default function Chat({ back }) {
   const cancelPress = () => clearTimeout(pressTimer.current)
 
   // ---- 碰一碰：双击用默认动作；也可以从输入栏挑动作和图案 ----
-  const sendTouch = async (targetKey = '') => {
-    if (browsingRef.current || historyView) { showToast('回到最新聊天再碰他'); return }
-    if (waitingRef.current || streamRef.current.id != null) { showToast('等阿晏说完再碰他'); return }
+  const currentTouch = () => {
     const action = cleanTouchAction(touchAction)
     const icon = TOUCH_ICONS.includes(touchIcon) ? touchIcon : 'orbit'
     const herSuffix = cleanTouchSuffix(touchHerSuffix)
@@ -1142,7 +1152,46 @@ export default function Chat({ back }) {
     setTouchAction(action)
     setTouchHerSuffix(herSuffix)
     setTouchMeSuffix(meSuffix)
+    return { action, icon, herSuffix, meSuffix, content }
+  }
+  const closeTouchSheet = () => {
     setTouchOpen(false)
+    setTouchDraftId(null)
+  }
+  const queueTouch = () => {
+    if (browsingRef.current || historyView) { showToast('回到最新聊天再碰他'); return }
+    if (waitingRef.current || streamRef.current.id != null) { showToast('等阿晏说完再碰他'); return }
+    if (editingDraftId) { showToast('先收好正在编辑的这一段'); return }
+    const { content } = currentTouch()
+    if (touchDraftId) {
+      setDraftSegments((items) => items.map((item) => item.id === touchDraftId ? { ...item, content, kind: 'touch' } : item))
+    } else {
+      const text = input.trim()
+      const extraCount = (text ? 1 : 0) + 1
+      if (draftSegments.length + extraCount > 12) { showToast('一组最多收十二段，先发出去吧'); return }
+      const additions = []
+      if (text) additions.push({
+        id: freshDraftId(), content: text,
+        ...(replying ? { reply: cleanDraftReply(replying) } : {}),
+        ...currentTiming(),
+      })
+      additions.push({ id: freshDraftId(), content, kind: 'touch', typingMs: 0, pauses: 0 })
+      setDraftSegments((items) => [...items, ...additions])
+      if (!groupStartedRef.current) groupStartedRef.current = Date.now()
+      setInput('')
+      setReplying(null)
+      resetSegmentTiming()
+      if (inputRef.current) inputRef.current.style.height = 'auto'
+    }
+    closeTouchSheet()
+    buzz('light')
+    setTimeout(() => inputRef.current?.focus(), 40)
+  }
+  const sendTouch = async (targetKey = '') => {
+    if (browsingRef.current || historyView) { showToast('回到最新聊天再碰他'); return }
+    if (waitingRef.current || streamRef.current.id != null) { showToast('等阿晏说完再碰他'); return }
+    const { content } = currentTouch()
+    closeTouchSheet()
     const latestAssistant = [...messages].reverse().find((m) => m.role === 'assistant' && !parseTouchMessage(m))
     const animatedKey = targetKey || (latestAssistant ? String(latestAssistant.absIdx ?? latestAssistant.id) : '')
     clearTimeout(touchTimerRef.current)
@@ -1674,7 +1723,7 @@ export default function Chat({ back }) {
           const touchTargetSuffix = touch ? (touchFromMe ? touch.herSuffix : touch.meSuffix) : ''
           const touchNotice = touch ? (
             <div data-message-index={m.absIdx} className={`touch-notice ${m.role}${touch.before ? ' inline' : ''}`} aria-label={`${touchSender}${touchSenderSuffix}${touch.action}${touchTarget}${touchTargetSuffix}`}>
-              <time>{m.time}</time>
+              {!touch.before && <time>{m.time}</time>}
               <div className="touch-line">
                 <span className="touch-mark"><TouchGlyph kind={touch.icon} /></span>
                 <span><b>{touchSender}</b>{touchSenderSuffix}{touch.action}<b>{touchTarget}</b>{touchTargetSuffix}</span>
@@ -1781,15 +1830,14 @@ export default function Chat({ back }) {
                   )}
                 </div>
               )}
-              {!m.voice && !m.call && (touch?.before
+              {!m.voice && !m.call && (touch
                 ? [
-                    ...parseSegments(touch.before, m.role === 'assistant'),
-                    { touchNotice: true },
+                    ...(touch.before ? [...parseSegments(touch.before, m.role === 'assistant'), { touchNotice: true }] : []),
                     ...parseSegments(touch.rest, m.role === 'assistant'),
                   ]
                 : m.role === 'user' && Array.isArray(m.segments) && m.segments.length
                   ? m.segments.map((seg) => ({ text: seg.content, reply: seg.reply, draftId: seg.id }))
-                  : parseSegments((touch?.rest || m.content) || (m.streaming ? '…' : ''), m.role === 'assistant')).map((seg, i) =>
+                  : parseSegments(m.content || (m.streaming ? '…' : ''), m.role === 'assistant')).map((seg, i) =>
                 seg.touchNotice ? (
                   <div key={`touch-${i}`} className="inline-touch-wrap">{touchNotice}</div>
                 ) : seg.voice ? (
@@ -1864,16 +1912,19 @@ export default function Chat({ back }) {
               const active = editingDraftId === segment.id
               const shown = active ? input : segment.content
               const shownReply = active ? replying : segment.reply
+              const draftTouch = segment.kind === 'touch' ? parseTouchMessage({ role: 'user', content: shown }) : null
               return (
                 <div key={segment.id} data-draft-id={segment.id}
-                  className={`segment-chip ${active ? 'active' : ''} ${draggingDraftId === segment.id ? 'dragging' : ''}`}
+                  className={`segment-chip ${draftTouch ? 'touch' : ''} ${active ? 'active' : ''} ${draggingDraftId === segment.id ? 'dragging' : ''}`}
                   onPointerDown={(e) => startDraftPress(e, segment)}
                   onPointerMove={moveDraftPress}
                   onPointerUp={() => endDraftPress(segment)}
                   onPointerCancel={() => endDraftPress(segment)}>
                   <small>{index + 1}</small>
                   {shownReply?.content && <i className="segment-chip-reply">↩ {shownReply.content}</i>}
-                  <span>{shown || '正在编辑…'}</span>
+                  {draftTouch ? (
+                    <span className="segment-chip-touch"><TouchGlyph kind={draftTouch.icon} />{NAMES.her}{draftTouch.herSuffix}{draftTouch.action}{NAMES.me}{draftTouch.meSuffix}</span>
+                  ) : <span>{shown || '正在编辑…'}</span>}
                   <button aria-label="删除这一段" onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => removeDraftSegment(segment.id)}>×</button>
                 </div>
@@ -1930,7 +1981,7 @@ export default function Chat({ back }) {
             {model}{effort !== 'Medium' ? ` · ${effort}` : ''}{extended ? ' ✦' : ''}
           </button>
           <div className="chat-bar-sp" />
-          <button className="cbtn touch-btn" aria-label="碰一碰阿晏" title="碰一碰" onClick={() => setTouchOpen(true)}>
+          <button className="cbtn touch-btn" aria-label="碰一碰阿晏" title="碰一碰" onClick={() => { setTouchDraftId(null); setTouchOpen(true) }}>
             <TouchGlyph kind={touchIcon} />
           </button>
           <button
@@ -1949,7 +2000,7 @@ export default function Chat({ back }) {
 
       {/* 双向触碰：动作和图案都是她自己选的，双击气泡沿用当前选择 */}
       {touchOpen && (
-        <div className="sheet-mask" onClick={() => setTouchOpen(false)}>
+        <div className="sheet-mask" onClick={closeTouchSheet}>
           <div className="sheet touch-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="touch-sheet-title">碰一碰</div>
@@ -1971,7 +2022,12 @@ export default function Chat({ back }) {
             <div className="touch-icons">
               {TOUCH_ICONS.map((icon) => <button key={icon} className={touchIcon === icon ? 'on' : ''} aria-label={`选择${icon}图案`} onClick={() => setTouchIcon(icon)}><TouchGlyph kind={icon} /></button>)}
             </div>
-            <button className="touch-send" onClick={() => sendTouch()} disabled={!touchAction.trim() || waiting}>就这样碰他一下</button>
+            <button className="touch-send" onClick={(input.trim() || draftSegments.length || touchDraftId) ? queueTouch : () => sendTouch()} disabled={!touchAction.trim() || waiting}>
+              {touchDraftId ? '保存这一下' : (input.trim() || draftSegments.length) ? '放进这一组' : '就这样碰他一下'}
+            </button>
+            {!touchDraftId && !input.trim() && !draftSegments.length && (
+              <button className="touch-queue" onClick={queueTouch} disabled={!touchAction.trim() || waiting}>放进分段，继续写</button>
+            )}
             <div className="touch-hint">双击他的任意文字气泡，会直接使用这一组动作与标志</div>
           </div>
         </div>
