@@ -14,23 +14,20 @@ const clamp = n => Math.max(0, Math.min(1, n))
 export default function Splash({ onDone, onReveal }) {
   const root = useRef(null), thread = useRef(null), done = useRef(false)
   const callbacks = useRef({ onDone, onReveal }); callbacks.current = { onDone, onReveal }
-  const [short] = useState(() => { try { return localStorage.getItem('storybook-intro-seen') === '1' } catch { return false } })
   const [reduced] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
   const finish = () => {
     if (done.current) return
     done.current = true
-    try { localStorage.setItem('storybook-intro-seen', '1') } catch {}
     callbacks.current.onReveal?.(); callbacks.current.onDone()
   }
   useEffect(() => {
     let frame, start, revealed = false
-    const duration = reduced ? 500 : short ? 1500 : 6000
+    const duration = reduced ? 500 : 6000
     const tick = now => {
       if (done.current) return
       if (start == null) start = now
       const elapsed = now - start
-      // Return visits begin with the book already open; the same thread makes the handoff.
-      const t = short ? 3.5 + elapsed / 1500 * 2.5 : elapsed / 1000
+      const t = elapsed / 1000
       const el = root.current, w = innerWidth, h = innerHeight
       const open = ease(clamp((t - 1) / 1.3)), land = ease(clamp((t - 4.7) / 1.2))
       const bookW = Math.min(h <= 560 ? 300 : 420, w - 32), bookH = bookW * .72
@@ -57,8 +54,8 @@ export default function Splash({ onDone, onReveal }) {
     const onKey = e => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); finish() } }
     window.addEventListener('keydown', onKey)
     return () => { cancelAnimationFrame(frame); window.removeEventListener('keydown', onKey) }
-  }, [short, reduced])
-  return <div ref={root} className={`story-splash ${short ? 'short' : ''} ${reduced ? 'reduced' : ''}`} onClick={finish} role="region" aria-label="绘本开场，轻触跳过">
+  }, [reduced])
+  return <div ref={root} className={`story-splash ${reduced ? 'reduced' : ''}`} onClick={finish} role="region" aria-label="绘本开场，轻触跳过">
     <div className="story-wash" />
     <div className="story-frontispiece" aria-hidden="true"><span>☾</span><i>a place for us</i></div>
     <div className="story-book" aria-hidden="true">

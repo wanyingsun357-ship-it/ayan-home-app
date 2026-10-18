@@ -42,9 +42,7 @@ const MORE_ITEMS = [
 ]
 
 export default function App() {
-  const [splashDone, setSplashDone] = useState(
-    () => sessionStorage.getItem('splashed') === '1'
-  )
+  const [splashDone, setSplashDone] = useState(false)
   const [splashReveal, setSplashReveal] = useState(false)
   const [view, setView] = useState('home')
   useEffect(() => {
@@ -82,7 +80,7 @@ export default function App() {
         setDiaryDot(true)
         const bannered = localStorage.getItem('diary-ev-bannered') || '1970-01-01'
         const fresh = unseen.filter((e) => e.at > bannered)
-        if (fresh.length) {
+        if (fresh.length && !isApp()) {
           setBanner(fresh[0].text + (fresh.length > 1 ? ` 等${fresh.length}条` : ''))
           localStorage.setItem('diary-ev-bannered', unseen[0].at)
           setTimeout(() => setBanner(null), 5000)
@@ -93,10 +91,6 @@ export default function App() {
     const t = setInterval(check, 90 * 1000)
     return () => { stopped = true; clearInterval(t) }
   }, [])
-
-  useEffect(() => {
-    if (splashDone) sessionStorage.setItem('splashed', '1')
-  }, [splashDone])
 
   // 整页高度的页面(聊天)不让文档本身滚动:iOS 网页容器会在聚焦输入框/弹层时把整页往上带
   useEffect(() => {
@@ -128,9 +122,15 @@ export default function App() {
     return () => mo.disconnect()
   }, [])
 
-  // App 里注册推送:他回话/指令/答题/礼物 锁屏也能收到;点通知进聊天
+  // App 里注册推送:日记事件用原生通知;其余推送仍按原有入口处理
   useEffect(() => {
-    setupPush({ onOpen: (d) => { const k = (d && d.kind) || ''; go(k === 'test' ? 'home' : 'chat') } })
+    setupPush({
+      onOpen: (d) => { const k = (d && d.kind) || ''; go(k === 'test' ? 'home' : k === 'diary' ? 'diary' : 'chat') },
+      onReceive: (d) => {
+        if ((d && d.kind) !== 'diary') return
+        setDiaryDot(true)
+      },
+    })
   }, [])
 
   // App 里键盘由我们自己让位:原生插件在键盘动画开始那一刻就报高度,写进 --kb,页面立刻缩,不等系统慢半拍

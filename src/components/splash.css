@@ -28,7 +28,6 @@
 @keyframes story-ear{40%{transform:rotate(-7deg)}75%{transform:rotate(2deg)}}
 .story-thread{position:absolute;inset:0;pointer-events:none;opacity:.65;overflow:visible}
 .story-skip{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);border:0;background:none;color:var(--paper-secondary,#827778);font-family:inherit;font-size:11px;line-height:2;letter-spacing:2px;padding:12px;opacity:calc(.65*(1 - var(--landing)))}
-.story-splash.short .story-ink path{animation:none;stroke-dashoffset:0}
 .story-splash.reduced .story-book,.story-splash.reduced .story-thread{display:none}
 .intro-content.preparing{opacity:0;pointer-events:none}.intro-content.revealing{opacity:1;transition:opacity 1s ease}
 .intro-content.intro-joined .hm-divider{background:var(--paper-redline,#95505b);opacity:.65}
@@ -48,7 +47,6 @@
 .story-ink path{animation:story-letter 1.05s ease forwards;animation-delay:2.3s}
 .story-ink.second path{animation-delay:2.85s}
 @keyframes story-letter{0%{stroke-dashoffset:1;fill-opacity:0}70%{fill-opacity:.18}100%{stroke-dashoffset:0;fill-opacity:1}}
-.story-splash.short .story-ink path{fill-opacity:1}
 .story-cat{width:78%;right:7%;bottom:4%;aspect-ratio:1;filter:none}
 .story-cat-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;opacity:0}
 .story-cat-frame.frame-0{opacity:1}

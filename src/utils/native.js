@@ -1,13 +1,14 @@
 // 原生能力的薄封装:在 App 里走 Capacitor 插件,在网页里退回浏览器能力(或什么都不做)
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
+import { LocalNotifications } from '@capacitor/local-notifications'
 import { Haptics } from '@capacitor/haptics'
 import { Keyboard } from '@capacitor/keyboard'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { Device } from '@capacitor/device'
 export const isApp = () => { try { return Capacitor.isNativePlatform() } catch { return false } }
 // 壳加载的是线上网页,插件的 JS 半边必须打进前端包里,不然 Capacitor.Plugins 里没有它们
-const P = () => (isApp() ? { Haptics, PushNotifications, Keyboard } : {})
+const P = () => (isApp() ? { Haptics, PushNotifications, LocalNotifications, Keyboard } : {})
 export { Keyboard }
 
 // 震动:iPhone 网页不支持 navigator.vibrate,App 里用 Haptics
@@ -26,7 +27,7 @@ export async function buzz(kind = 'light') {
 
 // 推送:App 启动时申请权限、拿设备令牌交给桥;点通知进来时回调
 const plog = (o) => { try { fetch('/api/clientlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag: 'push', ...o }) }).catch(() => {}) } catch {} }
-export async function setupPush({ onOpen } = {}) {
+export async function setupPush({ onOpen, onReceive } = {}) {
   let native = false, plat = ''
   try { native = Capacitor.isNativePlatform(); plat = Capacitor.getPlatform() } catch (e) { plog({ step: 'core-err', err: String(e) }) }
   plog({ step: 'start', native, plat, hasWin: !!window.Capacitor, plugins: Object.keys(window.Capacitor?.Plugins || {}).slice(0, 12) })
@@ -42,6 +43,26 @@ export async function setupPush({ onOpen } = {}) {
     })
     await PushNotifications.addListener('registrationError', (e) => plog({ step: 'reg-error', err: JSON.stringify(e).slice(0, 200) }))
     await PushNotifications.addListener('pushNotificationActionPerformed', (a) => { try { onOpen && onOpen(a.notification?.data || {}) } catch {} })
+    await LocalNotifications.addListener('localNotificationActionPerformed', (a) => { try { onOpen && onOpen(a.notification?.extra || {}) } catch {} })
+    await PushNotifications.addListener('pushNotificationReceived', async (n) => {
+      const data = n.data || {}
+      try { onReceive && onReceive(data) } catch {}
+      // APNs 的前台展示在 capacitor.config.json 关闭；只把任务和日记/便签事件转成原生横幅，避免普通回复刷屏。
+      if (!['diary', 'command'].includes(data.kind)) return
+      try {
+        const permission = await LocalNotifications.checkPermissions()
+        if (permission.display !== 'granted') return
+        const id = Math.floor(Date.now() % 2147483647)
+        await LocalNotifications.schedule({ notifications: [{
+          id,
+          title: n.title || (data.kind === 'command' ? '指令' : '日记'),
+          body: n.body || (data.kind === 'command' ? '有一个新的任务' : '有一条新的日记动静'),
+          foreground: true,
+          schedule: { at: new Date(Date.now() + 100) },
+          extra: { ...data },
+        }] })
+      } catch (e) { plog({ step: 'local-notification-fail', err: String(e && e.message || e) }) }
+    })
     await PushNotifications.register()
     plog({ step: 'register-called' })
     return true
