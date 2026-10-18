@@ -1,4 +1,3 @@
-import PaperAvatar from '../components/PaperAvatar.jsx'
 import useHouseDraft from '../utils/useHouseDraft.js'
 import FavoritesSheet from '../components/FavoritesSheet.jsx'
 import { useEffect, useRef, useState } from 'react'
@@ -1563,7 +1562,7 @@ export default function Chat({ back }) {
             </div>
           )}
           <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
-            <PaperAvatar who={m.role==='user'?'me':'him'} /><div className="msg-meta">
+            <div className="msg-meta">
               <span className="message-time">{m.streaming ? <ReplyClock /> : m.time}</span>
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
                 <button className="cloud-btn" onClick={() => openThought(m)}><CloudIcon /></button>
@@ -1706,7 +1705,7 @@ export default function Chat({ back }) {
         {historyView?.after != null && <button className="hist-more" disabled={jumpBusy} onClick={()=>jumpHistory({after:String(historyView.after)},'after')}>{jumpBusy?'翻着呢…':'↓ 后面的对话'}</button>}
         {!historyView && waiting && (
           <div className="msg-row assistant waiting-reply">
-            <PaperAvatar /><div className="msg-meta"><span className="message-time"><ReplyClock /></span></div><div className="bubble assistant typing-bubble" aria-label="正在等待回复">
+            <div className="msg-meta"><span className="message-time"><ReplyClock /></span></div><div className="bubble assistant typing-bubble" aria-label="正在等待回复">
               <span className="tdot" /><span className="tdot" /><span className="tdot" />
             </div>
           </div>
