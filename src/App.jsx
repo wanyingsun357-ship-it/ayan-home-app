@@ -45,6 +45,7 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(
     () => sessionStorage.getItem('splashed') === '1'
   )
+  const [splashReveal, setSplashReveal] = useState(false)
   const [view, setView] = useState('home')
   useEffect(() => {
     document.documentElement.dataset.paperSurface = ['home','together','settings'].includes(view) ? 'home' : 'chat'
@@ -56,6 +57,7 @@ export default function App() {
   const [banner, setBanner] = useState(null)
 
   const go = (v) => {
+    setSplashDone(true)
     if (v === 'more') { setMoreOpen(true); return }
     if (v === 'diary') {
       // 进日记本=已读
@@ -156,22 +158,13 @@ export default function App() {
     if (gk) document.documentElement.style.setProperty('--gk', gk)
   }, [])
 
-  if (!splashDone) {
-    return (
-      <>
-        <div className="wetglass-bg" />
-        <Splash onDone={() => setSplashDone(true)} />
-        <EngineAccess />
-      </>
-    )
-  }
-
   const showTabs = ['home', 'moments', 'diary'].includes(view)
 
   return (
     <>
       <div className="wetglass-bg" />
 
+      <div className={`intro-content intro-joined ${!splashDone ? (splashReveal ? 'revealing' : 'preparing') : ''}`} inert={!splashDone ? '' : undefined}>
       {/* 微信式顶部横幅 */}
       {banner && (
         <button className="top-banner glass3" onClick={() => { setBanner(null); go('diary') }}>
@@ -227,15 +220,17 @@ export default function App() {
         </div>
       )}
 
-      <CommandWidget />
+      {splashDone && <CommandWidget />}
       <EngineAccess />
-      <CallOverlay />
+      {splashDone && <CallOverlay />}
       <Sidebar
         open={sidebarOpen}
         close={() => setSidebarOpen(false)}
         go={go}
         current={view}
       />
+      </div>
+      {!splashDone && <Splash onReveal={() => setSplashReveal(true)} onDone={() => setSplashDone(true)} />}
     </>
   )
 }
