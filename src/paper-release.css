@@ -118,12 +118,6 @@
 .avatar-crop-mask,.avatar-crop-dialog,.avatar-crop-circle{box-sizing:border-box}
 .avatar-crop-dialog{width:min(320px,calc(100vw - 32px));min-width:0}
 
-.message-time{display:inline-flex;align-items:center;height:20px}
-.reply-clock{display:inline-flex;align-items:center;color:var(--text-dim)}
-.reply-clock-hand{transform-origin:10px 10px;animation:reply-clock-turn 2.4s linear infinite}
-@keyframes reply-clock-turn{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){.reply-clock-hand{animation:none}}
-
 .paper-attachment-heading,.attachment-paper-icon{display:none}
 :root[data-visual=paper] .paper-attachment-menu{box-sizing:border-box;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px 20px calc(24px + env(safe-area-inset-bottom,0px));border:1px solid var(--paper-card-border);border-radius:28px 28px 0 0;background:var(--paper-popup);box-shadow:0 -6px 30px #211b2510}
 :root[data-visual=paper] .paper-attachment-menu>.sheet-handle{grid-column:1/-1;margin:0 auto 2px}

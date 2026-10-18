@@ -75,7 +75,6 @@ const MemIcon = () => (
   </svg>
 )
 
-const ReplyClock = () => <span className="reply-clock" role="status" aria-label="正在回复"><svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path className="reply-clock-hand" d="M10 5v5l3 2"/></svg></span>
 const PaperQuillIcon = () => (<svg viewBox="0 0 44 62" aria-hidden="true"><path d="M8 58 34 5C21 9 10 21 11 35c0 6 3 9 5 10C31 38 37 23 34 5M16 45l-4 8-4 5 1-6M16 43l-3-12m6 6-3-14m7 6-2-12m5 5-1-9m-8 28 12-6m-8-1 13-8m-9 1 11-8m-6 0 7-7"/><path d="M9 55 5 61"/></svg>)
 const FeatherIcon = () => (
   <svg viewBox="0 0 28 28" fill="none" stroke="currentColor"
@@ -1563,7 +1562,7 @@ export default function Chat({ back }) {
           )}
           <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
             <div className="msg-meta">
-              <span className="message-time">{m.streaming ? <ReplyClock /> : m.time}</span>
+              <span>{m.time}</span>
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
                 <button className="cloud-btn" onClick={() => openThought(m)}><CloudIcon /></button>
               )}
@@ -1705,7 +1704,7 @@ export default function Chat({ back }) {
         {historyView?.after != null && <button className="hist-more" disabled={jumpBusy} onClick={()=>jumpHistory({after:String(historyView.after)},'after')}>{jumpBusy?'翻着呢…':'↓ 后面的对话'}</button>}
         {!historyView && waiting && (
           <div className="msg-row assistant waiting-reply">
-            <div className="msg-meta"><span className="message-time"><ReplyClock /></span></div><div className="bubble assistant typing-bubble" aria-label="正在等待回复">
+            <div className="bubble assistant typing-bubble" aria-label="正在等待回复">
               <span className="tdot" /><span className="tdot" /><span className="tdot" />
             </div>
           </div>
