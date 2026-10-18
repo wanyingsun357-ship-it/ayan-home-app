@@ -76,3 +76,12 @@
 - 字体转换为 SVG 轮廓路径，运行时不依赖系统字体或联网加载；随项目附 Allura OFL 许可文本 `public/fonts/OFL-Allura.txt`，未打包原始字体文件。
 - 从最新发布提交 `908e2aa` 的隔离工作树修改；`npm run build` 与 `git diff --check` 通过。字形预览已生成并供用户确认。
 - 已在隔离分支提交；尚未推送或部署。iPhone 真机字形动画尚未复核。
+
+
+## 2026-10-18 开屏英文题签手写体（已上线）
+
+- 提交 `58c0b02` 将 “I'm here.” 与 “You're back.” 改为 Allura 连笔手写矢量字形，保留暗红颜色及逐笔显现动画；字体路径生成后随项目附 `public/fonts/OFL-Allura.txt`，运行时无系统字体或外网依赖。
+- 提交 `52df2a1` 同步补齐 iOS 工作流对 `src/**`、`public/**`、`index.html` 及 `package-lock.json` 的监听。生产构建和 `git diff --check` 通过。
+- 源码推送至 GitHub `main`；网页已部署到 `/root/ayan/bridge/public`。旧入口备份：`/root/ayan/bridge/public/index.html.bak-splash-script-20261018`。新 JS `index-Dh5n0mJc.js`、CSS `index-DFsG-Ni4.css`、首页和 `/api/health` 均返回 200；未删除旧哈希资源或用户数据。
+- iOS `capacitor.config.json` 使用 `server.url=https://entangledforever.com`，现有安装版下次打开页面即可读到线上开屏，不需要安装新 TestFlight 包。因源码推送触发的 Actions run 39146177186 在记录时仍运行中，属于额外生成的候选 IPA；用户无需安装。
+- 尚未在 iPhone 真机复核动画帧和字体大小。
