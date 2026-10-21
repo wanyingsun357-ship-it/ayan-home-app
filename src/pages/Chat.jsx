@@ -853,7 +853,7 @@ export default function Chat({ back }) {
     } catch { showToast('没设置上') }
   }
 
-  // ---- 水位线(200k窗口)+压缩/衔接 ----
+  // ---- 按当前引擎显示水位线与压缩/衔接 ----
   const [ctx, setCtx] = useState(0)
   const [ctxEstimated, setCtxEstimated] = useState(false)
   const [ctxLimit, setCtxLimit] = useState(200000)
@@ -1598,7 +1598,7 @@ export default function Chat({ back }) {
       const q = sessionRef.current ? `?session=${sessionRef.current}` : ''
       const r = await fetch(`/api/reasoning/${m.absIdx}${q}`)
       const d = await r.json()
-      setThought(d.reasoning || '(这条没有留下思考痕迹)')
+      setThought(d.reasoning || (ctxEngine === 'codex' ? '(这条没有留下心声)' : '(这条没有提供 Thinking 内容)'))
     } catch { setThought('(没取到,再试一次)') }
   }
 
@@ -1744,7 +1744,7 @@ export default function Chat({ back }) {
       )}
       <div className="ctx-line" onClick={() => { loadCtx(); setCtxOpen(true) }}>
         <div
-          className={`ctx-fill ${(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 150000) ? 'warn' : ''}`}
+          className={`ctx-fill ${(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 160000) ? 'warn' : ''}`}
           style={{ width: `${ctxLimit ? Math.min(100, (ctx / ctxLimit) * 100) : 0}%` }}
         />
       </div>
@@ -1823,7 +1823,7 @@ export default function Chat({ back }) {
             <div className="msg-meta">
               {(!touch || touch.before || touch.rest) && <span>{m.time}</span>}
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
-                <button className="cloud-btn" onClick={() => openThought(m)}><CloudIcon /></button>
+                <button className="cloud-btn" aria-label={ctxEngine === 'codex' ? '打开心声' : '打开 Thinking'} onClick={() => openThought(m)}><CloudIcon /></button>
               )}
               {m.role === 'assistant' && m.memory?.length > 0 && (
                 <button className="cloud-btn mem-btn" onClick={() => setMemView(m.memory)}><MemIcon /></button>
@@ -2167,15 +2167,15 @@ export default function Chat({ back }) {
         <div className="sheet-mask" onClick={() => !compacting && setCtxOpen(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className={`ctx-panel-num serif ${(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 150000) ? 'warn' : ''}`}>
+            <div className={`ctx-panel-num serif ${(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 160000) ? 'warn' : ''}`}>
               {ctxEstimated && !ctx ? '待下一轮' : `${ctxEstimated ? '约 ' : ''}${Math.round(ctx / 1000)}k`} <span className="ctx-panel-sub">{ctxLimit ? `/ ${Math.round(ctxLimit / 1000)}k` : '/ 等待模型返回窗口'}</span>
             </div>
             <div className="ctx-panel-hint">
               {ctxEngine === 'codex' ? (ctx >= 175000 ? '水位较高，180k 自动收存 Echo 和交接信；窗口预算 220k' : '窗口预算 220k；175k 提醒，180k 自动整理，保留最近约 30k 聊天原文')
                 : ctxEstimated ? '整理后的估算，包含系统与工具；下一轮回复后更新实测水位'
-                : ctx >= 160000 ? '水位很高了,建议现在整理'
-                : ctx >= 150000 ? '快到水位线了,可以准备整理'
-                : '还很宽裕,不用管'}
+                : ctx >= 170000 ? '已到 170k 自动整理线，正在整理或即将开始'
+                : ctx >= 160000 ? '接近 170k 自动整理线，可以先把这轮说完'
+                : '窗口预算 200k；170k 自动整理，160k 开始提醒'}
             </div>
             {compacting ? (
               <div className="ctx-panel-busy">他在把这段日子写成记忆…约一两分钟</div>
@@ -2513,7 +2513,7 @@ export default function Chat({ back }) {
         </div>
       )}
 
-      {/* 思考链弹层:默认半屏,上滑/点把手全屏,下滑收起 */}
+      {/* Thinking / 心声弹层:默认半屏,上滑/点把手全屏,下滑收起 */}
       {thought && (
         <div className="sheet-mask" onClick={() => { setThought(null); setThoughtFull(false) }}>
           <div
@@ -2532,10 +2532,10 @@ export default function Chat({ back }) {
             <div className="sheet-handle" onClick={() => setThoughtFull((f) => !f)} />
             <div className="thought-head">
               <button className="thought-x" onClick={() => { setThought(null); setThoughtFull(false) }}>×</button>
-              <div className="thought-title">心声</div>
+              <div className="thought-title">{ctxEngine === 'codex' ? '心声' : 'Thinking'}</div>
               <div style={{ width: 34 }} />
             </div>
-            <div className="thought-body thought-text"><ThoughtTimeline text={thought} /></div>
+            <div className="thought-body thought-text"><ThoughtTimeline text={thought} engine={ctxEngine} /></div>
           </div>
         </div>
       )}

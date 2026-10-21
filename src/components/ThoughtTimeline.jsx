@@ -17,7 +17,7 @@ const paths = {
 function Icon({ name }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] || paths.tool} /></svg>
 }
-export default function ThoughtTimeline({ text }) {
+export default function ThoughtTimeline({ text, engine = 'claude' }) {
   const entries = parseTimeline(text)
   if (!entries.some(entry => entry.kind === 'tool')) {
     return <div className="thought-plain">{String(text || '').replace(/^[ \t]*【心声】[ \t]*(?:\r?\n|$)/gm, '').trimStart()}</div>
@@ -29,7 +29,7 @@ export default function ThoughtTimeline({ text }) {
         <summary><span className="thought-tool-label">{entry.label}</span><span className="thought-tool-name">{entry.name}</span><span className="thought-tool-chevron" aria-hidden="true">⌄</span></summary>
         <pre>{entry.text}</pre>
       </details> : <div className="thought-step-copy">
-        {entry.kind === 'summary' && <span className="thought-summary-label">思考摘要</span>}
+        {entry.kind === 'summary' && <span className="thought-summary-label">{engine === 'codex' ? '心声摘要' : 'Thinking 摘要'}</span>}
         {entry.text}
       </div>}
     </div>)}
