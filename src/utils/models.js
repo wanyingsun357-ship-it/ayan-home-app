@@ -14,7 +14,7 @@ export function cachedModels() {
   let models = FALLBACK_MODELS
   try {
     const saved = JSON.parse(localStorage.getItem('chat-model-catalog') || 'null')
-    if (Array.isArray(saved) && saved.length && saved.every(m => (/^anthropic\/claude-(opus|sonnet|haiku|fable)-\d+(\.\d+)?$/.test(m.id) || /^codex\/[a-zA-Z0-9_.-]+$/.test(m.id)) && typeof m.label === 'string')) models = saved
+    if (Array.isArray(saved) && saved.length && saved.every(m => (/^anthropic\/claude-(opus|sonnet|haiku|fable)-\d+(\.\d+)?$/.test(m.id) || /^codex\/[a-zA-Z0-9_.-]+$/.test(m.id) || /^account\/claude-(opus|sonnet|haiku|fable)-\d+(-\d+)?$/.test(m.id)) && typeof m.label === 'string')) models = saved
     const id = localStorage.getItem('chat-model-id')
     const match = id?.match(/^anthropic\/claude-(opus|sonnet|haiku|fable)-(\d+(?:\.\d+)?)$/)
     if (match && !models.some(m => m.id === id)) models = [...models, { id, label: `${match[1][0].toUpperCase()}${match[1].slice(1)} ${match[2]}` }]
@@ -28,6 +28,7 @@ export function selectedModel(models, saved, defaultId = DEFAULT_MODEL) {
 
 export function modelPrice(model) {
   if (model.engine === 'codex' || model.id.startsWith('codex/')) return model.disabled ? '等待登录 ChatGPT' : '使用 ChatGPT 订阅额度'
+  if (model.id.startsWith('account/')) return model.disabled ? '等待登录 Claude 账号' : '使用 Claude 订阅额度'
   if (model.input_price == null || model.output_price == null) return ''
   const format = value => Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 })
   return `输入 $${format(model.input_price)} · 输出 $${format(model.output_price)} / 百万 tokens`

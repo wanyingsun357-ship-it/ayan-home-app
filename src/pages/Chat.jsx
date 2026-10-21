@@ -1619,7 +1619,7 @@ export default function Chat({ back }) {
 
   const modelId = () =>
     selectedModel(models, model).id
-  const sourceOf = m => m.id.startsWith('codex/') ? 'codex' : 'api'
+  const sourceOf = m => m.id.startsWith('codex/') ? 'codex' : m.id.startsWith('account/') ? 'account' : 'api'
   const openModels = () => {
     setModelSource(sourceOf(selectedModel(models, model)))
     setModelSheet(true)
@@ -2215,8 +2215,8 @@ export default function Chat({ back }) {
             <div className="sheet-handle" />
             <div className="model-sheet-title">Models</div>
             <div className="model-sources" role="tablist" aria-label="模型来源">
-              {[['api', 'API', 'OpenRouter'], ['codex', 'Codex', '订阅'], ['account', 'Claude', '待接入']].map(([id, label, sub]) => (
-                <button key={id} type="button" role="tab" id={`model-tab-${id}`} aria-controls="model-source-panel" aria-selected={modelSource === id} disabled={id === 'account'} className={`model-source ${modelSource === id ? 'on' : ''}`} onClick={() => setModelSource(id)}>
+              {[['api', 'API', 'OpenRouter'], ['codex', 'Codex', '订阅'], ['account', 'Claude', '订阅']].map(([id, label, sub]) => (
+                <button key={id} type="button" role="tab" id={`model-tab-${id}`} aria-controls="model-source-panel" aria-selected={modelSource === id} className={`model-source ${modelSource === id ? 'on' : ''}`} onClick={() => setModelSource(id)}>
                   <span>{label}</span><small>{sub}</small>
                 </button>
               ))}
