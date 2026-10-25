@@ -38,6 +38,8 @@ export async function setupPush({ onOpen, onReceive } = {}) {
     if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PushNotifications.requestPermissions()
     if (perm.receive !== 'granted') { plog({ step: 'denied', perm }); return false }
     await PushNotifications.addListener('registration', (t) => {
+      localStorage.setItem('ayan-apns-token',t.value)
+      window.dispatchEvent(new Event('ayan:apns-token'))
       plog({ step: 'token', head: String(t.value).slice(0, 8) })
       fetch('/api/push/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t.value, platform: plat }) }).catch((e) => plog({ step: 'post-fail', err: String(e) }))
     })

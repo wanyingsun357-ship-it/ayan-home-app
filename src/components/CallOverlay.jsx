@@ -5,6 +5,7 @@ import PixelCat from './PixelCat.jsx'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import { NAMES } from '../config.js'
 import { isApp, callAudio, buzz } from '../utils/native.js'
+import {nativeCalls,setupNativeCalls} from '../utils/nativeCalls.js'
 import './call.css'
 
 // 通话(一期):她打过去 → 响铃 → 他 [ANSWER]/[DECLINE] → 通话中:
@@ -66,6 +67,29 @@ export default function CallOverlay() {
   const listRef = useRef(null)
   const ringTimer = useRef(null)
   const reconnRef = useRef(0)      // 通话里识别通道自动重连次数
+  const nativeOwned=useRef(false),nativeAvailable=useRef(false)
+  useEffect(()=>{
+    let stopped=false,dispose
+    setupNativeCalls(event=>{
+      nativeAvailable.current=event.supported===true
+      if(event.type==='error'){flash(event.message||'通话连接异常');return}
+      if(event.type==='partial'){setLive(event.text||'');return}
+      if(event.type==='speaking'){setSpeaking({text:event.text||'',zh:event.zh||''});return}
+      if(event.type==='listening'){setSpeaking(null);return}
+      if(event.type==='ended'){
+        nativeOwned.current=false
+        if(event.call)finish({...event.call,status:'ended',endedBy:event.call.endedBy||'her'})
+        return
+      }
+      if(event.call&&event.mediaOwned){
+        if(!nativeOwned.current){nativeOwned.current=true;cleanupMedia();stopRing()}
+        window.__inCall=true;setCall(event.call);setPhase(event.call.status);setNeedTap(false)
+        setHistory((event.call.entries||[]).map(e=>({who:e.who,text:e.text,zh:e.zh})))
+        if(!typingRef.current)setMuted(!!event.muted)
+      }
+    }).then(d=>{if(stopped)d();else dispose=d}).catch(()=>{})
+    return()=>{stopped=true;dispose?.()}
+  },[])
   const flash = (t) => { setToast(t); setTimeout(() => setToast(''), 2200) }
 
   // ---- 时钟 & 自动滚到底 ----
@@ -82,6 +106,7 @@ export default function CallOverlay() {
   // ---- 刷新后恢复:服务器还有进行中的通话 ----
   useEffect(() => {
     fetch('/api/call/active').then((r) => r.json()).then((d) => {
+      if(nativeOwned.current)return
       if (d.call && d.call.status !== 'ended') {
         offsetRef.current = Date.now() - (d.serverNow || Date.now())
         if (d.call.by === 'him' && d.call.status === 'ringing') { incoming(d.call); return }
@@ -120,6 +145,7 @@ export default function CallOverlay() {
     const t = setInterval(async () => {
       try {
         const d = await (await fetch('/api/call/active')).json()
+        if(nativeOwned.current)return
         const c = callRef.current; if (!c) return
         const sc = d.call
         if (!sc || sc.id !== c.id) { // 服务器那边已经结束了
@@ -135,6 +161,7 @@ export default function CallOverlay() {
   }, [phase])
 
   const onCallEvent = (m) => {
+    if(nativeOwned.current){if(m.ev==='end')finish(m.call);return}
     const c = callRef.current
     // 只认自己这台手机发起的通话(维修间/别的家的测试通话不会在这里响);他主动打来是三期
     if (m.ev === 'ring') { if (!c && m.call && m.call.by === 'him') incoming(m.call); return }
@@ -153,7 +180,9 @@ export default function CallOverlay() {
     if (phaseRef.current !== 'idle') return
     window.__inCall = true
     setCall(c); setPhase('ringing'); setMin(false); setHistory([]); setEndInfo(''); setSpeaking(null); setLive(''); himDoneRef.current = new Set(); turnRef.current = null; reconnRef.current = 0
-    try { const a = new Audio('/ring.wav'); a.loop = true; a.volume = 0.9; ringAudioRef.current = a; a.play().catch(() => {}) } catch {}
+    const ring=()=>{try{const a=new Audio('/ring.wav');a.loop=true;a.volume=0.9;ringAudioRef.current=a;a.play().catch(()=>{})}catch{}}
+    if(nativeAvailable.current)nativeCalls.present(c.id).then(ok=>{if(!ok&&phaseRef.current==='ringing')ring()}).catch(()=>{if(phaseRef.current==='ringing')ring()})
+    else ring()
     buzz([30, 60, 30])
     clearTimeout(ringTimer.current)
     ringTimer.current = setTimeout(() => { if (phaseRef.current === 'ringing') finish({ ...c, endedBy: 'missed' }) }, 50000)
@@ -162,6 +191,9 @@ export default function CallOverlay() {
   // 接听:这一下点击是手势,音频上下文/播放器都在这里解锁
   const answerIncoming = async () => {
     const c = callRef.current; if (!c) return
+    if(nativeAvailable.current){
+      try{if(await nativeCalls.present(c.id)){await nativeCalls.answer();return}}catch{flash('系统接听失败，请再试一次');return}
+    }
     stopRing()
     try {
       if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)()
@@ -174,7 +206,7 @@ export default function CallOverlay() {
       startMic()
     } catch { finish({ ...c, endedBy: 'missed' }) }
   }
-  const declineIncoming = async () => { const c = callRef.current; stopRing(); if (c) { try { await post('/api/call/end', { id: c.id, by: 'declined' }) } catch {} } finish({ ...(c || {}), endedBy: 'declined' }) }
+  const declineIncoming = async () => { const c = callRef.current; stopRing(); if(nativeAvailable.current&&c){try{if(await nativeCalls.present(c.id)){await nativeCalls.end();return}}catch{}} if (c) { try { await post('/api/call/end', { id: c.id, by: 'declined' }) } catch {} } finish({ ...(c || {}), endedBy: 'declined' }) }
 
   // ---- 发起 ----
   const start = async ({ session, model }) => {
@@ -208,6 +240,7 @@ export default function CallOverlay() {
 
   // ---- 麦克风:整通电话开着一条流式识别 ----
   const startMic = async () => {
+    if(nativeOwned.current)return
     if (asrRef.current) return
     if (!reconnRef.current) await callAudio.start(speakerRef.current) // App:语音通话模式、允许蓝牙、屏幕不锁(重连时不重设)
     finalLenRef.current = 0
@@ -340,6 +373,7 @@ export default function CallOverlay() {
 
   // ---- 挂断/结束 ----
   const hangUp = async (by = 'her') => {
+    if(nativeOwned.current){try{await nativeCalls.end()}catch{flash('挂断未送达，请重试')}return}
     const c = callRef.current
     if (!c) { finish({ endedBy: 'her' }); return }
     try { const r = await post('/api/call/end', { id: c.id, by }); if (!r.ok) finish({ ...c, endedBy: by }) } catch { finish({ ...c, endedBy: by }) }
@@ -363,13 +397,13 @@ export default function CallOverlay() {
     try { srcRef.current?.stop() } catch {} srcRef.current = null
     try { streamRef.current?.getTracks().forEach((t) => t.stop()) } catch {} streamRef.current = null
     try { ctxRef.current?.close() } catch {} ctxRef.current = null
-    callAudio.end()
+    if(!nativeOwned.current)callAudio.end()
     try { if (audioRef.current) { audioRef.current.pause(); audioRef.current.removeAttribute('src'); audioRef.current.load() } } catch {} audioRef.current = null
   }
   const dur = (c) => c?.answeredAt ? Math.max(0, Math.floor((now - (Date.parse(c.answeredAt) + offsetRef.current)) / 1000)) : 0
-  const toggleMute = () => { if(typing)return;const v = !muted; setMuted(v); asrRef.current?.mute(v || typing || playingRef.current) }
-  const micOff = () => muted || typing || playingRef.current
-  const toggleTyping = () => { const v = !typing; setTyping(v); asrRef.current?.mute(muted || v || playingRef.current); if (v) { setLive(''); bufRef.current = [] } }
+  const toggleMute = () => { if(typing)return;const v = !muted; setMuted(v); if(nativeOwned.current)nativeCalls.muted(v).catch(()=>{});else asrRef.current?.mute(v || typing || playingRef.current) }
+  const micOff = () => muted || typing || playingRef.current || (nativeOwned.current&&!!speaking)
+  const toggleTyping = () => { const v = !typing; setTyping(v); if(nativeOwned.current)nativeCalls.muted(muted||v).catch(()=>{});else asrRef.current?.mute(muted || v || playingRef.current); if (v) { setLive(''); bufRef.current = [] } }
   useEffect(() => { asrRef.current?.mute(micOff()) }, [typing, muted])
   const sendTyped = () => { const t = input.trim(); if (!t) return; setInput(''); setHistory((h) => [...h, { who: 'her', text: t }]); say(t, 'text') }
 
@@ -457,7 +491,7 @@ export default function CallOverlay() {
         <button className={`call-btn ${muted || typing ? 'on' : ''}`} onClick={toggleMute} disabled={phase !== 'active'||typing}><span>{muted || typing ? Ic.micOff : Ic.mic}</span>{muted || typing ? '闭麦' : '开麦'}</button>
         <button className={`call-btn ${typing ? 'on' : ''}`} onClick={toggleTyping} disabled={phase !== 'active'}><span>{Ic.pen}</span>打字</button>
         {isApp()
-          ? <button className={`call-btn ${speaker ? 'on' : ''}`} onClick={async () => { const v = !speaker; setSpeaker(v); await callAudio.speaker(v) }} disabled={phase !== 'active'}><span>{Ic.spk}</span>{speaker ? '免提' : '听筒'}</button>
+          ? <button className={`call-btn ${speaker ? 'on' : ''}`} onClick={async () => { const v = !speaker; setSpeaker(v); if(nativeOwned.current)await nativeCalls.speaker(v).catch(()=>{});else await callAudio.speaker(v) }} disabled={phase !== 'active'}><span>{Ic.spk}</span>{speaker ? '免提' : '听筒'}</button>
           : <button className={`call-btn ${quiet ? 'on' : ''}`} onClick={() => setQuiet((v) => !v)} disabled={phase !== 'active'}><span>{quiet ? Ic.spkOff : Ic.spk}</span>{quiet ? '只看字' : '放声音'}</button>}
         <button className="call-btn hang" onClick={() => hangUp('her')} disabled={phase === 'ended'}><span>{Ic.phone}</span>挂断</button>
       </div>

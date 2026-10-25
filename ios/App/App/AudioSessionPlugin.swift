@@ -74,6 +74,7 @@ class HomeViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(AudioSessionPlugin())
         bridge?.registerPluginInstance(LocationPlugin())
+        bridge?.registerPluginInstance(NativeCallsPlugin())
     }
 }
 
