@@ -1,5 +1,6 @@
 import { useAppearance } from '../utils/appearance.js'
 import {displayMessage} from '../utils/companionMessage.js'
+import {voiceTranscript} from '../utils/voiceText.js'
 import CompanionPanel from '../components/CompanionPanel.jsx'
 import WarmCompanion from '../components/WarmCompanion.jsx'
 import useHouseDraft from '../utils/useHouseDraft.js'
@@ -1996,7 +1997,7 @@ export default function Chat({ back }) {
                       </span>
                       <span className="vlen">{Math.max(1, Math.round(seg.voice.length / 5))}″</span>
                     </button>
-                    <div className="voice-script">{seg.voice}</div>
+                    <div className="voice-script">{m.role === 'assistant' ? voiceTranscript(seg.voice) : seg.voice}</div>
                   </div>
                 ) : (
                   <div key={seg.draftId || i} className={`message-segment-block ${m.role}`}>
