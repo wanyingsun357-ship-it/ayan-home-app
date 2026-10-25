@@ -172,7 +172,7 @@ export default function App() {
         </button>
       )}
 
-      {view === 'home' && (warm ? <WarmHome go={go} openSidebar={() => setSidebarOpen(true)} /> : <Home go={go} openSidebar={() => setSidebarOpen(true)} />)}
+      {view === 'home' && (warm ? <WarmHome diaryDot={diaryDot} go={go} openSidebar={() => setSidebarOpen(true)} /> : <Home go={go} openSidebar={() => setSidebarOpen(true)} />)}
       {view === 'chat' && <Chat back={() => go('home')} />}
       {view === 'moments' && <Moments back={() => go('home')} />}
       {view === 'diary' && <Diary back={() => go('home')} />}

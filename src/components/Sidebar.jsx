@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useAppearance, appearanceChange } from '../utils/appearance.js'
 import { VERSION, HOME_NAME } from '../config.js'
 import './sidebar.css'
 
@@ -15,13 +15,12 @@ const ITEMS = [
 ]
 
 export default function Sidebar({ open, close, go, current }) {
-  const [theme, setTheme] = useState(document.documentElement.dataset.theme)
+  const appearance = useAppearance()
+  const theme = appearance.profiles[appearance.theme].mode
 
   const toggleTheme = () => {
     const next = theme === 'night' ? 'day' : 'night'
-    document.documentElement.dataset.theme = next
-    localStorage.setItem('theme', next)
-    setTheme(next)
+    appearanceChange(s => { s.profiles[s.theme].mode = next; return s })
   }
 
   return (

@@ -86,3 +86,5 @@
 
 .warm-glass-sample{position:relative;overflow:hidden;isolation:isolate;background:var(--bg)}.warm-sample-bg{position:absolute;inset:-12px;z-index:-1;background:url('/orange/wallpaper.jpg') center/cover}.warm-glass-sample>span{position:relative}
 @media(prefers-reduced-motion:reduce){:root[data-visual='orange'] :is(.dy-moonflash,.favorite-moonflash){animation:none!important;display:none}}
+
+.warm-dock button{position:relative}.warm-diary-dot{position:absolute;top:0;right:24%;width:5px;height:5px;border-radius:50%;background:#913d42}:root[data-visual='orange'] .mind-red-orbit{stroke:#94464e}
