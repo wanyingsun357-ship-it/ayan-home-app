@@ -1,5 +1,13 @@
 # 项目状态与待办
 
+## 2026-10-25 原生来电使用系统默认铃声（准备打包）
+
+- 用户要求改用iPhone默认铃声，并让接通/挂断按系统默认处理。以线上干净 `99d9a508a07ab3b3068a0190a13054c88d12f858` 建隔离工作树 `/root/ayan/worktrees/system-ring-20261025`；仅将 NativeCalls 的 `ringtoneName: "ring.wav"` 改为 `nil`，不指定App自定义来电铃声。
+- 接通/挂断继续通过原来的 LiveCommunicationKit 动作与会话事件交给系统，不新增本地提示音，不调用私有系统声音ID、复制苹果音频或模拟默认电话音效。现有TTS播放器只用于晏白语音。不能据此承诺每台手机都会有接通/挂断提示音或与蜂窝电话完全相同；实际行为取决于iOS，须新包真机验证。
+- 网页/旧系统回退仍需要原有 ring.wav，保留文件及资源引用，不改JS、服务端推送/ASR/TTS、来电标题和台词同步，不更新网页资源或重启服务。仅原生包需要更新。完整iOS编译和TestFlight上传结果待补；没有发送真实电话/推送或合成验证音频。
+- 官方配置：https://developer.apple.com/documentation/livecommunicationkit/conversationmanager/configuration-swift.struct/ringtonename 。
+
+
 ## 2026-10-25 原生来电标题、当前台词与通话标签（已发布，TestFlight41已上传）
 
 - 发布源码 `71807f584172c019765f64b49d3098baaa8260dd`；原生编译 run40211498062 / job121223496013 全部成功（Xcode 26）。网页入口 `/assets/index-D0NofuWA.js`、`/assets/index-C9pJWsdL.css`，备份 `/root/ayan/backups/call-captions-20261025-162712`；主分支已推送且干净，资源200、health200、queue0、alerts0，无后端重启。线上实际构建完成全模拟原生桥回归，字幕过滤、静音/免提、音频独占与前台恢复通过。

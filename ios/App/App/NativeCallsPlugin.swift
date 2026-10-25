@@ -112,7 +112,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
 
     func start() {
         guard registry == nil else { return }
-        manager = ConversationManager(configuration: .init(ringtoneName: "ring.wav", iconTemplateImageData: nil, maximumConversationGroups: 1, maximumConversationsPerConversationGroup: 1, includesConversationInRecents: false, supportsVideo: false, supportedHandleTypes: [.generic]))
+        manager = ConversationManager(configuration: .init(ringtoneName: nil, iconTemplateImageData: nil, maximumConversationGroups: 1, maximumConversationsPerConversationGroup: 1, includesConversationInRecents: false, supportsVideo: false, supportedHandleTypes: [.generic]))
         manager.delegate = self
         let push = PKPushRegistry(queue: .main); push.delegate = self; push.desiredPushTypes = [.voIP]; registry = push
     }
