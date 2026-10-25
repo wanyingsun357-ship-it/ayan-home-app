@@ -1,5 +1,12 @@
 # 项目状态与待办
 
+## 2026-10-25 Projects 文档编辑页可读性修复（验证通过，待发布）
+
+- 用户反馈从聊天侧边栏 Projects 打开 home 文档后文字/按钮几乎消失、无法编辑。以线上干净 `9f403f10dcd1a286fa21af8d4e46ec635937a86c` 建立隔离副本 `work/doc-editor-20261025`，没有改 home/src。复现确认编辑器继承暖橘 Chat 浅色文字与光标（#fff4d9）而底色为#f8eed9，对比度仅1.05；不是文档内容丢失或变成只读。
+- 仅修改 orange-theme.css 与 pages/chat.css：编辑器独立奶油/深棕及夜间阅读配色，明确光标/输入文字颜色；正文16px，便于iPhone输入且避免小字号聚焦放大；标题过长省略、保存/关闭不压缩，输入区可在小屏缩放并正常选字。未修改文档读写接口或用户文档内容。
+- 本地构建通过；模拟全部API，真实走聊天 → 会话侧栏 → Projects → home文档，验证聚焦输入、保存请求内容正确、失败保稿、关闭不保存及全局文档入口。暖橘/原版×日夜、320/390宽度均通过，无页面错误；暖橘日间/夜间文字对比度约8.08/10.06，截图已检查。没有读取/修改生产用户文档。iPhone系统键盘与选字仍需用户实测。网页发布结果另补，不重复打TestFlight、不重启后端。
+
+
 ## 2026-10-25 原生来电与锁屏音频接入（服务已发布，真机待验）
 
 - 最终发布补充：TestFlight **40** / run40205753154 / job121206198364 全部成功，Fastlane 15:15:15 UTC 确认 `Successfully uploaded the new binary to App Store Connect`；日志确认 CFBundleVersion=40，IPA artifact12602829959 已保存。Apple处理、测试人员可见性及安装尚未核实。构建链接：https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40205753154 。

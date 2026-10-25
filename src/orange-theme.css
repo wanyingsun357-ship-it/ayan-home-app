@@ -16,6 +16,9 @@
 :root[data-visual='orange'] .mo-post{border-bottom:1px solid var(--hairline);padding-bottom:18px}
 :root[data-visual='orange'] :is(.sheet,.sdrawer,.csearch,.glass3-sheet){--text:#876646;--text-soft:#987855;--text-dim:#a48a69;--accent:#ad7753;--accent-text:#9c674a;--card:#fffaf0a8;--card-border:#bb986f35;--g1:#f4e5cf80;--g2:#fff9edbb;background:var(--orange-paper);color:var(--text);border:1px solid #d6b99055}
 :root[data-visual='orange'][data-theme='night'] :is(.sheet,.sdrawer,.csearch,.glass3-sheet){--text:#e9d5b2;--text-soft:#d2ba96;--text-dim:#b89b79;--card:#443627bb;--card-border:#cfac7950;background:var(--orange-paper)}
+/* The opaque editor needs its own reading palette, independent of chat glass. */
+:root[data-visual='orange'] .doc-editor{--text:#68452e;--text-soft:#795438;--accent:#956341;--accent-text:#845638;--card:#fffaf0;--card-border:#c6a67c66;background:var(--orange-paper);color:var(--text)}
+:root[data-visual='orange'][data-theme='night'] .doc-editor{--text:#f0ddbd;--text-soft:#dcc29c;--accent:#e0b595;--accent-text:#e0b595;--card:#443627;--card-border:#cfac7966}
 :root[data-visual='orange'] .sheet{max-height:86dvh;border-radius:26px 26px 0 0}
 :root[data-visual='orange'] .csearch{inset:6dvh 14px;max-width:560px;margin:auto;height:auto;border-radius:26px}
 :root[data-visual='orange'] .chat-head{background:transparent}
