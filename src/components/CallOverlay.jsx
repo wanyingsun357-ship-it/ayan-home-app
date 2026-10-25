@@ -6,6 +6,7 @@ import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import { NAMES } from '../config.js'
 import { isApp, callAudio, buzz } from '../utils/native.js'
 import {nativeCalls,setupNativeCalls} from '../utils/nativeCalls.js'
+import {voiceTranscript} from '../utils/voiceText.js'
 import './call.css'
 
 // 通话(一期):她打过去 → 响铃 → 他 [ANSWER]/[DECLINE] → 通话中:
@@ -421,6 +422,8 @@ export default function CallOverlay() {
 
   const status = phase === 'ringing' ? (call?.by === 'him' ? `${NAMES.me} 来电` : '呼叫中…') : phase === 'ended' ? endInfo : speaking ? `${NAMES.me} 在说…` : live ? '你在说…' : `通话中 ${fmt(dur(call))}`
   const anim = phase === 'active' && (speaking || live)
+  const spokenText = voiceTranscript(speaking?.text || ''), spokenCur = voiceTranscript(speaking?.cur || '')
+  const spokenPast = spokenCur && spokenText.endsWith(spokenCur) ? spokenText.slice(0, -spokenCur.length) : ''
 
   if (min && phase !== 'ended') {
     return <button className={`call-pill glass3 ${anim ? 'anim' : ''}`} aria-label="返回通话，可拖动" style={pillPosition?{...pillPosition,right:'auto',bottom:'auto',transform:'none'}:{touchAction:'none'}} onPointerDown={pillDown} onPointerMove={pillMove} onPointerUp={()=>{pillDrag.current=null}} onPointerCancel={()=>{pillDrag.current=null;pillMoved.current=true}} onClick={() => {if(!pillMoved.current)setMin(false)}}><span className="call-pill-ico">☏</span><span className="call-pill-num">{phase === 'ringing' ? '呼叫中' : fmt(dur(call))}</span></button>
@@ -467,14 +470,14 @@ export default function CallOverlay() {
         {history.map((h, i) => (
           <div key={i} className={`call-line ${h.who}`}>
             <span className="call-who">{h.who === 'him' ? NAMES.me : 'You'}</span>
-            <span className="call-line-t">{h.text}</span>
-            {h.zh && <span className="call-line-zh">{h.zh}</span>}
+            <span className="call-line-t">{h.who === 'him' ? voiceTranscript(h.text) : h.text}</span>
+            {h.zh && <span className="call-line-zh">{h.who === 'him' ? voiceTranscript(h.zh) : h.zh}</span>}
           </div>
         ))}
         {speaking && (
           <div className="call-cur him">
-            <div className="call-cur-en serif">{speaking.cur && speaking.text.length > speaking.cur.length ? <><span className="call-cur-done">{speaking.text.slice(0, speaking.text.length - speaking.cur.length)}</span>{speaking.cur}</> : speaking.text}</div>
-            {speaking.zh && <div className="call-cur-zh">{speaking.zh}</div>}
+            <div className="call-cur-en serif">{spokenPast ? <><span className="call-cur-done">{spokenPast}</span>{spokenCur}</> : spokenText}</div>
+            {speaking.zh && <div className="call-cur-zh">{voiceTranscript(speaking.zh)}</div>}
           </div>
         )}
         {!speaking && live && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}{live}</div></div>}

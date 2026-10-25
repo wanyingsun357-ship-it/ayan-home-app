@@ -2464,7 +2464,7 @@ export default function Chat({ back }) {
                 {cv.entries.map((e, i) => (
                   <div key={i} className={`call-msg ${e.who} ${e.late ? 'late' : ''}`}>
                     <span className="call-who">{e.who === 'him' ? NAMES.me : 'You'}{e.via === 'text' ? ' · 打字' : ''}{e.late ? ' · 挂断后' : ''}{e.reasoning && <button className="cloud-btn call-cloud" onClick={() => setThought(e.reasoning)}><CloudIcon /></button>}</span>
-                    <div className="call-msg-b">{e.text}{e.zh && <span className="call-msg-zh">{e.zh}</span>}</div>
+                    <div className="call-msg-b">{e.who === 'him' ? voiceTranscript(e.text) : e.text}{e.zh && <span className="call-msg-zh">{e.who === 'him' ? voiceTranscript(e.zh) : e.zh}</span>}</div>
                   </div>
                 ))}
                 {!cv.entries.length && <div className="call-paper-empty">没说上话</div>}

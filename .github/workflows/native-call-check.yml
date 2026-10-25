@@ -1,7 +1,7 @@
 name: Native call compile check
 on:
   push:
-    branches: [codex/native-call-20261025]
+    branches: [codex/native-call-20261025, codex/call-captions-20261025]
 jobs:
   compile:
     runs-on: macos-26
