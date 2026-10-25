@@ -1,5 +1,14 @@
 # 项目状态与待办
 
+## 2026-10-25 暖橘遗漏修复已发布 / TestFlight 35 已上传
+
+- 已发布源码 f6ddb6c12091da5d293e3cf3a603906be9ec26d3（基线31f42b0，发布前远端与origin干净一致；5个源码文件逐项SHA核对）。网页入口 index-C5w9pSkN.js / index-CQYZT_rM.css。备份 /root/ayan/backups/orange-polish-20261025-120037；保留旧资源，未重启后端或写生产测试数据。
+- 线上实际构建通过模拟接口回归：语音深棕对比度、顶栏移除、羽毛收段、小螃蟹水位、Thinking居中、加号搜索/模型/会话/碰一碰/Home、Moments/Diary导航；320/390通话布局、打字POST、静音恢复、收起/返回/挂断、来电左接右拒；长按录音启动/上滑取消/草稿保留、短按不录、左右边缘手势，以及原版顶栏/模型/语音入口保留。零页面异常。已查看有内容的截图。线上health HTTP200、queue=0、alerts=0。
+- TestFlight build35 / run40191262262全部success；Fastlane日志12:04:21 UTC确认 Successfully uploaded the new binary to App Store Connect；IPA工件12598347233保存成功。Apple处理与测试人员可见性、设备安装尚未核实。链接：https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40191262262 。
+- 用户现有App仍通过server.url载入线上网页，重载即可获取这批视觉修正。新包未改原生音频/通知插件。iPhone录音权限/长按时系统选中行为、边缘系统返回手势、安全区与实际听筒/蓝牙仍待真机体验确认；浏览器模拟不等于真实服务音频端到端验收。
+- 本轮工作副本 work/orange-polish-20261025；基线 work/orange-polish-base-31f42b0；验证脚本 check-polish.cjs（所有/api模拟）、check-health.cjs（只读健康）。本地home/src未碰。此前“待发布”条目由本条覆盖。
+
+
 ## 2026-10-25 用户真机反馈：暖橘遗漏补齐
 
 - 以线上干净31f42b0为基线，新工作副本work/orange-polish-20261025；没有改home/src其他窗口文件。首轮仅换色未完成Chat顶栏/工具位置、Thinking、通话和Moments底栏，用户真机反馈后本轮补结构。
