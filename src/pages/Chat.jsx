@@ -271,6 +271,9 @@ export default function Chat({ back }) {
   const [editingDraftId, setEditingDraftId] = useState(null)
   const [featherSweep, setFeatherSweep] = useState(false)
   const [fallingFeather,setFallingFeather] = useState(0)
+  const [sendBloom,setSendBloom] = useState(0)
+  const [selectedMessage,setSelectedMessage] = useState(null)
+  useEffect(()=>{if(!selectedMessage)return;const key=e=>{if(e.key==='Escape')setSelectedMessage(null)};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[selectedMessage])
   const [draggingDraftId, setDraggingDraftId] = useState(null)
   const draftSessionRef = useRef(null)
   const draftHydratingRef = useRef(false)
@@ -532,7 +535,7 @@ export default function Chat({ back }) {
   const favoriteChoiceFor = (choice, owner = 'her') => {
     const m = choice?.m
     if (!m) return false
-    return favoriteMarks.some((f) => {
+    return favoriteMarks.find((f) => {
       if (owner && f.owner !== owner) return false
       const sameMessage = (Number.isInteger(m.absIdx) && f.index === m.absIdx)
         || ((!f.sourceContent || f.sourceContent === m.content) && (!m.timestamp || !f.timestamp || f.timestamp === m.timestamp))
@@ -1124,6 +1127,7 @@ export default function Chat({ back }) {
     }
     const segmented = outgoingSegments.length > 0
     const outgoingText = segmented ? outgoingSegments.map((item) => item.content).join('\n\n') : text
+    if(warm && !matchMedia('(prefers-reduced-motion: reduce)').matches)setSendBloom(n=>n+1)
     const composition = segmented ? {
       totalMs: groupStartedRef.current ? Math.max(0, Date.now() - groupStartedRef.current) : outgoingSegments.reduce((sum, item) => sum + (item.typingMs || 0), 0),
       segments: outgoingSegments.map((item) => ({ typingMs: item.typingMs || 0, pauses: item.pauses || 0 })),
@@ -1331,11 +1335,20 @@ export default function Chat({ back }) {
     }
   }
 
-  const doCopy = async () => {
-    const text = pressed.voiceText || pressed.segmentText || pressed.m.content
-    try { await navigator.clipboard.writeText(text) ; showToast((pressed.voiceText || pressed.segmentText) ? '已复制这段' : '已复制') }
+  const doCopy = async (whole = false) => {
+    const text = whole === true ? pressed.m.content.replace(/\[VOICE\]|\[\/VOICE\]/g, '') : pressed.voiceText || pressed.segmentText || pressed.m.content
+    try { await navigator.clipboard.writeText(text) ; showToast(whole === true ? '已复制整条' : (pressed.voiceText || pressed.segmentText) ? '已复制这段' : '已复制') }
     catch { showToast('复制失败') }
     setPressed(null)
+  }
+  const selectPressed = (whole = false) => {
+    setSelectedMessage(whole ? pressed.m.content.replace(/\[VOICE\]|\[\/VOICE\]/g,'') : pressed.voiceText || pressed.segmentText || pressed.m.content)
+    setPressed(null)
+  }
+  const togglePressedFavorite = async () => {
+    const choice=pressed, saved=favoriteChoiceFor(choice);setPressed(null)
+    if(!saved){favoriteMessage(choice.m,choice.voiceText);return}
+    try{const r=await fetch('/api/chat-favorites/'+saved.id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({viewer:'her'})});if(!r.ok)throw Error();setFavoriteMarks(xs=>xs.filter(x=>x.id!==saved.id));showToast('已取消收藏')}catch{showToast('没能取消收藏，再试一次')}
   }
   const doEdit = () => {
     setEditing({ idx: pressed.idx, old: pressed.m.content })
@@ -2059,7 +2072,8 @@ export default function Chat({ back }) {
           <span className="original-feather-icon"><FeatherIcon /></span><span className="paper-quill-icon"><PaperQuillIcon /></span><i />
         </button>
         </>}
-        {fallingFeather > 0 && <span key={fallingFeather} className="paper-falling-feather" aria-hidden="true"><PaperQuillIcon /></span>}
+        {warm && sendBloom > 0 && <div key={'send-'+sendBloom} className="warm-send-petals" aria-hidden="true">{[0,1,2,3,4,5,6].map(i=><i key={i} style={{'--drift':[-5,7,-8,4,6,-4,5][i]+'px','--drop':[65,87,78,97,72,91,83][i]+'px','--turn':[25,-34,42,-28,36,-40,29][i]+'deg',left:[-14,6,-5,15,-18,3,10][i]+'px',top:[2,-12,-4,-16,8,-10,0][i]+'px',animationDelay:i*110+'ms'}}/>)}</div>}
+        {fallingFeather > 0 && <span key={'feather-'+fallingFeather} className="paper-falling-feather" aria-hidden="true"><PaperQuillIcon /></span>}
         {editing != null && (
           <div className="edit-tip">
             正在编辑那条消息 <button onClick={() => { setEditing(null); setInput('') }}>取消</button>
@@ -2068,7 +2082,7 @@ export default function Chat({ back }) {
         {replying && (
           <div className="reply-compose">
             <i />
-            <span><b>回复 {replying.name}</b><em>{replying.content}</em></span>
+            <span><b>{warm?replying.name:`回复 ${replying.name}`}</b><em>{replying.content}</em></span>
             <button aria-label="取消回复" onClick={() => setReplying(null)}>×</button>
           </div>
         )}
@@ -2343,17 +2357,23 @@ export default function Chat({ back }) {
 
       {/* 长按菜单 */}
       {pressed && (
-        <div className="sheet-mask" onClick={() => setPressed(null)}>
+        <div className={`sheet-mask ${warm?"warm-message-mask":""}`} onClick={() => setPressed(null)}>
           <div className="sheet paper-letter-menu" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="press-preview">{(pressed.voiceText || pressed.segmentText || pressed.m.content).slice(0, 60)}</div>
-            <button className="sheet-item" disabled={pressed.m.streaming || favoriteChoiceFor(pressed)} onClick={() => {
+            <button className="sheet-item" disabled={pressed.m.streaming || (!warm && favoriteChoiceFor(pressed))} onClick={() => {
+              if(warm){togglePressedFavorite();return}
               const { m, voiceText } = pressed; setPressed(null); favoriteMessage(m, voiceText)
-            }}>{favoriteChoiceFor(pressed) ? '★ 已加入 Favorite' : pressed.voiceText ? '☆ 收藏这段语音' : '☆ 收藏这条'}</button>
+            }}>{favoriteChoiceFor(pressed) ? (warm?'☆ 取消收藏':'★ 已加入 Favorite') : pressed.voiceText ? '☆ 收藏这段语音' : '☆ 收藏这条'}</button>
             {pressed.m.role === 'assistant' && (
-              <button className="sheet-item" onClick={replyToPressed}>↩ {(pressed.voiceText || pressed.segmentText) ? '回复这段' : '回复这条'}</button>
+              <button className="sheet-item" onClick={replyToPressed}>{warm?'↩︎ ':'↩ '}{(pressed.voiceText || pressed.segmentText) ? '回复这段' : '回复这条'}</button>
             )}
             <button className="sheet-item" onClick={doCopy}>⧉ {(pressed.voiceText || pressed.segmentText) ? '复制这段' : '复制整条'}</button>
+            {warm && <>
+              {(pressed.voiceText || pressed.segmentText) && <button className="sheet-item" onClick={()=>doCopy(true)}>⧉ 复制整条</button>}
+              <button className="sheet-item" onClick={()=>selectPressed(false)}>选中{(pressed.voiceText || pressed.segmentText)?'本段':'整条'}</button>
+              {(pressed.voiceText || pressed.segmentText) && <button className="sheet-item" onClick={()=>selectPressed(true)}>选中整条</button>}
+            </>}
             <details className="paper-extra-actions"><summary>更多操作</summary>
             {pressed.m.role === 'user' && (
               <button className="sheet-item" onClick={doEdit}>✎ 编辑并重新发送</button>
@@ -2380,6 +2400,7 @@ export default function Chat({ back }) {
         </div>
       )}
 
+      {selectedMessage !== null && <div className="sheet-mask warm-select-mask" onClick={()=>setSelectedMessage(null)}><section className="warm-select-card" role="dialog" aria-label="选择消息文字" onClick={e=>e.stopPropagation()}><textarea readOnly autoFocus aria-label="选择消息文字" value={selectedMessage} onFocus={e=>e.currentTarget.select()}/><button onClick={()=>setSelectedMessage(null)}>完成</button></section></div>}
       {/* 会话抽屉 */}
       {/* 聊天记录搜索面板 */}
       {quizOpen && (() => {

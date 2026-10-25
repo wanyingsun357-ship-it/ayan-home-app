@@ -1,0 +1,52 @@
+/* Final warm controls: approved line drawings, glass checklist, readable notices. */
+:root[data-visual='orange'] .warm-todo time{display:block;font:italic 11px Georgia;margin:5px 0 0 24px;opacity:.9}
+:root[data-visual='orange'] .warm-todo small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;text-align:left;line-height:1.5}
+.warm-todo-mask{position:fixed;inset:0;z-index:180;display:grid;place-items:center;padding:20px 12px;background:#58351e22;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.warm-todo-card{position:relative;width:min(100%,390px);height:min(440px,calc(100dvh - 90px));border:1px solid #fff2d17a;border-top-color:#fff7e1b3;border-bottom-color:#ffefce45;border-radius:27px;color:#fff3d9;background:linear-gradient(130deg,#fff5dd1f,transparent 66%),#77492935;box-shadow:0 14px 42px #5f341f24,inset 0 1px 1px #fff7e626;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);padding:20px;display:flex;flex-direction:column}
+.warm-todo-card>header{flex:none}.warm-todo-card h2{font:italic 25px/1.3 Georgia,serif;text-align:center;margin:2px 0 20px}.warm-todo-card .detail-close{top:16px;left:20px;color:#ffedce}
+.warm-todo-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#fff0d066 transparent}
+.warm-task-line{display:flex;align-items:center;gap:8px;border-bottom:1px solid #fff0d039;padding:13px 0;min-width:0}
+.warm-task-line label{display:flex;align-items:center;gap:11px;flex:1;min-width:0;line-height:1.6;font-size:15px}.warm-task-line label span{overflow-wrap:anywhere}
+.warm-task-line input{appearance:none;-webkit-appearance:none;margin:0;width:19px;height:19px;flex:none;border:1px solid #fff0d2bf;background:transparent;border-radius:50%;display:grid;place-items:center}.warm-task-line input:checked:after{content:'✓';font-size:13px;color:#fff5dc}.warm-task-line.done label span{text-decoration:line-through;opacity:.7}
+.warm-task-line time,.warm-task-date{font-size:11px;padding:5px 8px;border:1px solid #fff0d04a;border-radius:12px;white-space:nowrap}
+.warm-task-delete{background:none;border:0;color:#fff3d9;font:17px Georgia;padding:6px 1px}
+.warm-todo-add{margin-top:20px}.warm-todo-add>input{width:100%;font-family:inherit;font-size:16px;line-height:1.6;border:0;border-bottom:1px solid #fff2d056;background:transparent;color:#fff7e6;padding:9px 0;outline-color:#fff3d5}.warm-todo-add>input::placeholder{color:#fff1d3cc}.warm-todo-add>div{display:flex;justify-content:space-between;gap:10px;margin-top:12px}
+.warm-todo-card button:not(.detail-close):not(.warm-task-delete){font-family:inherit;color:inherit;background:#fff3d309;border:1px solid #fff1d455;border-radius:14px;padding:7px 12px}.warm-todo-card button:disabled{opacity:.5}
+.warm-task-calendar{margin-top:16px;padding:12px 8px;background:#fff0cf12;border:1px solid #fff0cd40;border-radius:17px}.warm-task-calendar header{display:flex;align-items:center;justify-content:space-between;font-size:12px}.warm-task-calendar>div{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-top:10px;text-align:center}.warm-task-calendar small{font-size:11px;opacity:.8;padding:4px}.warm-task-calendar>div button{padding:7px 0!important;border:0!important;background:transparent!important;font-size:12px}.warm-task-calendar button[aria-pressed='true']{background:#fff0d33b!important;box-shadow:inset 0 0 0 1px #fff1d4}.warm-task-calendar footer{display:flex;gap:8px;margin-top:12px}.warm-todo-error{display:block;width:100%;background:#fff0d9!important;color:#634328!important;font-size:12px}
+:root[data-visual='orange'] .msg-meta .cloud-btn{width:28px;height:28px;padding:7px;filter:none}
+:root[data-visual='orange'] .msg-meta .cloud-btn svg{width:14px;height:14px;filter:none;stroke-width:1.5}
+:root[data-visual='orange'] .chat-bar>.cbtn:first-child{color:#fff2d5!important;opacity:1;filter:none;border-color:#fff0d353}
+:root[data-visual='orange'] .chat-bar .segment-feather{width:34px;height:34px;flex-basis:34px;padding:3px 7px;transform:rotate(8deg);background:#fff4d609;color:#fff1cc;border-color:#fff0cf70;opacity:.9}
+:root[data-visual='orange'] .chat-bar .segment-feather .paper-quill-icon{display:block;width:19px;height:27px}
+:root[data-visual='orange'] .paper-quill-icon svg,:root[data-visual='orange'] .paper-falling-feather svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+:root[data-visual='orange'] .chat-bar .segment-feather>i{display:none}
+:root[data-visual='orange'] .chat-bar .segment-feather.awake .paper-quill-icon{animation:warm-quill-float 3s ease-in-out infinite}
+:root[data-visual='orange'] .chat-bar .segment-feather.sweep .paper-quill-icon{animation:warm-quill-sweep .55s ease}
+:root[data-visual='orange'] .chat-bar .segment-feather:disabled{opacity:.64}
+:root[data-visual='orange'] .paper-falling-feather{display:block;pointer-events:none;position:absolute;right:65px;top:auto;bottom:30px;width:19px;height:28px;color:#fff0cf;animation:warm-quill-fall 1.5s ease-out both;z-index:6}
+:root[data-visual='orange'] .chat-bar .send{width:34px;height:34px;min-height:34px;flex:0 0 34px;padding:5px;border:1px solid #fff0d46b;background:#fff0cf17;color:#fff1d1}
+:root[data-visual='orange'] .chat-bar .send.ready{background:#fff2d7;color:#71482e;opacity:1}
+:root[data-visual='orange'] .chat-bar .send .touch-glyph{width:24px;height:24px;fill:none;stroke-width:1.35}
+.warm-send-petals{position:absolute;right:30px;bottom:38px;width:0;height:0;z-index:8;pointer-events:none}.warm-send-petals i{position:absolute;width:7px;height:11px;border-radius:70% 20% 65% 30%;background:#ffe2c1;box-shadow:inset 1px 0 #fff3dd;animation:warm-petal-drift 2.6s linear both;filter:drop-shadow(0 1px 1px #90604412)}
+@keyframes warm-quill-float{50%{transform:translateY(-3px) rotate(-4deg)}}@keyframes warm-quill-sweep{50%{transform:translate(-7px,5px) rotate(-18deg)}}@keyframes warm-quill-fall{0%{opacity:.7;transform:translate(0,0) rotate(0)}50%{opacity:.5;transform:translate(-18px,27px) rotate(-35deg)}100%{opacity:0;transform:translate(-7px,63px) rotate(25deg)}}
+@keyframes warm-petal-drift{0%{opacity:0;transform:translate(0,0) rotate(-12deg) scale(.85)}15%{opacity:.85}35%{transform:translate(var(--drift),calc(var(--drop)*.3)) rotate(var(--turn))}68%{opacity:.7;transform:translate(calc(var(--drift)*-.5),calc(var(--drop)*.64)) rotate(calc(var(--turn)*-.6))}100%{opacity:0;transform:translate(var(--drift),var(--drop)) rotate(var(--turn))}}
+:root[data-visual='orange'] .touch-notice .touch-line{color:#624126;background:#fff1d4e8;border:1px solid #fff7e28c;border-radius:16px;padding:7px 12px;line-height:1.6;box-shadow:0 2px 9px #71462214;text-shadow:none;max-width:100%}
+:root[data-visual='orange'] .touch-notice b,:root[data-visual='orange'] .touch-notice .touch-mark{color:#624126;opacity:1}
+:root[data-visual='orange'] .touch-notice time{color:#fff3d6;opacity:1;text-shadow:0 1px 3px #71422188}
+:root[data-visual='orange'] .reply-compose,:root[data-visual='orange'] .reply-quote{color:#644229;background:#ffefcfed;border:1px solid #d5b48699;border-radius:12px;padding:7px 10px;line-height:1.5;box-shadow:none;max-width:100%}
+:root[data-visual='orange'] .reply-compose span,:root[data-visual='orange'] .reply-quote span{display:flex;flex-direction:row;align-items:baseline;gap:8px;overflow:hidden}
+:root[data-visual='orange'] .reply-compose b,:root[data-visual='orange'] .reply-quote b{font-size:12px;white-space:nowrap;flex:none;color:#785033}
+:root[data-visual='orange'] .reply-compose em,:root[data-visual='orange'] .reply-quote em{color:#644229;font-size:12px;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset;line-clamp:unset;opacity:1}
+:root[data-visual='orange'] .reply-compose button{color:#785033;opacity:1}:root[data-visual='orange'] .reply-compose>i,:root[data-visual='orange'] .reply-quote>i{background:#b58a5e}
+:root[data-visual='orange'] .chat-toast{background:#fff0d9f7;color:#5b3b22!important;border:1px solid #fff7e7;box-shadow:0 3px 18px #62402433;opacity:1;text-shadow:none;font-size:14px;max-width:88vw;line-height:1.5;white-space:normal;z-index:300}
+:root[data-visual='orange'] .sys-divider{color:#624126;opacity:1;margin:14px auto;gap:8px;padding:7px 12px;border-radius:14px;background:#fff0d6ed;width:fit-content;max-width:90%;text-align:center;font-size:12px;line-height:1.6}
+:root[data-visual='orange'] .sys-divider:before,:root[data-visual='orange'] .sys-divider:after{display:none}
+:root[data-visual='orange'] .edit-tip,:root[data-visual='orange'] .chat-history-banner{background:#fff0d7f2;color:#65442b;border-radius:12px;padding:8px 12px}:root[data-visual='orange'] .edit-tip button,:root[data-visual='orange'] .chat-history-banner button{color:#65442b}
+:root[data-visual='orange'] .warm-message-mask{align-items:center;padding:20px 16px;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+:root[data-visual='orange'] .warm-message-mask .paper-letter-menu{width:min(100%,390px);max-height:80dvh;overflow:auto;border-radius:25px;padding:18px 20px;background:#fff5e3;color:#68472e;box-shadow:0 12px 30px #5d351a33}
+:root[data-visual='orange'] .warm-message-mask .sheet-handle{display:none}
+:root[data-visual='orange'] .warm-message-mask .sheet-item{padding:10px 6px;font-size:15px;min-height:42px;color:#68472e}
+:root[data-visual='orange'] .warm-message-mask .press-preview{padding:4px 6px 12px;font-size:13px;color:#856244;line-height:1.6;border-bottom:1px solid #ddc7a1}
+:root[data-visual='orange'] .warm-message-mask .paper-extra-actions summary{padding:10px 6px;font-size:12px;color:#856244}
+.warm-select-mask{align-items:center;padding:20px}.warm-select-card{width:min(100%,400px);background:#fff3df;color:#644229;border:1px solid #fffaec;border-radius:24px;padding:18px}.warm-select-card textarea{display:block;resize:none;width:100%;height:45dvh;background:transparent;color:inherit;border:0;font:16px/1.8 inherit;user-select:text;-webkit-user-select:text;touch-action:auto;-webkit-touch-callout:default}.warm-select-card button{display:block;margin:12px 0 0 auto;border:1px solid #cdaa7b;background:transparent;color:inherit;border-radius:15px;padding:8px 18px}
+@media(prefers-reduced-motion:reduce){:root[data-visual='orange'] .paper-quill-icon{animation:none!important}:root[data-visual='orange'] .paper-falling-feather,.warm-send-petals{display:none}}

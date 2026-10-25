@@ -6,6 +6,7 @@ import './paper-release.css'
 import './orange-theme.css'
 import './orange-polish.css'
 import './orange-details.css'
+import './orange-chat-finish.css'
 import {applyAppearance} from './utils/appearance.js'
 
 applyAppearance()

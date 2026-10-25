@@ -1,0 +1,20 @@
+import {useEffect,useState} from 'react'
+
+const keyOf = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+const labelOf = d => d ? `${Number(d.slice(5,7))}月${Number(d.slice(8,10))}日` : '选择日期'
+
+export default function WarmTodo({onClose,onChange}) {
+ const [items,setItems]=useState([]),[today,setToday]=useState(''),[date,setDate]=useState(''),[text,setText]=useState('')
+ const [calendar,setCalendar]=useState(false),[month,setMonth]=useState(()=>new Date()),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(true)
+ const load=async()=>{setLoading(true);try{const r=await fetch('/api/plans');if(!r.ok)throw Error();const d=await r.json();setItems(d.items||[]);setToday(d.today);setDate(v=>v||d.today);setMonth(new Date(d.today+'T12:00:00'));setError('')}catch{setError('暂时读不到待办，点击重试')}finally{setLoading(false)}}
+ useEffect(()=>{load()},[])
+ const mutate=async(path,method,body,apply)=>{if(busy)return;setBusy(true);setError('');try{const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});if(!r.ok)throw Error();const d=await r.json();apply(d);onChange()}catch{setError('没存上，再试一次；文字还在这里。')}finally{setBusy(false)}}
+ const add=e=>{e.preventDefault();if(!text.trim())return;mutate('/api/plans','POST',{text:text.trim(),date:date||today},d=>{setItems(xs=>[...xs,d]);setText('')})}
+ const days=new Date(month.getFullYear(),month.getMonth()+1,0).getDate(),offset=(new Date(month.getFullYear(),month.getMonth(),1).getDay()+6)%7
+ return <div className="warm-todo-mask" onClick={onClose}><section className="warm-todo-card" role="dialog" aria-modal="true" aria-label="To do" onClick={e=>e.stopPropagation()}><header><button className="detail-close" aria-label="关闭 To do" onClick={onClose}>×</button><h2>To do</h2></header><div className="warm-todo-body">
+ {error&&<button className="warm-todo-error" role="status" onClick={load}>{error}</button>}
+ <div className="warm-task-list">{loading?<p>正在读取…</p>:!items.length?<p>今天想做什么？</p>:[...items].sort((a,b)=>Number(a.done)-Number(b.done)||String(a.date).localeCompare(String(b.date))).map(p=><div className={`warm-task-line ${p.done?'done':''}`} key={p.id}><label><input type="checkbox" checked={!!p.done} disabled={busy} onChange={()=>mutate(`/api/plans/${p.id}/toggle`,'POST',null,d=>setItems(xs=>xs.map(x=>x.id===p.id?{...x,done:d.done}:x)))}/><span>{p.text}</span></label><time>{labelOf(p.date)}</time><button className="warm-task-delete" disabled={busy} aria-label={`删除待办：${p.text}`} onClick={()=>{if(confirm('删掉这条？'))mutate(`/api/plans/${p.id}`,'DELETE',null,()=>setItems(xs=>xs.filter(x=>x.id!==p.id)))}}>×</button></div>)}</div>
+ <form className="warm-todo-add" onSubmit={add}><input aria-label="新增待办事项" placeholder="记下一件小事…" value={text} onChange={e=>setText(e.target.value)} maxLength={120}/><div><button type="button" className="warm-task-date" aria-expanded={calendar} onClick={()=>setCalendar(v=>!v)}>▦ {labelOf(date)}</button><button type="submit" disabled={busy||!text.trim()||loading}>{busy?'记着呢…':'记下'}</button></div></form>
+ {calendar&&<section className="warm-task-calendar" aria-label="选择日期"><header><button aria-label="上个月" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}>‹</button><strong>{month.getFullYear()}年 {month.getMonth()+1}月</strong><button aria-label="下个月" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}>›</button></header><div>{['一','二','三','四','五','六','日'].map(w=><small key={w}>{w}</small>)}{Array.from({length:offset},(_,i)=><i key={'blank'+i}/>)}{Array.from({length:days},(_,i)=>{const key=keyOf(new Date(month.getFullYear(),month.getMonth(),i+1));return <button key={key} aria-label={key} aria-pressed={date===key} onClick={()=>{setDate(key);setCalendar(false)}}>{i+1}</button>})}</div><footer><button onClick={()=>{setDate(today);setCalendar(false)}}>今天</button><button onClick={()=>{const d=new Date(today+'T12:00:00');d.setDate(d.getDate()+1);setDate(keyOf(d));setCalendar(false)}}>明天</button></footer></section>}
+ </div></section></div>
+}
