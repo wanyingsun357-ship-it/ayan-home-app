@@ -31,6 +31,7 @@ export default function Diary({ back }) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [mood, setMood] = useState('')
+  const [customMood,setCustomMood]=useState(false)
   const [saving, setSaving] = useState(false)
   const [lockOn, setLockOn] = useState(false)
   const [unlockAt, setUnlockAt] = useState('')
@@ -71,14 +72,15 @@ export default function Diary({ back }) {
     if (!content.trim() || saving) return
     setSaving(true)
     try {
-      await fetch('/api/diary', {
+      const response = await fetch('/api/diary', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(), content, mood,
           locked: lockOn, unlock_at: lockOn && unlockAt ? unlockAt : undefined,
         }),
       })
-      setTitle(''); setContent(''); setMood(''); setLockOn(false); setUnlockAt('')
+      if (!response.ok) throw new Error('save failed')
+      setTitle(''); setContent(''); setMood(''); setCustomMood(false); setLockOn(false); setUnlockAt('')
       setView('list')
       await load()
       showToast(lockOn ? '锁好了,红线只有你能解 🧵' : '写好了,他晚些会来读 🫧')
@@ -89,15 +91,18 @@ export default function Diary({ back }) {
   const sendComment = async () => {
     const c = commentText.trim()
     if (!c || !cur) return
-    setCommentText('')
-    await fetch(`/api/diary/${cur.id}/comments`, {
+    try {
+    const response = await fetch(`/api/diary/${cur.id}/comments`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: c }),
-    }).catch(() => {})
+    })
+    if (!response.ok) throw new Error('comment failed')
+    setCommentText('')
     await load()
     const r = await fetch('/api/diary').then((x) => x.json()).catch(() => null)
     const fresh = r?.entries?.find((x) => x.id === cur.id)
     if (fresh) setCur(fresh)
+    } catch { showToast('便签没贴上，文字已保留，请再试一次') }
   }
 
   const del = async (e) => {
@@ -117,6 +122,7 @@ export default function Diary({ back }) {
           <div style={{ width: 36 }} />
         </header>
         <div className="dy-paper dy-editor">
+          {toast && <p role="status" className="dy-save-feedback">{toast}</p>}
           <input
             className="dy-ti"
             placeholder="标题(可以不写)"
@@ -131,6 +137,8 @@ export default function Diary({ back }) {
                 onClick={() => setMood(mood === m ? '' : m)}
               >{m}</button>
             ))}
+            <button className={`dy-mood ${customMood?'on':''}`} aria-label="自定义心情" onClick={()=>setCustomMood(v=>!v)}>+</button>
+            {customMood&&<input aria-label="自定义心情标签" placeholder="此刻的心情" maxLength={24} value={MOODS.includes(mood)?'':mood} onChange={e=>setMood(e.target.value)}/>}
           </div>
           <textarea
             className="dy-ta"

@@ -56,13 +56,14 @@ export default function Moments({ back }) {
       if (img) {
         // 先压缩(自适应到350KB以下)再上传,失败自动重试3次
         const c = await compressImage(img.file)
-        try { images.push((await postUpload(c.name, c.base64)).url) } catch {}
+        images.push((await postUpload(c.name, c.base64)).url)
       }
-      await fetch('/api/moments', {
+      const response = await fetch('/api/moments', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: text.trim(), images }),
       })
-      setText(''); setImg(null)
+      if (!response.ok) throw new Error('publish failed')
+      setText(''); setImg(null); setComposeOpen(false)
       await load()
     } catch { showToast('没发出去,再试一次') }
     setPosting(false)
@@ -70,28 +71,32 @@ export default function Moments({ back }) {
 
   const toggleLike = async (m) => {
     setMoments((ms) => ms.map((x) => x.id === m.id ? { ...x, liked_by_wanying: !x.liked_by_wanying } : x))
-    await fetch(`/api/moments/${m.id}/like`, {
+    try { const r = await fetch(`/api/moments/${m.id}/like`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ liked: !m.liked_by_wanying }),
-    }).catch(() => {})
+    }); if (!r.ok) throw new Error('like failed')
+    } catch { await load(); showToast('点赞没保存，请再试一次') }
   }
 
   const sendComment = async (m) => {
     const c = commentText.trim()
     if (!c) return
-    setCommentText(''); setCommentFor(null)
-    await fetch(`/api/moments/${m.id}/comments`, {
+    try {
+    const response = await fetch(`/api/moments/${m.id}/comments`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: c }),
-    }).catch(() => {})
+    })
+    if (!response.ok) throw new Error('comment failed')
+    setCommentText(''); setCommentFor(null)
     await load()
     showToast('他过一会儿会看到的 🫧')
+    } catch { showToast('评论没发出，文字已保留') }
   }
 
   const del = async (m) => {
     if (!confirm('删掉这条动态?')) return
-    await fetch(`/api/moments/${m.id}`, { method: 'DELETE' }).catch(() => {})
-    load()
+    try { const r = await fetch(`/api/moments/${m.id}`, { method: 'DELETE' }); if (!r.ok) throw new Error('delete failed'); await load() }
+    catch { showToast('没有删掉，请再试一次') }
   }
 
   const likedLine = (m) => {
@@ -136,8 +141,8 @@ export default function Moments({ back }) {
                 className={`mo-like ${m.liked_by_wanying ? 'on' : ''}`}
                 onClick={() => toggleLike(m)}
               >♡</button>
-              <button className="mo-cbtn" onClick={() => { setCommentFor(commentFor === m.id ? null : m.id); setCommentText('') }}>
-                评论
+              <button className="mo-cbtn" aria-label="评论" onClick={() => { setCommentFor(commentFor === m.id ? null : m.id); setCommentText('') }}>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M20 11a8 8 0 0 1-11 7l-5 2 1-5a8 8 0 1 1 15-4Z"/></svg>
               </button>
               {likedLine(m) && <span className="mo-liked serif">♡ {likedLine(m)}</span>}
             </div>
@@ -193,7 +198,7 @@ export default function Moments({ back }) {
               <div style={{ flex: 1 }} />
               <button
                 className="mo-publish"
-                onClick={async () => { await post(); setComposeOpen(false) }}
+                onClick={post}
                 disabled={posting || (!text.trim() && !img)}
               >{posting ? '…' : '发布'}</button>
             </div>

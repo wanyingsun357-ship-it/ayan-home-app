@@ -1,3 +1,4 @@
+import WarmCompanion from '../components/WarmCompanion.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import PixelCat from '../components/PixelCat.jsx'
 import './together.css'
@@ -89,9 +90,9 @@ function ModHead({ slogan, day, onPick, marks, summary }) {
   return (
     <>
       <div className="tg-modhead glass2">
-        <div className="tg-cat"><PixelCat size={54} /></div>
+        <div className="tg-cat"><WarmCompanion size={54} pose={slogan.includes('睡')?'neo_sleep_cap':slogan.includes('词')||slogan.includes('考')?'ai_read':'neo_toast'} /></div>
         <div className="tg-slogan serif">{slogan}</div>
-        <button className={`tg-moon ${open ? 'on' : ''}`} onClick={() => setOpen((v) => !v)}>☾</button>
+        <button className={`tg-moon ${open ? 'on' : ''}`} onClick={() => setOpen((v) => !v)} aria-label="打开月历和统计"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 15A9 9 0 0 1 9 3a9.5 9.5 0 1 0 11.5 12Z"/></svg></button>
       </div>
       {open && (
         <div className="tg-card glass2 tg-calcard">
@@ -242,9 +243,9 @@ function SleepCard({ title, kind, day, rec, post, hint }) {
         </div>
       )}
       <div className="tg-sleep-grid">
-        <label>{kind === 'nap' ? '躺下' : '入睡'}<input type="time" value={bed} onChange={(e) => setBed(e.target.value)} /></label>
-        <label>{kind === 'nap' ? '醒来' : '起床'}<input type="time" value={wake} onChange={(e) => setWake(e.target.value)} /></label>
-        <div className="tg-sleep-dur serif">{dur(rec.minutes)}</div>
+        <label>{kind === 'nap' ? '躺下' : '入睡'}<input type="time" onClick={e=>{try{e.currentTarget.showPicker?.()}catch{}}} value={bed} onChange={(e) => setBed(e.target.value)} /></label>
+        <label>{kind === 'nap' ? '醒来' : '起床'}<input type="time" onClick={e=>{try{e.currentTarget.showPicker?.()}catch{}}} value={wake} onChange={(e) => setWake(e.target.value)} /></label>
+        <div className="tg-sleep-dur serif">{dur(bed && wake ? Math.max(0, Math.round((Date.parse(`${day}T${wake}:00+08:00`) - Date.parse(`${kind === 'night' ? bedDate : day}T${bed}:00+08:00`))/60000)) : 0)}</div>
       </div>
       <textarea className="tg-textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder={kind === 'nap' ? '备注:课间眯了一会…' : '备注:昨天有点困…'} />
       <div className="tg-actions">
@@ -426,7 +427,7 @@ function Words({ slogan }) {
   return (
     <>
       <div className="tg-modhead glass2">
-        <div className="tg-cat"><PixelCat size={54} /></div>
+        <div className="tg-cat"><WarmCompanion size={54} pose={slogan.includes('睡')?'neo_sleep_cap':slogan.includes('词')||slogan.includes('考')?'ai_read':'neo_toast'} /></div>
         <div className="tg-slogan serif">{slogan}</div>
       </div>
       {!ov.title && <div className="tg-card glass2 tg-empty serif">还没有词库。把 PDF/词表发给我,我帮你导进来。</div>}
@@ -507,7 +508,7 @@ function Mistakes({ slogan }) {
   return (
     <>
       <div className="tg-modhead glass2">
-        <div className="tg-cat"><PixelCat size={54} /></div>
+        <div className="tg-cat"><WarmCompanion size={54} pose={slogan.includes('睡')?'neo_sleep_cap':slogan.includes('词')||slogan.includes('考')?'ai_read':'neo_toast'} /></div>
         <div className="tg-slogan serif">{slogan}</div>
       </div>
       <div className="tg-card glass2">

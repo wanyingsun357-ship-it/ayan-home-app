@@ -1,3 +1,4 @@
+import WarmCompanion from '../components/WarmCompanion.jsx'
 import useHouseDraft from '../utils/useHouseDraft.js'
 import FavoritesSheet from '../components/FavoritesSheet.jsx'
 import { useEffect, useRef, useState } from 'react'
@@ -1759,7 +1760,7 @@ export default function Chat({ back }) {
         )}
         {messages.length === 0 && (
           <div className="chat-empty-cat">
-            <PixelCat size={96} />
+            <WarmCompanion size={96} online={online} busy={waiting} />
             <span className="txt serif">
               {histLoading ? 'waiting…' : 'say something.'}
             </span>
@@ -1974,6 +1975,7 @@ export default function Chat({ back }) {
       {historyView && <div className="paper-latest-wrap"><button className="paper-latest" aria-label="回到最新聊天" onClick={returnLatest}>↓</button></div>}
       {/* 输入区 */}
       <div className={`chat-input-wrap ${draftSegments.length ? 'has-segments' : ''}`} data-history={historyView ? 'true' : undefined}>
+        <div className="warm-chat-pet"><WarmCompanion online={online} busy={waiting}/></div>
         {draftSegments.length > 0 && editing == null && (
           <div className="segment-dock" aria-label="待发送的分段">
             {draftSegments.map((segment, index) => {

@@ -1,0 +1,23 @@
+/* Original operit-clawd sprite sheets, AGPL-3.0; see reference-operit/LICENSE. */
+.sprite-ai_idle{background-image:url("/orange/operit/ai_idle.png");--frames:8;animation:operit-frames 2.0779220779220777s steps(8) infinite}
+.sprite-ai_look{background-image:url("/orange/operit/ai_look.png");--frames:8;animation:operit-frames 2.4024024024024024s steps(8) infinite}
+.sprite-ai_read{background-image:url("/orange/operit/ai_read.png");--frames:4;animation:operit-frames 1.3986013986013988s steps(4) infinite}
+.sprite-ai_talk{background-image:url("/orange/operit/ai_talk.png");--frames:4;animation:operit-frames 0.8791208791208791s steps(4) infinite}
+.sprite-ai_wave{background-image:url("/orange/operit/ai_wave.png");--frames:4;animation:operit-frames 0.64s steps(4) infinite}
+.sprite-neo_bash{background-image:url("/orange/operit/neo_bash.png");--frames:9;animation:operit-frames 1.8s steps(9) infinite}
+.sprite-neo_bash_test{background-image:url("/orange/operit/neo_bash_test.png");--frames:7;animation:operit-frames 1.4s steps(7) infinite}
+.sprite-neo_confused{background-image:url("/orange/operit/neo_confused.png");--frames:6;animation:operit-frames 2s steps(6) infinite}
+.sprite-neo_done{background-image:url("/orange/operit/neo_done.png");--frames:6;animation:operit-frames 0.8571428571428571s steps(6) infinite}
+.sprite-neo_happy{background-image:url("/orange/operit/neo_happy.png");--frames:4;animation:operit-frames 0.6666666666666666s steps(4) infinite}
+.sprite-neo_listen{background-image:url("/orange/operit/neo_listen.png");--frames:4;animation:operit-frames 1s steps(4) infinite}
+.sprite-neo_paint{background-image:url("/orange/operit/neo_paint.png");--frames:13;animation:operit-frames 3.25s steps(13) infinite}
+.sprite-neo_sad{background-image:url("/orange/operit/neo_sad.png");--frames:4;animation:operit-frames 1.3333333333333333s steps(4) infinite}
+.sprite-neo_search{background-image:url("/orange/operit/neo_search.png");--frames:8;animation:operit-frames 2s steps(8) infinite}
+.sprite-neo_shy{background-image:url("/orange/operit/neo_shy.png");--frames:6;animation:operit-frames 1.5s steps(6) infinite}
+.sprite-neo_sleep_bubble{background-image:url("/orange/operit/neo_sleep_bubble.png");--frames:9;animation:operit-frames 3s steps(9) infinite}
+.sprite-neo_sleep_cap{background-image:url("/orange/operit/neo_sleep_cap.png");--frames:4;animation:operit-frames 2s steps(4) infinite}
+.sprite-neo_surf{background-image:url("/orange/operit/neo_surf.png");--frames:6;animation:operit-frames 1s steps(6) infinite}
+.sprite-neo_toast{background-image:url("/orange/operit/neo_toast.png");--frames:8;animation:operit-frames 1.3333333333333333s steps(8) infinite}
+.sprite-neo_type_kb{background-image:url("/orange/operit/neo_type_kb.png");--frames:8;animation:operit-frames 1.3333333333333333s steps(8) infinite}
+
+.warm-companion{display:inline-block;width:var(--sprite-size);height:var(--sprite-size);background-repeat:no-repeat;background-size:calc(var(--frames)*var(--sprite-size)) var(--sprite-size);image-rendering:pixelated;flex-shrink:0}.warm-companion.offline{filter:grayscale(1);opacity:.6;animation:none}@keyframes operit-frames{from{background-position-x:0}to{background-position-x:calc(-1*var(--frames)*var(--sprite-size))}}@media(prefers-reduced-motion:reduce){.warm-companion{animation:none}}

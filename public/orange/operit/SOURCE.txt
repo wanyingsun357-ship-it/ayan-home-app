@@ -1,0 +1,2 @@
+Unmodified sprites from watersalt0305/operit-clawd, a900c0f04b7cadb0c03c0c00a2c2de7fd62fc8d5. Source: https://github.com/watersalt0305/operit-clawd/tree/a900c0f04b7cadb0c03c0c00a2c2de7fd62fc8d5
+License: AGPL-3.0, see LICENSE.

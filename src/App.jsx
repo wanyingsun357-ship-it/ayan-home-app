@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import Splash from './components/Splash.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Home from './pages/Home.jsx'
+import WarmHome from './pages/WarmHome.jsx'
+import WarmSplash from './components/WarmSplash.jsx'
+import {useAppearance,applyAppearance} from './utils/appearance.js'
 import Chat from './pages/Chat.jsx'
 import Moments from './pages/Moments.jsx'
 import Diary from './pages/Diary.jsx'
@@ -42,9 +45,13 @@ const MORE_ITEMS = [
 ]
 
 export default function App() {
+  const appearance=useAppearance()
+  const warm=appearance.theme==='orange'
   const [splashDone, setSplashDone] = useState(false)
   const [splashReveal, setSplashReveal] = useState(false)
+  useEffect(()=>{const done=()=>setSplashDone(true);window.addEventListener('call:visible',done);return()=>window.removeEventListener('call:visible',done)},[])
   const [view, setView] = useState('home')
+  useEffect(()=>{applyAppearance(view)},[view,appearance])
   useEffect(() => {
     document.documentElement.dataset.paperSurface = ['home','together','settings'].includes(view) ? 'home' : 'chat'
     document.documentElement.dataset.paperBackgroundOnly = String(['moments','diary','together','footprints','memory'].includes(view))
@@ -150,14 +157,6 @@ export default function App() {
     return () => window.removeEventListener('resize', set)
   }, [])
 
-  // 用户外观偏好:背景强度/玻璃透明度
-  useEffect(() => {
-    const dim = localStorage.getItem('bg-dim')
-    const gk = localStorage.getItem('glass-k')
-    if (dim) document.documentElement.style.setProperty('--bg-dim', dim)
-    if (gk) document.documentElement.style.setProperty('--gk', gk)
-  }, [])
-
   const showTabs = ['home', 'moments', 'diary'].includes(view)
 
   return (
@@ -173,7 +172,7 @@ export default function App() {
         </button>
       )}
 
-      {view === 'home' && <Home go={go} openSidebar={() => setSidebarOpen(true)} />}
+      {view === 'home' && (warm ? <WarmHome go={go} openSidebar={() => setSidebarOpen(true)} /> : <Home go={go} openSidebar={() => setSidebarOpen(true)} />)}
       {view === 'chat' && <Chat back={() => go('home')} />}
       {view === 'moments' && <Moments back={() => go('home')} />}
       {view === 'diary' && <Diary back={() => go('home')} />}
@@ -187,7 +186,7 @@ export default function App() {
       {PAGES[view] && <Stub page={PAGES[view]} back={() => go('home')} />}
 
       {/* 底部 Tab */}
-      {showTabs && (
+      {showTabs && !(warm && view==='home') && (
         <nav className="tabbar glass3">
           {TABS.map((t) => (
             <button
@@ -222,7 +221,7 @@ export default function App() {
 
       {splashDone && <CommandWidget />}
       <EngineAccess />
-      {splashDone && <CallOverlay />}
+      <CallOverlay />
       <Sidebar
         open={sidebarOpen}
         close={() => setSidebarOpen(false)}
@@ -230,7 +229,7 @@ export default function App() {
         current={view}
       />
       </div>
-      {!splashDone && <Splash onReveal={() => setSplashReveal(true)} onDone={() => setSplashDone(true)} />}
+      {!splashDone && (warm ? <WarmSplash onReveal={() => setSplashReveal(true)} onDone={() => setSplashDone(true)} /> : <Splash onReveal={() => setSplashReveal(true)} onDone={() => setSplashDone(true)} />)}
     </>
   )
 }

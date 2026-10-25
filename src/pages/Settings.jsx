@@ -1,3 +1,4 @@
+import AppearanceSettings from '../components/AppearanceSettings.jsx'
 import { useEffect, useState } from 'react'
 import { VERSION, HOME_NAME } from '../config.js'
 import { isApp, geo } from '../utils/native.js'
@@ -194,38 +195,7 @@ export default function Settings({ back }) {
       </header>
 
       <div className="set-list">
-        <div className="set-group">
-          <div className="set-group-name">外观</div><div className="set-row"><span>主题</span><div className="set-seg" role="group" aria-label="界面主题">{[["original","原版"],["paper","绘本纸页"]].map(([v,label])=><button key={v} className={visualTheme===v?"on":""} aria-pressed={visualTheme===v} onClick={()=>changeVisualTheme(v)}>{label}</button>)}</div></div>
-          <div className="set-row">
-            <span>主题</span>
-            <div className="set-seg">
-              <button className={theme === 'day' ? 'on' : ''} onClick={() => setMode('day')}>日间</button>
-              <button className={theme === 'night' ? 'on' : ''} onClick={() => setMode('night')}>夜间</button>
-            </div>
-          </div>
-          <div className="set-row set-slider-row">
-            <span>背景强度</span>
-            <input
-              type="range" min="0" max="0.4" step="0.02"
-              defaultValue={localStorage.getItem('bg-dim') || 0}
-              onChange={(e) => {
-                document.documentElement.style.setProperty('--bg-dim', e.target.value)
-                localStorage.setItem('bg-dim', e.target.value)
-              }}
-            />
-          </div>
-          <div className="set-row set-slider-row">
-            <span>玻璃透明度</span>
-            <input
-              type="range" min="0.75" max="1.35" step="0.05"
-              defaultValue={localStorage.getItem('glass-k') || 1}
-              onChange={(e) => {
-                document.documentElement.style.setProperty('--gk', e.target.value)
-                localStorage.setItem('glass-k', e.target.value)
-              }}
-            />
-          </div>
-        </div>
+        <AppearanceSettings />
 
         <div className="set-group">
           <div className="set-group-name">他自己来找你</div>

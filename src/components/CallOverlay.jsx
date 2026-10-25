@@ -28,6 +28,10 @@ export default function CallOverlay() {
   const [call, setCall] = useState(null)          // 服务器视角的通话
   const [phase, setPhase] = useState('idle')      // idle | ringing | active | ended
   const [min, setMin] = useState(false)
+  const [pillPosition,setPillPosition]=useState(null)
+  const pillDrag=useRef(null),pillMoved=useRef(false)
+  const pillDown=e=>{pillMoved.current=false;const r=e.currentTarget.getBoundingClientRect();pillDrag.current={x:e.clientX,y:e.clientY,left:r.left,top:r.top,width:r.width,height:r.height};e.currentTarget.setPointerCapture(e.pointerId)}
+  const pillMove=e=>{const d=pillDrag.current;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.hypot(dx,dy)>5)pillMoved.current=true;if(pillMoved.current)setPillPosition({left:Math.max(8,Math.min(innerWidth-d.width-8,d.left+dx)),top:Math.max(8,Math.min(innerHeight-d.height-8,d.top+dy))})}
   const [now, setNow] = useState(Date.now())
   const [live, setLive] = useState('')            // 她正在说的(流式)
   const [speaking, setSpeaking] = useState(null)  // 他正在说的 {text, zh}
@@ -37,6 +41,8 @@ export default function CallOverlay() {
   const [speaker, setSpeaker] = useState(false)   // App 里的真免提:听筒 ↔ 扬声器
   const speakerRef = useRef(false); speakerRef.current = speaker
   const [typing, setTyping] = useState(false)
+  useEffect(()=>{if(phase!=='idle')window.dispatchEvent(new Event('call:visible'))},[phase])
+  useEffect(()=>{const fit=()=>setPillPosition(p=>p?{left:Math.max(8,Math.min(innerWidth-100,p.left)),top:Math.max(8,Math.min(innerHeight-48,p.top))}:p);window.addEventListener('resize',fit);return()=>window.removeEventListener('resize',fit)},[])
   const [input, setInput] = useState('')
   const [endInfo, setEndInfo] = useState('')
   const [needTap, setNeedTap] = useState(false)   // 刷新后恢复通话:麦克风要一次点击
@@ -359,7 +365,7 @@ export default function CallOverlay() {
     try { if (audioRef.current) { audioRef.current.pause(); audioRef.current.removeAttribute('src'); audioRef.current.load() } } catch {} audioRef.current = null
   }
   const dur = (c) => c?.answeredAt ? Math.max(0, Math.floor((now - (Date.parse(c.answeredAt) + offsetRef.current)) / 1000)) : 0
-  const toggleMute = () => { const v = !muted; setMuted(v); asrRef.current?.mute(v || playingRef.current) }
+  const toggleMute = () => { if(typing)return;const v = !muted; setMuted(v); asrRef.current?.mute(v || typing || playingRef.current) }
   const micOff = () => muted || typing || playingRef.current
   const toggleTyping = () => { const v = !typing; setTyping(v); asrRef.current?.mute(muted || v || playingRef.current); if (v) { setLive(''); bufRef.current = [] } }
   useEffect(() => { asrRef.current?.mute(micOff()) }, [typing, muted])
@@ -371,7 +377,7 @@ export default function CallOverlay() {
   const anim = phase === 'active' && (speaking || live)
 
   if (min && phase !== 'ended') {
-    return <button className={`call-pill glass3 ${anim ? 'anim' : ''}`} onClick={() => setMin(false)}><span className="call-pill-ico">☏</span><span className="call-pill-num">{phase === 'ringing' ? '呼叫中' : fmt(dur(call))}</span></button>
+    return <button className={`call-pill glass3 ${anim ? 'anim' : ''}`} aria-label="返回通话，可拖动" style={pillPosition?{...pillPosition,right:'auto',bottom:'auto',transform:'none'}:{touchAction:'none'}} onPointerDown={pillDown} onPointerMove={pillMove} onPointerUp={()=>{pillDrag.current=null}} onPointerCancel={()=>{pillDrag.current=null;pillMoved.current=true}} onClick={() => {if(!pillMoved.current)setMin(false)}}><span className="call-pill-ico">☏</span><span className="call-pill-num">{phase === 'ringing' ? '呼叫中' : fmt(dur(call))}</span></button>
   }
 
   return (
@@ -426,7 +432,7 @@ export default function CallOverlay() {
         </div>
       ) : (
       <div className="call-ctl">
-        <button className={`call-btn ${muted ? 'on' : ''}`} onClick={toggleMute} disabled={phase !== 'active'}><span>{muted ? Ic.micOff : Ic.mic}</span>{muted ? '闭麦' : '开麦'}</button>
+        <button className={`call-btn ${muted || typing ? 'on' : ''}`} onClick={toggleMute} disabled={phase !== 'active'||typing}><span>{muted || typing ? Ic.micOff : Ic.mic}</span>{muted || typing ? '闭麦' : '开麦'}</button>
         <button className={`call-btn ${typing ? 'on' : ''}`} onClick={toggleTyping} disabled={phase !== 'active'}><span>{Ic.pen}</span>打字</button>
         {isApp()
           ? <button className={`call-btn ${speaker ? 'on' : ''}`} onClick={async () => { const v = !speaker; setSpeaker(v); await callAudio.speaker(v) }} disabled={phase !== 'active'}><span>{Ic.spk}</span>{speaker ? '免提' : '听筒'}</button>
