@@ -1,11 +1,13 @@
 # 项目状态与待办
 
-## 2026-10-25 暖橘底部 Tab 下方露内容（验证通过，待发布）
+## 2026-10-25 暖橘底部 Tab 下方露内容（已上线）
+
+- 已发布源码 `6cf73f40d06cb253d9754064e5b769f81e2f1ba6`，入口 `/assets/index-BCffKBa8.js`、`/assets/index-BjrI0Z6C.css`；备份 `/root/ayan/backups/dock-bottom-20261025-170635`。四个任务相关文件已推主分支，干净状态核对通过；资源200、health200、queue0、alerts0。没有重启后端或发新的TestFlight。
 
 - 用户截图反馈 Moments/Diary 的正文出现在悬浮Tab下方。以线上干净 `7f9b0645795bd6bdddbc6a7fec8073ea376c1fd1` 的两份CSS哈希为准，在 `work/dock-bottom-20261025` 修改，VPS隔离树 `/root/ayan/worktrees/dock-bottom-20261025`；没有改home/src。初始SSH数次超时后恢复，核对线上干净及目标CSS哈希一致后继续。
 - orange-polish.css 使用共用的66px栏高、12px+安全区底距，给Moments/Diary加同背景的不透明底部遮挡层，层级29在Tab30之下、弹窗之下；空白区域阻止点穿隐藏正文。Moments留白改到真实.mo-feed，包含安全区；orange-details.css 将Diary留白统一到.page.dy，取消最后.dy-list额外110px，避免双重空白。
 - 不更换悬浮Tab视觉/五个导航，不改JS业务、日记/动态数据、原生或后端。仅网页样式，发布不重启服务或重复打TestFlight。
-- 构建通过；模拟全部API复现下方点中mo-post/dy-meta，修复后该区域只命中背景层。320/390、日夜、模拟0/34px安全区下Moments/Diary遮挡高度正确，最后一条可完整滚动到Tab上方；日记详情、More层级、导航/Chat无多余遮挡检查通过，无页面错误，截图已检查。没有读取/写入生产日记或动态；iPhone实际安全区/键盘与回弹还需用户复核。发布结果待补。
+- 构建通过；模拟全部API复现下方点中mo-post/dy-meta，修复后该区域只命中背景层。320/390、日夜、模拟0/34px安全区下Moments/Diary遮挡高度正确，最后一条可完整滚动到Tab上方；日记详情、More层级、导航/Chat无多余遮挡检查通过，无页面错误，截图已检查。没有读取/写入生产日记或动态；线上实际构建也通过相同的全模拟接口回归；iPhone实际安全区/键盘与回弹还需用户复核。
 
 
 ## 2026-10-25 原生来电使用系统默认铃声（已发布，TestFlight42已上传）
