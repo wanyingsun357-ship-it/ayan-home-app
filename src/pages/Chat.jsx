@@ -1,3 +1,4 @@
+import { useAppearance } from '../utils/appearance.js'
 import WarmCompanion from '../components/WarmCompanion.jsx'
 import useHouseDraft from '../utils/useHouseDraft.js'
 import FavoritesSheet from '../components/FavoritesSheet.jsx'
@@ -226,6 +227,36 @@ function renderMd(text) {
 }
 
 export default function Chat({ back }) {
+  const warm = useAppearance().theme === 'orange'
+  const edgePress = useRef(null)
+  const voicePress = useRef(null)
+  const cancelVoicePress = () => { clearTimeout(voicePress.current?.timer); voicePress.current = null }
+  useEffect(() => () => { clearTimeout(voicePress.current?.timer) }, [])
+  const startVoicePress = (e) => {
+    if (!warm || historyView || e.button > 0) return
+    cancelVoicePress()
+    const press = { x:e.clientX, y:e.clientY }
+    press.timer = setTimeout(() => { voicePress.current = null; inputRef.current?.blur(); startRec({clientY:press.y}) }, 500)
+    voicePress.current = press
+  }
+  const moveVoicePress = (e) => {
+    const p = voicePress.current
+    if (p && Math.hypot(e.clientX-p.x,e.clientY-p.y)>8) cancelVoicePress()
+  }
+  const startEdge = (e) => {
+    if (!warm || e.target.closest('button,input,textarea')) return
+    const t=e.touches[0]
+    edgePress.current={x:t.clientX,y:t.clientY}
+  }
+  const endEdge = (e) => {
+    const p=edgePress.current; edgePress.current=null
+    if (!p || !warm) return
+    const t=e.changedTouches[0],dx=t.clientX-p.x,dy=t.clientY-p.y
+    if (Math.abs(dy)>45 || Math.abs(dx)<65) return
+    if (p.x<28 && dx>0) back()
+    else if (p.x>window.innerWidth-28 && dx<0) openDrawer()
+  }
+
   const [messages, setMessages] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [input, setInput] = useHouseDraft(activeId)
@@ -1369,12 +1400,14 @@ export default function Chat({ back }) {
       const keptLive = kept && kept.getAudioTracks()[0]?.readyState === 'live'
       clearTimeout(micKeepRef.current.timer)
       let stream = keptLive ? kept : await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      if (!recActiveRef.current) { stream.getTracks().forEach(t => t.stop()); return }
       diag({ step: 'mic-src', kept: !!keptLive })
       // iOS 偶尔给回来一条已经 ended 的轨(系统音频会话没起来):停掉重要一次;还不行就提示
       if (stream.getAudioTracks()[0]?.readyState === 'ended') {
         stream.getTracks().forEach((t) => t.stop()); await new Promise((r) => setTimeout(r, 600))
         stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       }
+      if (!recActiveRef.current) { stream.getTracks().forEach(t => t.stop()); return }
       try { const tr = stream.getAudioTracks()[0]; diag({ step: 'mic', label: tr?.label, muted: tr?.muted, state: tr?.readyState, ctx: audioCtxRef.current?.state, inCall: !!window.__inCall }) } catch {}
       if (stream.getAudioTracks()[0]?.readyState === 'ended') { showToast('麦克风被系统占住了:关掉蓝牙耳机或重启手机再试'); stream.getTracks().forEach((t) => t.stop()); mr.recorder = null; throw new Error('mic ended') }
       const recorder = new MediaRecorder(stream)
@@ -1723,7 +1756,7 @@ export default function Chat({ back }) {
   return (
     <div className="chat">
       {/* 顶栏 */}
-      <header className="chat-head">
+      {!warm && <header className="chat-head">
         <button className="chat-back" onClick={back}>‹</button>
         <div className="chat-title">
           <span className="chat-moon">☾</span>
@@ -1735,7 +1768,7 @@ export default function Chat({ back }) {
           <button className="chat-back chat-search" onClick={() => { setSearchOpen(true); setSearchCtx(null) }} aria-label="搜索聊天"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg></button>
           <button className="chat-back sessions-btn" aria-label="聊天窗口" onClick={openDrawer}><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 15A9 9 0 0 1 9 3a9.5 9.5 0 1 0 11.5 12Z"/></svg></button>
         </div>
-      </header>
+      </header>}
 
       {/* 水位线:200k窗口用量,点开看数字+压缩/衔接 */}
       {quizzes.length > 0 && !quizOpen && (
@@ -1743,16 +1776,16 @@ export default function Chat({ back }) {
           <span className="quiz-chip-q">?</span> 答题 · {quizzes[0].questions.length} 道{quizzes.length > 1 ? ` · 还有${quizzes.length - 1}份` : ''}
         </button>
       )}
-      <div className="ctx-line" onClick={() => { loadCtx(); setCtxOpen(true) }}>
+      {!warm && <div className="ctx-line" onClick={() => { loadCtx(); setCtxOpen(true) }}>
         <div
           className={`ctx-fill ${(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 160000) ? 'warn' : ''}`}
           style={{ width: `${ctxLimit ? Math.min(100, (ctx / ctxLimit) * 100) : 0}%` }}
         />
-      </div>
+      </div>}
 
       {historyView && <div className="chat-history-banner"><span>正在翻看聊天记录</span><button onClick={returnLatest}>回到最新 ↓</button></div>}
       {/* 消息区 */}
-      <div className={`chat-list ${historyView ? 'reading-history' : ''}`} ref={listRef}>
+      <div className={`chat-list ${historyView ? 'reading-history' : ''}`} ref={listRef} onTouchStart={startEdge} onTouchEnd={endEdge} onTouchCancel={() => {edgePress.current=null}}>
         {!histLoading && (messages.find((m) => m.absIdx !== undefined)?.absIdx > 0) && (
           <button className="hist-more" onClick={loadEarlier} disabled={histMoreBusy || jumpBusy}>
             {histMoreBusy ? '翻着呢…' : '↑ 更早的对话'}
@@ -1975,7 +2008,7 @@ export default function Chat({ back }) {
       {historyView && <div className="paper-latest-wrap"><button className="paper-latest" aria-label="回到最新聊天" onClick={returnLatest}>↓</button></div>}
       {/* 输入区 */}
       <div className={`chat-input-wrap ${draftSegments.length ? 'has-segments' : ''}`} data-history={historyView ? 'true' : undefined}>
-        <div className="warm-chat-pet"><WarmCompanion online={online} busy={waiting}/></div>
+        {warm && <button className="warm-chat-pet" aria-label="查看对话水位" onClick={() => {loadCtx();setCtxOpen(true)}}><WarmCompanion online={online} busy={waiting}/>{(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 160000) && <b className="warm-water-warning">!</b>}</button>}
         {draftSegments.length > 0 && editing == null && (
           <div className="segment-dock" aria-label="待发送的分段">
             {draftSegments.map((segment, index) => {
@@ -2002,11 +2035,13 @@ export default function Chat({ back }) {
             })}
           </div>
         )}
+        {!warm && <>
         <button className={`segment-feather ${input.trim() ? 'awake' : ''} ${featherSweep ? 'sweep' : ''}`}
           aria-label="用羽毛笔收好这一段" title="收好这一段"
           onClick={collectSegment} disabled={!input.trim() || waiting || editing != null}>
           <span className="original-feather-icon"><FeatherIcon /></span><span className="paper-quill-icon"><PaperQuillIcon /></span><i />
         </button>
+        </>}
         {fallingFeather > 0 && <span key={fallingFeather} className="paper-falling-feather" aria-hidden="true"><PaperQuillIcon /></span>}
         {editing != null && (
           <div className="edit-tip">
@@ -2039,6 +2074,13 @@ export default function Chat({ back }) {
           placeholder={recording ? '在听…' : 'Message...'}
           readOnly={!!historyView}
           value={input}
+          onPointerDown={startVoicePress}
+          onPointerMove={moveVoicePress}
+          onPointerUp={cancelVoicePress}
+          onPointerCancel={cancelVoicePress}
+          onPointerLeave={cancelVoicePress}
+          onContextMenu={e => {if(warm)e.preventDefault()}}
+          aria-label={warm ? '消息，长按录音' : '消息'}
           onChange={onInput}
           onFocus={() => { if(historyView)return; setTimeout(scrollBottom, 120); setTimeout(scrollBottom, 400) }}
           onKeyDown={(e) => {
@@ -2046,12 +2088,19 @@ export default function Chat({ back }) {
           }}
         />
         <div className="chat-bar">
-          <button className="cbtn" onClick={() => setMenuOpen(true)}>+</button>
-          <button className="model-chip" onClick={openModels}>
+          <button className="cbtn" aria-label="打开聊天工具" onClick={() => setMenuOpen(true)}>+</button>
+          {!warm && <button className="model-chip" onClick={openModels}>
             {model}{effort !== 'Medium' ? ` · ${effort}` : ''}{extended ? ' ✦' : ''}
-          </button>
+          </button>}
           <div className="chat-bar-sp" />
-          <button className="cbtn touch-btn" aria-label="轻点放进分段，长按修改碰一碰" title="轻点放进分段，长按修改"
+          {warm && <>
+        <button className={`segment-feather ${input.trim() ? 'awake' : ''} ${featherSweep ? 'sweep' : ''}`}
+          aria-label="用羽毛笔收好这一段" title="收好这一段"
+          onClick={collectSegment} disabled={!input.trim() || waiting || editing != null}>
+          <span className="original-feather-icon"><FeatherIcon /></span><span className="paper-quill-icon"><PaperQuillIcon /></span><i />
+        </button>
+          </>}
+          {!warm && <><button className="cbtn touch-btn" aria-label="轻点放进分段，长按修改碰一碰" title="轻点放进分段，长按修改"
             onPointerDown={startTouchButtonPress}
             onPointerMove={moveTouchButtonPress}
             onPointerUp={endTouchButtonPress}
@@ -2065,12 +2114,13 @@ export default function Chat({ back }) {
             onPointerDown={e=>{if(!historyView)startRec(e)}}
             onContextMenu={(e) => e.preventDefault()}
             style={{ touchAction: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
-          >⌇</button>
+          >⌇</button></>}
           <button
             className={`cbtn send ${sendReady ? 'ready' : ''}`}
+            aria-label="发送消息"
             onClick={send}
             disabled={!sendReady}
-          >↑</button>
+          >{warm ? <TouchGlyph kind="paw" /> : '↑'}</button>
         </div>
       </div>
 
@@ -2198,8 +2248,16 @@ export default function Chat({ back }) {
       {/* + 菜单 */}
       {menuOpen && (
         <div className="sheet-mask" onClick={() => setMenuOpen(false)}>
-          <div className="sheet paper-attachment-menu" onClick={(e) => e.stopPropagation()}>
+          <div className={`sheet paper-attachment-menu ${warm ? 'warm-chat-tools' : ''}`} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" /><div className="paper-attachment-heading"><button aria-label="关闭附件菜单" onClick={() => setMenuOpen(false)}>×</button><span>随信附上</span></div>
+            {warm && <>
+              <button className="sheet-item" onClick={() => {setMenuOpen(false);window.dispatchEvent(new CustomEvent('call:start',{detail:{session:sessionRef.current,model:modelId()}}))}}><span aria-hidden="true">☏</span><span>Calling</span></button>
+              <button className="sheet-item" onClick={() => {setMenuOpen(false);setSearchOpen(true);setSearchCtx(null)}}><span aria-hidden="true">⌕</span><span>搜索聊天</span></button>
+              <button className="sheet-item" onClick={() => {setMenuOpen(false);openModels()}}><span aria-hidden="true">✧</span><span>Model · {model}</span></button>
+              <button className="sheet-item" onClick={() => {setMenuOpen(false);setTouchDraftId(null);setTouchOpen(true)}}><TouchGlyph kind={touchIcon}/><span>碰一碰</span></button>
+              <button className="sheet-item" onClick={() => {setMenuOpen(false);openDrawer()}}><span aria-hidden="true">☾</span><span>我们说过的话</span></button>
+              <button className="sheet-item" onClick={() => {setMenuOpen(false);back()}}><span aria-hidden="true">⌂</span><span>Home</span></button>
+            </>}
             <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('image/*') }}><span className="attachment-old-icon" aria-hidden="true">🖼</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3z M3 16l6-6 5 5 3-3 4 4 M16 7h.01"/></svg><span>图片</span></button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); pickFile('*/*') }}><span className="attachment-old-icon" aria-hidden="true">📄</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l5 5v15H6z M14 2v6h5 M9 12h7 M9 16h7"/></svg><span>文件</span></button>
             <button className="sheet-item" onClick={() => { setMenuOpen(false); setArtifactsOpen(true) }}><span className="attachment-old-icon" aria-hidden="true">📂</span><svg className="attachment-paper-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h8l2 3h10l-2 12H3z M2 6V3h8l2 3h8v3"/></svg><span>Artifacts</span></button>
@@ -2517,12 +2575,13 @@ export default function Chat({ back }) {
 
       {/* Thinking / 心声弹层:默认半屏,上滑/点把手全屏,下滑收起 */}
       {thought && (
-        <div className="sheet-mask" onClick={() => { setThought(null); setThoughtFull(false) }}>
+        <div className={`sheet-mask ${warm ? 'warm-thought-mask' : ''}`} onClick={() => { setThought(null); setThoughtFull(false) }}>
           <div
             className={`sheet thought ${thoughtFull ? 'full' : ''}`}
             onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => { touchYRef.current = e.touches[0].clientY }}
             onTouchEnd={(e) => {
+              if (warm) return // Cloud card scrolls internally; reading must not dismiss it.
               const dy = e.changedTouches[0].clientY - touchYRef.current
               if (dy < -50) setThoughtFull(true)
               else if (dy > 50) {

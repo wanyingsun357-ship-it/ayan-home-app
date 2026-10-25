@@ -1,3 +1,4 @@
+import artwork from './components/homeArtwork.json'
 import { useEffect, useState } from 'react'
 import Splash from './components/Splash.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -187,7 +188,7 @@ export default function App() {
 
       {/* 底部 Tab */}
       {showTabs && !(warm && view==='home') && (
-        <nav className="tabbar glass3">
+        <nav className={`tabbar glass3 ${warm ? 'warm-page-dock' : ''}`} aria-label="页面导航">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -195,7 +196,7 @@ export default function App() {
               onClick={() => go(t.key)}
             >
               <span className="tab-icon">
-                {t.icon}
+                {warm ? <span className="warm-tab-art" dangerouslySetInnerHTML={{__html:artwork.icons[t.key] || (t.key==='home' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="m3 11 9-8 9 8M6 9v12h12V9M10 21v-7h4v7"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M20 15A9 9 0 0 1 9 3a9 9 0 1 0 11 12Z"/></svg>')}}/> : t.icon}
                 {t.key === 'diary' && diaryDot && <i className="tab-dot" />}
               </span>
               <span className="tab-label">{t.label}</span>

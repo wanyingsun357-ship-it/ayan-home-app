@@ -1,3 +1,4 @@
+import {useAppearance} from '../utils/appearance.js'
 import PaperAvatar from './PaperAvatar.jsx'
 import { useEffect, useRef, useState } from 'react'
 import PixelCat from './PixelCat.jsx'
@@ -25,6 +26,7 @@ const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
 const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
 
 export default function CallOverlay() {
+  const warm=useAppearance().theme==='orange'
   const [call, setCall] = useState(null)          // 服务器视角的通话
   const [phase, setPhase] = useState('idle')      // idle | ringing | active | ended
   const [min, setMin] = useState(false)
@@ -380,14 +382,31 @@ export default function CallOverlay() {
     return <button className={`call-pill glass3 ${anim ? 'anim' : ''}`} aria-label="返回通话，可拖动" style={pillPosition?{...pillPosition,right:'auto',bottom:'auto',transform:'none'}:{touchAction:'none'}} onPointerDown={pillDown} onPointerMove={pillMove} onPointerUp={()=>{pillDrag.current=null}} onPointerCancel={()=>{pillDrag.current=null;pillMoved.current=true}} onClick={() => {if(!pillMoved.current)setMin(false)}}><span className="call-pill-ico">☏</span><span className="call-pill-num">{phase === 'ringing' ? '呼叫中' : fmt(dur(call))}</span></button>
   }
 
+  if (warm && phase === 'ringing') {
+    const inbound = call?.by === 'him'
+    return <div className="call ringing warm-call-ringing">
+      <div className="call-top"><button className="call-min" aria-label="收起通话" onClick={()=>setMin(true)}>⌄</button></div>
+      <section className="warm-call-invite" aria-label={inbound?'来电':'呼叫中'}>
+        <div className="call-name serif">{NAMES.me}</div>
+        <span className="warm-call-mark" aria-hidden="true">☏</span>
+        <p>{inbound ? call.reason || '他想和你说说话' : '等他接…'}</p>
+        <div className="call-ctl call-ctl-in">
+          {inbound && <button className="call-btn answer" onClick={answerIncoming}><span>{Ic.phone}</span>接听</button>}
+          <button className="call-btn hang" onClick={inbound ? declineIncoming : ()=>hangUp('her')}><span>{Ic.phone}</span>{inbound?'拒接':'取消呼叫'}</button>
+        </div>
+      </section>
+      {toast && <div className="call-toast glass3">{toast}</div>}
+    </div>
+  }
+
   return (
     <div className={`call ${phase} ${phase === 'ringing' && call?.by === 'him' ? 'incoming-paper' : ''}`}>
       <div className="call-top">
-        <button className="call-min" onClick={() => setMin(true)}>⌄</button>
+        <button className="call-min" aria-label={phase==='ended'?'返回聊天':'收起通话'} onClick={() => phase==='ended' ? setPhase('idle') : setMin(true)}>⌄</button>
         <span className="call-status serif">{status}</span>
         <span className="call-top-sp" />
       </div>
-      <div className="call-hero">
+      {!warm && <div className="call-hero">
         <div className={`call-bars him ${speaking ? 'on' : ''}`}>{[0, 1, 2, 3, 4].map((i) => <i key={i} style={{ animationDelay: `${i * 0.12}s` }} />)}</div>
         <div className={`call-avatar ${phase === 'ringing' ? 'ring' : ''}`}><span className="original-call-avatar"><PixelCat size={70} style={{ display: 'block', margin: 'auto', objectFit: 'contain', imageRendering: 'pixelated' }} /></span><span className="paper-call-avatar"><PaperAvatar /></span></div>
         <div className="call-side">
@@ -395,8 +414,11 @@ export default function CallOverlay() {
           {phase === 'active' && <span className={`call-mic ${micOff() ? 'off' : ''}`}>{muted ? '闭麦' : typing ? '打字中' : playingRef.current ? '他在说' : live ? '在听你说' : '在听'}</span>}
         </div>
       </div>
+      }
       <div className="call-name serif">{NAMES.me}</div>
 
+      {warm && phase==='ringing' && <div className="warm-call-invite"><span className="warm-call-mark">☏</span><p>{call?.by==='him' ? call.reason || '他想和你说说话' : '等他接…'}</p></div>}
+      {warm && phase==='ended' && <button className="warm-call-return" onClick={()=>setPhase('idle')}>回到聊天</button>}
       <div className="call-list" ref={listRef}>
         {history.map((h, i) => (
           <div key={i} className={`call-line ${h.who}`}>
@@ -413,8 +435,8 @@ export default function CallOverlay() {
         )}
         {!speaking && live && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}{live}</div></div>}
         {!speaking && !live && bufRef.current.length > 0 && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}</div></div>}
-        {phase === 'ringing' && call?.by !== 'him' && <div className="call-hint">等他接…</div>}
-        {phase === 'ringing' && call?.by === 'him' && <div className="call-reason serif">{call.reason || '他想和你说说话'}</div>}
+        {!warm && phase === 'ringing' && call?.by !== 'him' && <div className="call-hint">等他接…</div>}
+        {!warm && phase === 'ringing' && call?.by === 'him' && <div className="call-reason serif">{call.reason || '他想和你说说话'}</div>}
         {phase === 'active' && needTap && <button className="call-resume glass2" onClick={startMic}>点一下打开麦克风继续</button>}
         {phase === 'active' && !speaking && !live && !history.length && !needTap && <div className="call-hint">接通了,直接说就行</div>}
       </div>
