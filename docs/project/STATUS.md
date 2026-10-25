@@ -1,5 +1,16 @@
 # 项目状态与待办
 
+## 2026-10-25 发布结果（网页已上线，TestFlight 34 已上传）
+
+- 正式源码：659580ee00d28f990dc993d4b52969e4db7c5037（首轮），3fa0ba1c57628f735ffe7f70b506d3495e1c5dd1（导航补检）。两次均基线/文件SHA核对通过，远端工作区干净，已推送main。仅修改清单源码和新增素材，没有覆盖本地home/src，也没有重启后端或写生产测试数据。
+- 线上入口引用 index-DJLT2wkL.js / index-BqM70ZOp.css；入口、新资源和壁纸HTTP200。线上发布代码通过原版/暖橘切换、导航红点/侧栏/持久化、模型25项滚动与Effort及Codex/Claude切换的模拟API测试。首轮线上构建还通过路由、Diary、Moments、Read、Chat、Together、Gallery回归。Memory与通话/响应式检查在本地相同源码通过。所有写操作测试均为接口模拟，不能宣称真实服务逐项端到端验收。
+- 服务健康GET /api/health为200、queue=0、alerts数量0。
+- TestFlight run33（40187493222）和run34（40187713577）均success；已检查Fastlane日志明确“Successfully uploaded the new binary to App Store Connect”，home-ipa工件保存成功。最新版build34，源3fa0ba1；上传时间2026-10-25 11:18 UTC。工作流skip_waiting_for_build_processing=true，Apple处理/测试人员可见性及设备安装尚未核实。
+- 最新构建：https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40187713577 。原生server.url仍指向https://entangledforever.com，新网页在现有App重载后使用；iOS原通知/定位/音频插件未改。
+- 备份：原版入口与源码 /root/ayan/backups/orange-20261025-110624；导航修补前入口与源码 /root/ayan/backups/orange-20261025-110945。旧哈希资源保留，可恢复备份index；不要整目录覆盖用户uploads/made。
+- 交接：本轮工作副本work/orange-integration-20261024，原独立preview.html未替换。检查范围见ORANGE-RELEASE-20261025.md。下一步需要iPhone真机确认通知点击、选文件、键盘安全区、麦克风/听筒/扬声器/蓝牙与锁屏后台音频。未新增CallKit/LiveActivity；奖惩、梦册/年轮仍是原预留。Today仍承载原Home功能布局，不宣称完整逐像素移植预览。
+
+
 ## 2026-10-25 正式发布与导航补检
 
 - 首轮659580e已发布网页并推送main，线上入口/JS/CSS/壁纸200，线上构建的模拟接口回归通过。备份/root/ayan/backups/orange-20261025-110624。TestFlight run33正在构建，尚未宣称上传成功。
