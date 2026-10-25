@@ -238,8 +238,8 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
                         self.currentCall = call; self.emit("state")
                         if call["status"] as? String == "ended" { self.finish(reason: .remoteEnded); return }
                         if self.joined {
-                            for entry in call["entries"] as? [[String: Any]] ?? [] where entry["who"] as? String == "him" {
-                                if let stamp = entry["t"] as? String, !self.played.contains(stamp) { self.played.insert(stamp); self.playQueue.append(entry); self.waitingReply = false }
+                            for entry in call["speech"] as? [[String: Any]] ?? [] {
+                                if let stamp = entry["id"] as? String, !self.played.contains(stamp) { self.played.insert(stamp); self.playQueue.append(entry); self.waitingReply = false; self.replyTimeout?.cancel() }
                             }
                             self.pendingHangup = call["hangupPending"] as? Bool ?? false
                             self.pumpAudio(); self.sendNext()
@@ -263,12 +263,12 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
             return
         }
         let entry = playQueue.removeFirst(), id = callID
-        guard let stamp = entry["t"] as? String else { return }
+        guard let stamp = entry["id"] as? String else { return }
         loadingAudio = true; flushTask?.cancel(); partialFinals = ""
         Task { @MainActor in
             defer { self.loadingAudio = false }
             do {
-                let data = try await self.request("audio", body: ["entryTime": stamp])
+                let data = try await self.request("audio", body: ["speechId": stamp])
                 guard self.callID == id, self.joined else { return }
                 let player = try AVAudioPlayer(data: data); self.player = player; player.delegate = self
                 self.emit("speaking", ["text": entry["text"] ?? "", "zh": entry["zh"] ?? ""])
