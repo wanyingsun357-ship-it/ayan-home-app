@@ -1,13 +1,15 @@
 # 项目状态与待办
 
-## 2026-10-25 原生来电标题、当前台词与通话标签（准备发布）
+## 2026-10-25 原生来电标题、当前台词与通话标签（已发布，TestFlight41已上传）
+
+- 发布源码 `71807f584172c019765f64b49d3098baaa8260dd`；原生编译 run40211498062 / job121223496013 全部成功（Xcode 26）。网页入口 `/assets/index-D0NofuWA.js`、`/assets/index-C9pJWsdL.css`，备份 `/root/ayan/backups/call-captions-20261025-162712`；主分支已推送且干净，资源200、health200、queue0、alerts0，无后端重启。线上实际构建完成全模拟原生桥回归，字幕过滤、静音/免提、音频独占与前台恢复通过。
+- TestFlight **41** / run40211740078 / job121224227486 全部success；日志确认 CFBundleVersion=41，16:31:08 UTC `Successfully uploaded the new binary to App Store Connect`；IPA artifact12606078276保存成功。https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40211740078 。系统标题功能需安装新包，旧包只能取得网页字幕过滤更新。Apple处理、测试人员可见性、安装及真实浮窗刷新仍未核实。
 
 - 用户要求系统来电显示“晏白邀请你语音通话”，接听后像参考图一样显示正在播放的台词，头像暂不改；通话字幕也不显示发声标签。以线上干净 `cb746e0e9cf1bc61826dcf204e6e1c2b5358c075` 建 `work/call-captions-20261025` 及对应VPS隔离工作树；保护 home/src 和前两次修复。
 - NativeCalls 接入同一个 generic handle 的 displayName/Conversation.Event.conversationUpdated：响铃为邀请语，成功播放每个音频段时显示“晏白：台词”，译文存在优先译文、否则实际发声文本；播放结束/失败恢复“晏白”。只在内容变化时上报，按句同步，不做字级时间戳；长句最多96字符再由iOS截短，完整台词在App内看。原生头像、系统按钮与App显示名不改，识别/合成及音频流程不换。
 - 通话当前台词、历史与聊天中通话记录页过滤助手发声标签，用户说话原样保留。复用语音附文展示函数，并隐藏流式末尾未闭合标签；TTS、源聊天、缓存和收藏数据仍保留原始标签。原生 speaking 事件也只向展示层发净台词。
-- 前端构建/模拟原生桥检查通过：当前中英字幕、历史助手字幕隐藏标签、用户括号不动；原生拥有音频时仍无网页重复开麦/合成，静音/免提/前台恢复检查通过。完整iOS编译与新TestFlight上传待核实。未拨真实电话或调用真实模型/TTS。现有原生来电接听才有系统浮窗；网页拨出路径保持。系统实际刷新、截短、锁屏/蓝牙依然需安装新包真机验证，不能宣称浏览器模拟已验证灵动岛。
+- 前端构建/模拟原生桥检查通过：当前中英字幕、历史助手字幕隐藏标签、用户括号不动；原生拥有音频时仍无网页重复开麦/合成，静音/免提/前台恢复检查通过；语音附文/TTS带标签原文与既有通话打字/拖动/小屏回归通过。完整iOS编译通过，新TestFlight上传结果见本节补充。未拨真实电话或调用真实模型/TTS。现有原生来电接听才有系统浮窗；网页拨出路径保持。系统实际刷新、截短、锁屏/蓝牙依然需安装新包真机验证，不能宣称浏览器模拟已验证灵动岛。
 - 官方接口依据：https://developer.apple.com/documentation/livecommunicationkit/handle/displayname 、https://developer.apple.com/documentation/livecommunicationkit/conversation/event 。系统浮窗标题更新使用现有通话框架，不新增ActivityKit扩展。
-
 
 ## 2026-10-25 语音附文隐藏发声标签（已上线）
 
