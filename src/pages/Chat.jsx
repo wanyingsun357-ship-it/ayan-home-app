@@ -1,4 +1,5 @@
 import { useAppearance } from '../utils/appearance.js'
+import {displayMessage} from '../utils/companionMessage.js'
 import CompanionPanel from '../components/CompanionPanel.jsx'
 import WarmCompanion from '../components/WarmCompanion.jsx'
 import useHouseDraft from '../utils/useHouseDraft.js'
@@ -265,6 +266,8 @@ export default function Chat({ back }) {
   }
 
   const [messages, setMessages] = useState([])
+  const [companionFault,setCompanionFault] = useState(0)
+  const companionMessage=[...messages].reverse().find(m=>m.role==='assistant')
   const [activeId, setActiveId] = useState(null)
   const [input, setInput] = useHouseDraft(activeId)
   const [draftSegments, setDraftSegments] = useState([])
@@ -566,7 +569,7 @@ export default function Chat({ back }) {
       index: Number.isInteger(m.absIdx) ? m.absIdx : undefined,
       role: m.role,
       name: m.role === 'assistant' ? NAMES.me : NAMES.her,
-      content: pressed.voiceText || pressed.segmentText || m.content,
+      content: pressed.voiceText || pressed.segmentText || displayMessage(m),
     })
     setPressed(null)
     inputRef.current?.focus()
@@ -680,7 +683,7 @@ export default function Chat({ back }) {
                 ? { ...m, content: '', reasoning: undefined, memory: undefined } : m)
             })
           }
-          else if (d.type === 'error') onChunk(`(${d.content})`)
+          else if (d.type === 'error') {setCompanionFault(n=>n+1);onChunk(`(${d.content})`)}
           else if (d.type === 'system') {
             setMessages((ms) => [...ms, newMsg('system', d.content)])
             scrollBottom()
@@ -1336,13 +1339,13 @@ export default function Chat({ back }) {
   }
 
   const doCopy = async (whole = false) => {
-    const text = whole === true ? pressed.m.content.replace(/\[VOICE\]|\[\/VOICE\]/g, '') : pressed.voiceText || pressed.segmentText || pressed.m.content
+    const text = whole === true ? displayMessage(pressed.m).replace(/\[VOICE\]|\[\/VOICE\]/g, '') : pressed.voiceText || pressed.segmentText || displayMessage(pressed.m)
     try { await navigator.clipboard.writeText(text) ; showToast(whole === true ? '已复制整条' : (pressed.voiceText || pressed.segmentText) ? '已复制这段' : '已复制') }
     catch { showToast('复制失败') }
     setPressed(null)
   }
   const selectPressed = (whole = false) => {
-    setSelectedMessage(whole ? pressed.m.content.replace(/\[VOICE\]|\[\/VOICE\]/g,'') : pressed.voiceText || pressed.segmentText || pressed.m.content)
+    setSelectedMessage(whole ? displayMessage(pressed.m).replace(/\[VOICE\]|\[\/VOICE\]/g,'') : pressed.voiceText || pressed.segmentText || displayMessage(pressed.m))
     setPressed(null)
   }
   const togglePressedFavorite = async () => {
@@ -1830,7 +1833,8 @@ export default function Chat({ back }) {
           </div>
         )}
         {messages.map((m, idx) => {
-          const touch = parseTouchMessage(m)
+          const visibleContent=displayMessage(m)
+          const touch = parseTouchMessage({...m,content:visibleContent})
           const touchFromMe = m.role === 'assistant'
           const touchSender = touchFromMe ? NAMES.me : NAMES.her
           const touchTarget = touchFromMe ? NAMES.her : NAMES.me
@@ -1867,7 +1871,7 @@ export default function Chat({ back }) {
                 ]
             : savedSegments
               ? savedSegments.map((seg) => ({ text: seg.content, reply: seg.reply, draftId: seg.id }))
-              : parseSegments(m.content || (m.streaming ? '…' : ''), m.role === 'assistant')
+              : parseSegments(visibleContent || (m.streaming ? '…' : ''), m.role === 'assistant')
           const hasInlineTouch = contentSegments.some((seg) => seg.touchNotice)
           return m.role === 'system' ? (
             <div key={m.id} data-message-index={m.absIdx} className="sys-divider">
@@ -2038,7 +2042,7 @@ export default function Chat({ back }) {
       {historyView && <div className="paper-latest-wrap"><button className="paper-latest" aria-label="回到最新聊天" onClick={returnLatest}>↓</button></div>}
       {/* 输入区 */}
       <div className={`chat-input-wrap ${draftSegments.length ? 'has-segments' : ''}`} data-history={historyView ? 'true' : undefined}>
-        {warm && <button className="warm-chat-pet" aria-label="查看对话水位" onClick={() => {loadCtx();setCtxOpen(true)}}><WarmCompanion online={online} busy={waiting}/>{(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 160000) && <b className="warm-water-warning">!</b>}</button>}
+        {warm && <button className="warm-chat-pet" aria-label="查看对话水位" onClick={() => {loadCtx();setCtxOpen(true)}}><WarmCompanion live online={online} busy={waiting||messages.some(m=>m.streaming)} message={companionMessage} sessionId={activeId} fault={companionFault}/>{(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 160000) && <b className="warm-water-warning">!</b>}</button>}
         {draftSegments.length > 0 && editing == null && (
           <div className="segment-dock" aria-label="待发送的分段">
             {draftSegments.map((segment, index) => {
@@ -2360,7 +2364,7 @@ export default function Chat({ back }) {
         <div className={`sheet-mask ${warm?"warm-message-mask":""}`} onClick={() => setPressed(null)}>
           <div className="sheet paper-letter-menu" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="press-preview">{(pressed.voiceText || pressed.segmentText || pressed.m.content).slice(0, 60)}</div>
+            <div className="press-preview">{(pressed.voiceText || pressed.segmentText || displayMessage(pressed.m)).slice(0, 60)}</div>
             <button className="sheet-item" disabled={pressed.m.streaming || (!warm && favoriteChoiceFor(pressed))} onClick={() => {
               if(warm){togglePressedFavorite();return}
               const { m, voiceText } = pressed; setPressed(null); favoriteMessage(m, voiceText)
@@ -2380,7 +2384,7 @@ export default function Chat({ back }) {
             )}
             {pressed.m.role === 'assistant' && (
               <>
-                <button className="sheet-item" onClick={() => { play(`m-${pressed.m.id}`, pressed.voiceText || pressed.m.content.replace(/\[VOICE\]|\[\/VOICE\]/g, '')); setPressed(null) }}>▷ {pressed.voiceText ? '听这段' : '听这条'}</button>
+                <button className="sheet-item" onClick={() => { play(`m-${pressed.m.id}`, pressed.voiceText || displayMessage(pressed.m).replace(/\[VOICE\]|\[\/VOICE\]/g, '')); setPressed(null) }}>▷ {pressed.voiceText ? '听这段' : '听这条'}</button>
                 {pressed.idx === messages.length - 1 && (
                   <button className="sheet-item" onClick={doRegen}>↻ 重新回答</button>
                 )}
@@ -2532,7 +2536,7 @@ export default function Chat({ back }) {
               {searchCtx.msgs.map((m) => (
                 <div key={m.i} className={`csearch-msg ${m.role} ${m.i === searchCtx.center ? 'hit' : ''}`}>
                   <span className="csearch-ts">{fmtSearchTs(m.timestamp)} · {m.role === 'user' ? '我' : NAMES.me}</span>
-                  <div>{String(m.content || '').replace(/\[VOICE\]|\[\/VOICE\]/g, '')}</div>
+                  <div>{displayMessage(m).replace(/\[VOICE\]|\[\/VOICE\]/g, '')}</div>
                 </div>
               ))}
             </div>
