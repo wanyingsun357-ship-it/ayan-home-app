@@ -1,5 +1,13 @@
 # 项目状态与待办
 
+## 2026-10-25 按需规则与小螃蟹控制已发布
+
+- 前端源码34320a682cda0950ebfaa4039edc0869b6255fa7，入口index-Gyr4XG6v.js / index-BEwBP4tu.css，备份/root/ayan/backups/companion-20261025-140711。5个相关源码文件和两份私有规则的基线SHA均核对通过；未改home/src或后端、未重启聊天、未写生产假聊天。两份规则原文仅在私有备份instructions/保存，不提交前端Git。
+- 已实际替换/root/ayan/CLAUDE.md与projects/home/CLAUDE.md：猫狗/小窝、猫兔、Mind/Thought/Desire按需查阅；取消@nest.md自动全文引用，保留短索引；取消仅因压缩恢复就重读Mind设计的要求；保留Desire改写前最新updated_at检查。猫兔设计原文件未改。小螃蟹白名单控制用法已写入根规则，按同一规则加载路径跨压缩恢复，不只靠聊天口头说明。
+- 线上新构建模拟SSE回归通过：分块标记隐藏、完成时动作、其他会话过滤、灰色离线优先/恢复、图鉴独立、爱意、reset重写/错误、旧历史不重播、减少动态。已看动作截图。health200、queue0、alerts0。原菜单编辑/听语音/重答/召回/原版在本地相同源码回归通过。没有发真实模型测试消息，不能宣称模型已实际使用标记或一定遵守每一次按需阅读。
+- 自动TestFlight39 run40200751615，记录时in_progress，未核实上传：https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40200751615 。App重开可载入网页功能。后续需真机观察实际模型动作提示、长时待机和后台恢复；通用工具级实时事件仍未新增，指定coding只是表情。
+
+
 ## 2026-10-25 按需查阅与正式小螃蟹控制
 
 - 以线上干净6361d70为基线，work/companion-20261025隔离修改5个前端文件；未触碰有其他窗口改动的home/src。root CLAUDE与home项目CLAUDE两份真实规则另外保存基线SHA，私有原文不提交前端Git。
