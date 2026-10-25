@@ -1,6 +1,6 @@
 /* Expanded warm surfaces share the existing business handlers. */
 :root[data-visual='orange'] .dy-list{padding-bottom:0}
-:root[data-visual='orange'] .dy-list:last-of-type{padding-bottom:110px}
+:root[data-visual='orange'] .page.dy{padding-bottom:calc(var(--warm-dock-clearance) + 20px + var(--kb,0px))}
 :root[data-visual='orange'] .dy-sep{margin:18px 0;padding:0;height:16px}
 :root[data-visual='orange'] .cloud-btn{display:inline-flex;align-items:center;justify-content:center;background:transparent;box-shadow:none;border:0;transform:none;color:#fff1cf;vertical-align:middle}
 :root[data-visual='orange'] .cloud-btn svg{display:block;width:25px;height:25px;transform:none;filter:drop-shadow(0 1px 2px #71441d)}

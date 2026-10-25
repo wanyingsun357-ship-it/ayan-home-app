@@ -30,14 +30,17 @@
 :root[data-visual='orange'] .warm-thought-mask .thought-head {position:relative;flex-shrink:0;}
 :root[data-visual='orange'] .warm-thought-mask .thought-title {font:italic 25px/1.5 Georgia,serif;color:#79563a;}
 :root[data-visual='orange'] .warm-thought-mask .thought-body {min-height:0;overflow:auto;overscroll-behavior:contain;font-size:15px;color:#70523e;line-height:1.8;padding:14px 6px;}
-:root[data-visual='orange'] .warm-page-dock {left:16px;right:16px;bottom:calc(12px + env(safe-area-inset-bottom));width:auto;height:66px;border:1px solid #fffdf3;border-radius:26px;background:#fff6e3b8;box-shadow:0 5px 20px #82542c12;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding:5px 6px;}
+:root[data-visual='orange'] {--warm-dock-height:66px;--warm-dock-bottom:calc(12px + env(safe-area-inset-bottom,0px));--warm-dock-clearance:calc(var(--warm-dock-height) + var(--warm-dock-bottom));}
+/* Cover the area beneath the floating dock, including the home-indicator inset. */
+:root[data-visual='orange']:is([data-view='moments'],[data-view='diary']) .intro-content::after {content:'';position:fixed;inset:auto 0 0;height:var(--warm-dock-clearance);background:var(--bg);z-index:29;pointer-events:auto;}
+:root[data-visual='orange'] .warm-page-dock {left:16px;right:16px;bottom:var(--warm-dock-bottom);width:auto;height:var(--warm-dock-height);border:1px solid #fffdf3;border-radius:26px;background:#fff6e3b8;box-shadow:0 5px 20px #82542c12;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding:5px 6px;}
 :root[data-visual='orange'] .warm-page-dock .tab-item {min-width:0;padding:3px 0;color:#91744e;border-radius:20px;}
 :root[data-visual='orange'] .warm-page-dock .tab-item.active {background:#e9d2ad75;color:#6d4c2f;}
 :root[data-visual='orange'] .warm-page-dock .tab-label {font:italic 11px/1.5 Georgia,serif;margin-top:3px;}
 :root[data-visual='orange'] .warm-page-dock .tab-icon {height:26px;display:grid;place-items:center;}
 :root[data-visual='orange'] .warm-tab-art,:root[data-visual='orange'] .warm-tab-art svg {display:block;width:25px;height:25px;}
 :root[data-visual='orange'] .warm-tab-art svg {stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;}
-:root[data-visual='orange'] .mo-list,:root[data-visual='orange'] .dy-list {padding-bottom:110px;}
+:root[data-visual='orange'] .mo-feed {padding-bottom:calc(var(--warm-dock-clearance) + 20px);scroll-padding-bottom:20px;}
 :root[data-visual='orange'] .call {color:#fff5df;--text:#fff5df;--text-soft:#fff5df;--text-faint:#f8e8cb;}
 :root[data-visual='orange'] .call .call-top {color:#fff5df;}
 :root[data-visual='orange'] .call .call-min {color:#623e28;background:#fff2d9e8;border:1px solid #fff7e9;border-radius:50%;width:38px;height:38px;}
