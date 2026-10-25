@@ -1,5 +1,13 @@
 # 项目状态与待办
 
+## 2026-10-25 第二轮修正发布结果 / TestFlight 36
+
+- 源码efaa7e306613e486d44d9f2fe9ab9a9a3f926cd4已发布。入口index-DfbwY3JI.js / index-3CUS7Peq.css；备份/root/ayan/backups/ui-details-20261025-123054。发布前HEAD/origin/干净状态和七文件SHA核对通过；保留旧资源，未动后端和生产数据。
+- 线上新构建模拟API回归通过（一次网络加载超时，延长导航等待重试通过）：主页分离面板/云朵猫咪、分段、水位图鉴、Thinking、工具路由、Moments/Diary导航、320/390通话、录音取消/草稿、原版回归；More/待办模拟POST/录音提示另测通过。日记锁定与最近列表的紧凑间距在本地同源码320宽度通过。真实health200、queue0、alerts0。
+- TestFlight36 run40193454508/job121169169985 success；日志12:34:38 UTC确认 Successfully uploaded the new binary to App Store Connect；IPA artifact12599156722。Apple处理/测试人员可见性/安装尚未核实。https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40193454508
+- iPhone长按选字放大镜、键盘聚焦与实际音频权限/收音仍待真机确认，不能以浏览器模拟宣称完成真机验收。没有新增原生插件。当前App仍载入线上网页。
+
+
 ## 2026-10-25 第二轮真机遗漏修正
 
 - 基于线上干净1532d9b，独立work/ui-details-20261025修改7个源码文件；未碰home/src。暖橘云图标使用已确认预览路径并居中，分段改奶白单行/选中浅粉，去旧呼吸渐变。小螃蟹打开真实tokens/limit水位、模型名及20动作独立预览，压缩/衔接沿用原处理。
