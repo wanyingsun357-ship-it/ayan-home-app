@@ -1,5 +1,12 @@
 # 项目状态与待办
 
+## 2026-10-25 无底色附文与正向羽毛已发布
+
+- 发布源码8265a1682e67855a064e2cf3d1e936af9c93b213；网页入口index-D5H_Ti9i.js / index-BEwBP4tu.css；备份/root/ayan/backups/chat-tone-20261025-132847。单个CSS文件SHA、基线36c67e2、origin与干净状态核对通过，保留旧资源和数据，未重启后端。
+- 线上模拟消息截图检查完成：voice-script/touch-line背景均rgba(0,0,0,0)、边框0；文字分别#68452e/#795034；羽毛按钮无旋转，图案调直居中，羽毛收段后正常。无页面异常。health200、queue0、alerts0。未用真实聊天做测试。
+- 自动触发TestFlight38 / run40197800782，记录时in_progress，尚未核实上传；https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40197800782 。本次仅网页样式，现有App重开可载入；不需等待新安装包。后续核实构建结果时再补充，不能宣称38已上传。
+
+
 ## 2026-10-25 语音附文与拍一拍改为无填充层次
 
 - 基于线上干净36c67e2，独立work/chat-tone-20261025，只修改orange-chat-finish.css。用户要求语音下方文字/拍一拍取消填充色；现已移除底色/边框/卡片阴影，改暖棕字、较小字号与名字字重区分层次。语音播放条保持奶油底。
