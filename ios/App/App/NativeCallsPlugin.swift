@@ -95,10 +95,12 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     private var partialFinals = ""
     private var sayQueue: [String] = []
     private var waitingReply = false
+    private var replyTimeout: Task<Void, Never>?
     private var played = Set<String>()
     private var playQueue: [[String: Any]] = []
     private var loadingAudio = false
     private var pendingHangup = false
+    private var endingRemotely = false
     private var registrationID: String {
         if let value = UserDefaults.standard.string(forKey: "native-call-device-id") { return value }
         let value = UUID().uuidString; UserDefaults.standard.set(value, forKey: "native-call-device-id"); return value
@@ -251,7 +253,13 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     private func pumpAudio() {
         guard joined, audioActive, player == nil, !loadingAudio else { return }
         guard !playQueue.isEmpty else {
-            if pendingHangup { Task { @MainActor in try? await self.end() } }
+            if pendingHangup && !endingRemotely {
+                endingRemotely = true
+                Task { @MainActor in
+                    do { _ = try await self.request("action", body: ["action": "played-hangup"]); self.finish(reason: .remoteEnded) }
+                    catch { self.endingRemotely = false }
+                }
+            }
             return
         }
         let entry = playQueue.removeFirst(), id = callID
@@ -341,6 +349,12 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     private func sendNext() {
         guard joined, !waitingReply, !sayQueue.isEmpty else { return }
         waitingReply = true; let text = sayQueue.removeFirst(), id = callID
+        replyTimeout?.cancel()
+        replyTimeout = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 90_000_000_000)
+            guard !Task.isCancelled, self.callID == id, self.waitingReply else { return }
+            self.waitingReply = false; self.emit("error", ["message": "回复暂时没有接上，可以再说一句"]); self.sendNext()
+        }
         Task { @MainActor in
             do { _ = try await self.request("say", body: ["text": text]) }
             catch { guard self.callID == id else { return }; self.waitingReply = false; self.emit("error", ["message": "这句话未送达，请再说一次"]) }
@@ -354,7 +368,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
         guard info != nil else { return }
         let c = conversation
         joined = false; audioActive = false; polling?.cancel(); polling = nil; ringTimeout?.cancel(); ringTimeout = nil
-        stopMic(); player?.stop(); player = nil; playQueue.removeAll(); sayQueue.removeAll(); loadingAudio = false; waitingReply = false; pendingHangup = false
+        stopMic(); player?.stop(); player = nil; playQueue.removeAll(); sayQueue.removeAll(); loadingAudio = false; waitingReply = false; replyTimeout?.cancel(); pendingHangup = false; endingRemotely = false
         if let c = c { manager.reportConversationEvent(.conversationEnded(Date(), reason), for: c) }
         emit("ended"); info = nil; currentCall = nil
     }
