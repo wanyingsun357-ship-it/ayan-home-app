@@ -1,5 +1,35 @@
 # 项目状态与待办
 
+## 2026-10-25 原生来电与锁屏音频接入（服务已发布，真机待验）
+
+- 最终发布补充：TestFlight **40** / run40205753154 / job121206198364 全部成功，Fastlane 15:15:15 UTC 确认 `Successfully uploaded the new binary to App Store Connect`；日志确认 CFBundleVersion=40，IPA artifact12602829959 已保存。Apple处理、测试人员可见性及安装尚未核实。构建链接：https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40205753154 。
+- 网页补充修复已上线并推送 `f92cb95e743806d23a3e7213c35dbe803da41a7c`：返回前台时若原生已结束且漏掉事件，重新查询当前通话，避免悬浮条或通话页卡住。入口 `/assets/index-DxCOg166.js`、`/assets/index-BEwBP4tu.css`；备份 `/root/ayan/backups/native-recovery-20261025-151750`。仅网页更新不重复打原生包，未再重启服务。部署校验主分支干净；公网浏览器请求确认入口/两资源200、新JS含原生接入、未配对请求原生state/credentials均401，公开健康检查200、queue0、alerts0。
+
+- 按用户确认接入 iPhone 原生来电：PushKit VoIP 推送 + LiveCommunicationKit 系统接听/拒接/挂断界面，iOS 17.4 起支持。新原生插件接管来电收音、阿里实时 ASR、同一聊天模型回复及 ElevenLabs v4 分句播放；网页不再重复开麦/播放。现有网页拨出流程、旧包和浏览器回退保持；声纹、开口打断未实现，不把后续设想当作完成。
+- 原生代码提交 `768369ad3b242840a6634f2d5c4b79c422f0fef3`（含前两次提交），隔离工作树 `/root/ayan/worktrees/native-call-20261025`，源码已快进并推送主分支。原生编译检查 run40205474433 / job121205347615 全部成功，包含真实 Xcode 26 模拟器编译；TestFlight上传结果见本节首项。首次启用必须安装含 NativeCalls 的新包并打开 App，现有旧包仅更新网页不能获得原生功能。
+- 后端精确修改 bridge.js、新增 native-calls.cjs；调用范围限定的随机通话令牌用于原生后台接口，配对认证仅用于设备注册和领取当前通话凭据。不暴露全局认证、不返回 reasoning、不接受任意文本合成；来电优先 VoIP，成功后抑制同一设备普通重复通知。沿用原 APNs、阿里识别和 Eleven 配置。主聊天供应商按当前会话选择，不硬绑 OpenRouter。
+- 服务发布备份 `/root/ayan/backups/native-call-20261025-151118`；bridge SHA256 `fa1bb1ab01373199bd47443fdf8d6d9de1e7f61bb986530ea42c0866a86a5168`，native-calls.cjs SHA256 `10751722547bd199a0d79e6f5d73fe2ac5cde7909d46f3d76a32855e92790a5e`。仅在确认无活跃聊天/通话后重启 bridge，health200、queue0、alerts=[]，原生无认证接口验证401。后端不在前端Git内，安全脚本/新增模块保存于本地 `work/native-call-20261025`，远端暂存 `/root/ayan/native-call-20261025`；不把含凭据的 bridge 源码取回或提交。
+- 验证：通话级令牌隔离、跨通话拒绝、结束后过期、重复接听幂等、设备令牌轮换、隐藏 reasoning、分句/终稿不重复的隔离后端测试通过；模拟原生桥验证恢复来电、静音/免提、无网页重复收音和TTS、后台漏挂断事件后的前台对账通过。既有通话打字/静音/悬浮拖动/小屏及减少动态回归通过。未拨生产测试电话、未发送真实 VoIP 测试推送或模型测试消息。锁屏接听、蓝牙/听筒切换、长时后台与推送到达仍需用户安装后真机确认，不能以编译和模拟替代。
+- 自动审批拦截整段认证模块读取，已改服务器内检查必要路由、仅返回哈希/结构，无凭据导出。后续网页恢复补丁及安装包上传结果见补充记录。
+
+## 2026-10-25 声音提示改为少示例、自由描述与主动使用（已上线）
+
+- 用户要求补充呼吸/喘息等发声能力，同时减少标签枚举，重点让模型理解用法并主动使用。精确更新全局 CLAUDE.md 的声音段、home CLAUDE.md 的通话条款及 bridge CALL_RULES。
+- 全局仅保留 `[softly]`、`[exhales]` 两个写法示例，明确不是白名单；可用简短英文方括号自由描述、组合语气/节奏/呼吸/喘息等自然发声，在要影响的词句前放置。写明按情境主动用、不等用户提醒，也不要求每句话添加。保留 VOICE/ZH/接听拒接挂断等格式规则。运行时通话提示不再重复长标签列表。
+- 三文件基线哈希保护、bridge 语法检查通过；确认无活跃模型/聊天/通话后备份并仅重启 bridge。备份后缀 `.bak-voice-tags-free-20261025-144610`，上线三文件哈希一致。工作脚本 `D:/阿晏/work/eleven-v4-20261025/refine-tags.py`，远端暂存 `/root/ayan/eleven-v4-20261025/tags-refined`。未发起额外合成/模型请求；标签实际使用频率和效果待自然对话观察。新 Voice ID 和 eleven_v4 保留，前端未改。
+
+## 2026-10-25 ElevenLabs 新音色、v4 与语气标签（已上线）
+
+- 用户授权先完成声音部分：Voice ID `gBcsEx3YDazONRqNBafR`（现有账号可读，名称“1111111阿晏”），TTS 从 `eleven_v3` 换成 `eleven_v4`。普通语音条、听语音与通话共用服务，均使用新配置。此处 v4 指配音模型，不涉及主聊天模型。
+- 官方 models 文档和账号 GET /v1/models 均确认 v4 存在。按 v4 官方接入文档，将后端上游普通/流式请求改为 `/v1/text-to-dialogue` 和 `/v1/text-to-dialogue/stream`；body 使用单个 `inputs[{text,voice_id}]` + `model_id`，显式 MP3 输出；不把旧 TTS 的 voice_settings 格式直接套到新接口。前端 `/api/tts*` 地址保持兼容。
+- 更新全局 `/root/ayan/CLAUDE.md` 的声音规则、home project 的通话规则及 bridge 的 CALL_RULES：允许自然选用官方音频标签，如 `[softly]`、`[whispers]`、`[laughs]`、`[sighs]`、`[curious]`、`[playful]`、`[excited]`、`[slowly]`、`[pause]`；标签用于 VOICE 内发声稿或通话英文正文，不写入 ZH 翻译，不改变控制标签，不要求每句添加、不自动随机插标签。明确发声标签与禁止的文字动作描写不同。规则从下一次模型调用加载；未主动发起聊天验收使用频率。
+- 缓存键原有 voice/model/text 区分继续生效，旧音频未删除；固定保存旧音频地址的收藏仍指向旧文件。普通旧文字若重新请求合成，会按当前新 voice/model 取音频；不承诺所有历史语音都锁定旧音色。
+- 真正调用一次新 v4 流式接口，短样音 `[softly] I'm here, baby.` 返回 HTTP200、audio/mpeg、25,121 bytes。样音缓存 `/tts/c0b6fd8e7a3135cb9e69.mp3`。未向聊天写入假消息或发送通知；该次验证产生少量 ElevenLabs 合成用量。听感和不同标签的表现仍待用户试听；没有逐标签测试。
+- 发布前确认无活跃模型进程/聊天/通话；三个文件基线 SHA256 保护、桥语法检查通过，备份后仅重启 bridge。备份后缀 `.bak-eleven-v4-20261025-143918`。上线三文件哈希一致，实际 `/api/tts/url` probe 返回新配置对应的样音缓存地址，health200、queue0、alerts=[]。前端基线核实干净 HEAD `a955bb47bfb6143dffd36ded1ae30fa5934836f5`，未改前端/推Git/发TestFlight。
+- 工作记录 `D:/阿晏/work/eleven-v4-20261025` 仅有精确替换与发布脚本；源码与凭据留在 VPS `/root/ayan/eleven-v4-20261025`。一次整段源码读取被自动审批拒绝（可能输出内嵌凭据），已改用服务器内精确替换、只回传哈希的方式完成。
+- 参考：https://elevenlabs.io/docs/overview/models/ 、https://elevenlabs.io/docs/api-reference/text-to-dialogue/convert 、https://elevenlabs.io/docs/api-reference/text-to-dialogue/stream 、https://elevenlabs.io/blog/elevenlabs-audio-tags-list 。原生来电、开口打断、声纹验证仍待后续，不能把讨论记为实现。
+
+
 ## 2026-10-25 按需规则与小螃蟹控制已发布
 
 - 前端源码34320a682cda0950ebfaa4039edc0869b6255fa7，入口index-Gyr4XG6v.js / index-BEwBP4tu.css，备份/root/ayan/backups/companion-20261025-140711。5个相关源码文件和两份私有规则的基线SHA均核对通过；未改home/src或后端、未重启聊天、未写生产假聊天。两份规则原文仅在私有备份instructions/保存，不提交前端Git。
