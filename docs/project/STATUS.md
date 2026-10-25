@@ -1,5 +1,13 @@
 # 项目状态与待办
 
+## 2026-10-25 玻璃待办 / Chat修正已上线，TestFlight 37已上传
+
+- 发布源码4d501cb717cc44fdcb64d54d471acca50a7c3d0e；入口index-C1iws6Oj.js / index-Du5Z3KNC.css。备份/root/ayan/backups/chat-finish-20261025-130720；基线bb4099a、origin、干净状态与5个文件SHA核对通过。未改home/src、后端或生产数据，旧资源保留。
+- 线上实际构建的模拟API回归通过：真实形状玻璃清单、首页摘要、跨月新增/失败保稿/完成；本段/整条复制与原生文本选区、收藏取消、回复、编辑、听语音、重答与召回备注处理；引用/拍一拍/系统/Toast对比、线描羽毛与落羽、7片花瓣、小云朵和加号；320宽度、减少动态、原版控件检查。已查看有内容截图。health200、queue0、alerts0。所有业务写请求被本地模拟拦截。
+- TestFlight37 / run40196183681 / job121177393049 success；Fastlane日志13:11:51 UTC确认Successfully uploaded the new binary to App Store Connect。IPA artifact12600526394。https://github.com/wanyingsun357-ship-it/ayan-home-app/actions/runs/40196183681 。Apple处理、测试人员可见性和安装尚未核实。
+- iPhone原生选字/录音权限与实际服务音频仍需真机确认；浏览器选区及接口模拟不等于端到端验收。当前App重开可载入线上网页，未新增原生插件。
+
+
 ## 2026-10-25 玻璃待办与 Chat 最后细节
 
 - 线上干净bb4099a为基线，独立work/chat-finish-20261025，仅5个前端文件；保护home/src。To do改回预览式居中定高440px玻璃清单，事项/日期/新增/月历内部滚动，首页显示未完成事项摘录与日期（包含未来计划）。连接原GET/POST/toggle/DELETE，失败保留草稿，不乐观吞错。原API只支持新增日期、完成、删除；未添加改既有日期或无日期的新后端能力。Today维持上一轮业务。
