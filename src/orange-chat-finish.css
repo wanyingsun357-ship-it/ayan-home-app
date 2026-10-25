@@ -16,8 +16,9 @@
 :root[data-visual='orange'] .msg-meta .cloud-btn{width:28px;height:28px;padding:7px;filter:none}
 :root[data-visual='orange'] .msg-meta .cloud-btn svg{width:14px;height:14px;filter:none;stroke-width:1.5}
 :root[data-visual='orange'] .chat-bar>.cbtn:first-child{color:#fff2d5!important;opacity:1;filter:none;border-color:#fff0d353}
-:root[data-visual='orange'] .chat-bar .segment-feather{width:34px;height:34px;flex-basis:34px;padding:3px 7px;transform:rotate(8deg);background:#fff4d609;color:#fff1cc;border-color:#fff0cf70;opacity:.9}
+:root[data-visual='orange'] .chat-bar .segment-feather{display:grid;place-items:center;width:34px;height:34px;flex-basis:34px;padding:0;transform:none;background:#fff4d609;color:#fff1cc;border-color:#fff0cf70;opacity:.9}
 :root[data-visual='orange'] .chat-bar .segment-feather .paper-quill-icon{display:block;width:19px;height:27px}
+:root[data-visual='orange'] .chat-bar .segment-feather .paper-quill-icon svg{transform:rotate(-26deg);transform-origin:center;overflow:visible}
 :root[data-visual='orange'] .paper-quill-icon svg,:root[data-visual='orange'] .paper-falling-feather svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
 :root[data-visual='orange'] .chat-bar .segment-feather>i{display:none}
 :root[data-visual='orange'] .chat-bar .segment-feather.awake .paper-quill-icon{animation:warm-quill-float 3s ease-in-out infinite}
@@ -28,10 +29,13 @@
 :root[data-visual='orange'] .chat-bar .send.ready{background:#fff2d7;color:#71482e;opacity:1}
 :root[data-visual='orange'] .chat-bar .send .touch-glyph{width:24px;height:24px;fill:none;stroke-width:1.35}
 .warm-send-petals{position:absolute;right:30px;bottom:38px;width:0;height:0;z-index:8;pointer-events:none}.warm-send-petals i{position:absolute;width:7px;height:11px;border-radius:70% 20% 65% 30%;background:#ffe2c1;box-shadow:inset 1px 0 #fff3dd;animation:warm-petal-drift 2.6s linear both;filter:drop-shadow(0 1px 1px #90604412)}
-@keyframes warm-quill-float{50%{transform:translateY(-3px) rotate(-4deg)}}@keyframes warm-quill-sweep{50%{transform:translate(-7px,5px) rotate(-18deg)}}@keyframes warm-quill-fall{0%{opacity:.7;transform:translate(0,0) rotate(0)}50%{opacity:.5;transform:translate(-18px,27px) rotate(-35deg)}100%{opacity:0;transform:translate(-7px,63px) rotate(25deg)}}
+@keyframes warm-quill-float{50%{transform:translateY(-2px)}}@keyframes warm-quill-sweep{50%{transform:translate(-5px,4px) rotate(-12deg)}}@keyframes warm-quill-fall{0%{opacity:.7;transform:translate(0,0) rotate(0)}50%{opacity:.5;transform:translate(-18px,27px) rotate(-35deg)}100%{opacity:0;transform:translate(-7px,63px) rotate(25deg)}}
 @keyframes warm-petal-drift{0%{opacity:0;transform:translate(0,0) rotate(-12deg) scale(.85)}15%{opacity:.85}35%{transform:translate(var(--drift),calc(var(--drop)*.3)) rotate(var(--turn))}68%{opacity:.7;transform:translate(calc(var(--drift)*-.5),calc(var(--drop)*.64)) rotate(calc(var(--turn)*-.6))}100%{opacity:0;transform:translate(var(--drift),var(--drop)) rotate(var(--turn))}}
-:root[data-visual='orange'] .touch-notice .touch-line{color:#624126;background:#fff1d4e8;border:1px solid #fff7e28c;border-radius:16px;padding:7px 12px;line-height:1.6;box-shadow:0 2px 9px #71462214;text-shadow:none;max-width:100%}
-:root[data-visual='orange'] .touch-notice b,:root[data-visual='orange'] .touch-notice .touch-mark{color:#624126;opacity:1}
+:root[data-visual='orange'] .chat .voice-script{background:transparent!important;color:#68452e!important;border:0;border-radius:0;box-shadow:none;padding:4px 5px 0;margin-top:5px;font-size:13px;line-height:1.7;opacity:1;text-shadow:0 1px 1px #fff1d955}
+:root[data-visual='orange'] .touch-notice .touch-line{color:#795034;background:transparent;border:0;border-radius:0;padding:4px 6px;line-height:1.7;font-size:12px;box-shadow:none;text-shadow:0 1px 1px #fff1d955;max-width:100%}
+:root[data-visual='orange'] .touch-notice b{color:#68452e;font-weight:550;opacity:1}
+:root[data-visual='orange'] .touch-notice .touch-mark{color:#795034;width:18px;height:18px;opacity:1}
+:root[data-visual='orange'] .touch-notice .touch-mark svg{width:18px;height:18px}
 :root[data-visual='orange'] .touch-notice time{color:#fff3d6;opacity:1;text-shadow:0 1px 3px #71422188}
 :root[data-visual='orange'] .reply-compose,:root[data-visual='orange'] .reply-quote{color:#644229;background:#ffefcfed;border:1px solid #d5b48699;border-radius:12px;padding:7px 10px;line-height:1.5;box-shadow:none;max-width:100%}
 :root[data-visual='orange'] .reply-compose span,:root[data-visual='orange'] .reply-quote span{display:flex;flex-direction:row;align-items:baseline;gap:8px;overflow:hidden}
