@@ -5,6 +5,7 @@ import './paper-theme.css'
 import './paper-release.css'
 import './orange-theme.css'
 import './orange-polish.css'
+import './orange-details.css'
 import {applyAppearance} from './utils/appearance.js'
 
 applyAppearance()

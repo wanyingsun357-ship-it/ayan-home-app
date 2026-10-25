@@ -1,4 +1,5 @@
 import { useAppearance } from '../utils/appearance.js'
+import CompanionPanel from '../components/CompanionPanel.jsx'
 import WarmCompanion from '../components/WarmCompanion.jsx'
 import useHouseDraft from '../utils/useHouseDraft.js'
 import FavoritesSheet from '../components/FavoritesSheet.jsx'
@@ -79,14 +80,18 @@ const dividerLabel = (messages, idx) => {
 }
 
 // 卡通线条图标:思考云 / 记忆泡泡
-const CloudIcon = () => (
+const CloudIcon = () => {
+  const warm = useAppearance().theme === 'orange'
+  if(warm) return <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10 30C1 29 2 17 10 16C11 4 28 3 31 16C40 18 38 31 30 30Z"/></svg>
+  return (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
     <path d="M7.5 16.5h8.6a3.4 3.4 0 0 0 .6-6.75A5 5 0 0 0 7 8.9a3.4 3.4 0 0 0 .5 7.6Z" />
     <circle cx="5.6" cy="19.6" r="1" fill="currentColor" stroke="none" />
     <circle cx="3.4" cy="21.6" r="0.6" fill="currentColor" stroke="none" />
   </svg>
-)
+  )
+}
 const MemIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.9" strokeLinecap="round">
@@ -234,11 +239,13 @@ export default function Chat({ back }) {
   useEffect(() => () => { clearTimeout(voicePress.current?.timer) }, [])
   const startVoicePress = (e) => {
     if (!warm || historyView || e.button > 0) return
+    if(e.pointerType === 'touch') { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId) }
     cancelVoicePress()
     const press = { x:e.clientX, y:e.clientY }
     press.timer = setTimeout(() => { voicePress.current = null; inputRef.current?.blur(); startRec({clientY:press.y}) }, 500)
     voicePress.current = press
   }
+  const endVoicePress = () => { const pending=voicePress.current; cancelVoicePress(); if(pending)inputRef.current?.focus() }
   const moveVoicePress = (e) => {
     const p = voicePress.current
     if (p && Math.hypot(e.clientX-p.x,e.clientY-p.y)>8) cancelVoicePress()
@@ -419,6 +426,15 @@ export default function Chat({ back }) {
 
   const listRef = useRef(null)
   const inputRef = useRef(null)
+  useEffect(() => {
+    if (!warm) return
+    const input = inputRef.current
+    // Cancel native iOS selection before it can start a loupe. Short taps
+    // focus explicitly on pointerup; a hold remains a recording gesture.
+    const stopSelection = event => { if (!historyView && event.touches.length === 1) event.preventDefault() }
+    input?.addEventListener('touchstart', stopSelection, {passive:false})
+    return () => input?.removeEventListener('touchstart', stopSelection)
+  }, [warm, historyView])
   const esRef = useRef(null)
   const streamRef = useRef({ id: null, reasoning: '', reply: null })
   const sessionRef = useRef(null)      // 当前会话id,过滤别的会话串进来的流
@@ -1373,7 +1389,8 @@ export default function Chat({ back }) {
       setCanceling(c)
     }
     let upDone = false
-    const onUp = () => {
+    const onUp = (event) => {
+      if(event?.type?.includes('cancel') || document.hidden) recTouchRef.current.cancel = true
       if (upDone) return; upDone = true
       window.removeEventListener('pointermove', onMove)
       for (const ev of ['pointerup', 'pointercancel', 'touchend', 'touchcancel']) window.removeEventListener(ev, onUp)
@@ -2076,10 +2093,11 @@ export default function Chat({ back }) {
           value={input}
           onPointerDown={startVoicePress}
           onPointerMove={moveVoicePress}
-          onPointerUp={cancelVoicePress}
+          onPointerUp={endVoicePress}
           onPointerCancel={cancelVoicePress}
           onPointerLeave={cancelVoicePress}
           onContextMenu={e => {if(warm)e.preventDefault()}}
+          style={warm?{touchAction:"none",WebkitTouchCallout:"none",WebkitUserSelect:recording?"none":undefined}:undefined}
           aria-label={warm ? '消息，长按录音' : '消息'}
           onChange={onInput}
           onFocus={() => { if(historyView)return; setTimeout(scrollBottom, 120); setTimeout(scrollBottom, 400) }}
@@ -2215,7 +2233,8 @@ export default function Chat({ back }) {
       )}
 
       {/* 水位面板:压缩 / 衔接 */}
-      {ctxOpen && (
+      {ctxOpen && warm && <CompanionPanel tokens={ctx} limit={ctxLimit} estimated={ctxEstimated} model={model} busy={compacting} onCompact={doCompact} onClose={()=>setCtxOpen(false)}/> }
+      {ctxOpen && !warm && (
         <div className="sheet-mask" onClick={() => !compacting && setCtxOpen(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
@@ -2608,7 +2627,7 @@ export default function Chat({ back }) {
             <span className="rec-dot" />
             {canceling ? '松开取消' : micReady ? '在听… 松开发送 · 上滑取消' : '准备中…'}
           </div>
-          {liveText && !canceling && <div className="rec-live glass2">{liveText}</div>}
+          {liveText && <div className="rec-live glass2">{liveText}</div>}
         </div>
       )}
 

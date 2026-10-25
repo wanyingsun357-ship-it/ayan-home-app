@@ -207,9 +207,9 @@ export default function App() {
 
       {/* More 弹层 */}
       {moreOpen && (
-        <div className="sheet-mask" onClick={() => setMoreOpen(false)}>
+        <div className={`sheet-mask ${warm?"warm-more-mask":""}`} onClick={() => setMoreOpen(false)}>
           <div className="sheet glass3-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-handle" />
+            {warm?<><button className="detail-close" aria-label="关闭 More" onClick={()=>setMoreOpen(false)}>×</button><h2 className="warm-more-title">More</h2></>:<div className="sheet-handle" />}
             {MORE_ITEMS.map((it) => (
               <button key={it.key} className="sheet-item more-item" onClick={() => go(it.key)}>
                 <span className="serif">{it.label}</span>

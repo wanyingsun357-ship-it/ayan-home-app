@@ -7,7 +7,7 @@ import './home.css'
 const pad = (n) => String(n).padStart(2, '0')
 const dstr = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
-export default function Home({ go, openSidebar }) {
+export default function Home({ go, openSidebar, panelMode }) {
   const [paperPage,setPaperPage]=useState('today')
   const days = daysSince(TOGETHER_SINCE)
   const [quote, setQuote] = useState(null)
@@ -135,7 +135,7 @@ export default function Home({ go, openSidebar }) {
   )
 
   return (
-    <div className="page hm">
+    <div className={`page hm ${panelMode?"hm-panel-content":""}`}>
       {/* 顶部 */}
       <header className="hm-head">
         <span className="hm-days-label">DAYS&nbsp;&nbsp;TOGETHER</span>
