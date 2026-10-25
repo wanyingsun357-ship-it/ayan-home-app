@@ -78,8 +78,18 @@ export default function CallOverlay() {
       if(event.type==='listening'){setSpeaking(null);return}
       if(event.type==='ended'){
         nativeOwned.current=false
-        if(event.call)finish({...event.call,status:'ended',endedBy:event.call.endedBy||'her'})
+        const c=event.call||callRef.current
+        if(c)finish({...c,status:'ended',endedBy:c.endedBy||(c.status==='ringing'?'declined':'her')})
         return
+      }
+      if(nativeOwned.current&&event.type==='state'&&!event.mediaOwned&&!event.callId){
+        nativeOwned.current=false
+        const c=callRef.current
+        if(c)fetch(`/api/call/${encodeURIComponent(c.id)}`).then(r=>r.json()).then(d=>{
+          if(nativeOwned.current||callRef.current?.id!==c.id)return
+          if(d.call?.status==='ended')finish(d.call)
+          else if(d.call){setCall(d.call);setNeedTap(true)}
+        }).catch(()=>{})
       }
       if(event.call&&event.mediaOwned){
         if(!nativeOwned.current){nativeOwned.current=true;cleanupMedia();stopRing()}
