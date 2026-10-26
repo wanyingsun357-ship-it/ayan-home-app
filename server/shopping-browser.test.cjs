@@ -7,11 +7,11 @@ async function main(){
  assert.equal(sku('12345'),'12345');for(const value of ['123','../etc/passwd','https://jd.com','1e10'])assert.throws(()=>sku(value));
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ayan-browser-test-')),book=create(path.join(dir,'shopping.json'));
  const item=book.order({title:'模拟茶杯',url:'https://item.jd.com/12345.html',quantity:1,clientId:'fixture-order'}).order;
- let running=false,loginPage=false,added=false,requests=[];
+ let running=false,loginPage=false,added=false,requests=[],screenFail=false;
  const image=Buffer.from('ffd8ffe000104a46494600010100000100010000ffd9','hex');
  const mock=express();mock.use(express.json());
  mock.get('/state',(_,res)=>res.json({available:true,running,loginPage,login:'needed',paymentsEnabled:false}));
- mock.get('/screen',(_,res)=>res.type('image/jpeg').send(image));mock.get('/qr',(_,res)=>res.type('image/png').send(Buffer.from('fixture-qr')));
+ mock.get('/screen',(_,res)=>screenFail?res.status(503).json({error:'截图模拟失败'}):res.type('image/jpeg').send(image));mock.get('/qr',(_,res)=>res.type('image/png').send(Buffer.from('fixture-qr')));
  mock.post('/action',(req,res)=>{requests.push(req.body);running=req.body.action!=='close';loginPage=req.body.action==='login';res.json({ok:true,...(req.body.action==='add'?{added}:{}),products:req.body.action==='search'?[{skuId:'12345',title:'模拟商品',url:'https://item.jd.com/12345.html',price:'18.80'}]:undefined,state:{available:true,running,loginPage,login:'needed',url:loginPage?'https://passport.jd.com/new/login.aspx':'https://item.jd.com/12345.html',paymentsEnabled:false}})});
  const worker=mock.listen(0,'127.0.0.1');await new Promise(r=>worker.once('listening',r));
  const browser=createBrowser({shopping:book,dir,workerUrl:'http://127.0.0.1:'+worker.address().port,getSession:()=> 'fixture-home'});
@@ -36,6 +36,9 @@ async function main(){
   await post({action:'cart'});added=true;await post({action:'add',orderId:item.id,clientId:'fixture-add-operation-2'});assert.equal(book.view().orders[0].status,'cart');
   const before=requests.length;assert.equal((await post({action:'add',orderId:item.id,clientId:'fixture-add-operation-3'})).status,409);assert.equal(requests.length,before);
   assert.equal(book.view().entries.length,0,'browser must not create payment expenses');
+  screenFail=true;const lost=await post({action:'open',orderId:item.id});assert.equal(lost.status,502);assert(lost.body.error.includes('操作已经发生'));assert.equal((await browser.status()).activities[0].status,'unconfirmed');
+  screenFail=false;const recovered=await post({action:'recordScreen',orderId:item.id});assert.equal(recovered.status,200);assert(recovered.body.activity.screenshot);assert.equal(book.view().orders[0].status,'cart');
+  assert.equal(book.view().autonomy.confirmation,'not_required_within_allowance');assert.equal(book.view().autonomy.chatProgress,false);assert.equal(book.view().autonomy.footprints,true);assert.equal(book.view().autonomy.paymentsEnabled,false);
   console.log('PASS JD-only navigation, valid SKU, private media and no-store, paired-only routes, login/OTP never archived, actual add success required, duplicate cart guard, no payment actions or ledger mutations');
  }finally{await new Promise(r=>server.close(r));await new Promise(r=>worker.close(r));assert(path.resolve(dir).startsWith(path.join(path.resolve(os.tmpdir()),'ayan-browser-test-')));fs.rmSync(dir,{recursive:true});}
 }

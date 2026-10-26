@@ -25,13 +25,13 @@ function create({ shopping, dir, getSession = () => '', notify = () => {}, worke
   async function capture(state) {
     if (!state?.running || state.loginPage || /\b(?:passport|safe|aq)\.jd\.com\b/.test(state.url || '')) return '';
     const bytes = Buffer.from(await (await request('/screen')).arrayBuffer());
-    if (bytes.length > 3 * 1024 * 1024) throw Error('浏览器截图过大');
+    if (bytes.length > 3 * 1024 * 1024 || bytes.length < 4 || bytes[0] !== 255 || bytes[1] !== 216 || bytes[2] !== 255) throw Error('浏览器截图未正确返回');
     fs.mkdirSync(mediaDir, { recursive: true, mode: 0o700 });
     const name = crypto.randomUUID() + '.jpg'; fs.writeFileSync(path.join(mediaDir, name), bytes, { mode: 0o600 });
     return '/api/shopping/browser/media/' + name;
   }
   async function action(b = {}) {
-    const allowed = ['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'loginClick', 'loginCode', 'close'];
+    const allowed = ['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'recordScreen', 'loginClick', 'loginCode', 'close'];
     if (!allowed.includes(b.action)) { const e = new Error('不支持这个购物操作'); e.status = 400; throw e; }
     let record;
     if (b.orderId) record = shopping.view().orders.find(o => o.id === b.orderId);
@@ -46,15 +46,27 @@ function create({ shopping, dir, getSession = () => '', notify = () => {}, worke
       if (previous && previous.status !== 'completed' && !activities.some(a => a.action === 'cart' && a.status === 'completed' && a.at > previous.at)) { const e = new Error('上次加购结果尚未确认，请先查看购物车，避免重复添加。'); e.status = 409; throw e; }
     }
     const payload = { action: b.action, ...(skuId ? { skuId } : {}), ...(b.action === 'search' ? { query: String(b.query || '').slice(0, 100) } : {}), ...(b.action === 'add' ? { clientId: String(b.clientId || '') } : {}), ...(b.action === 'loginClick' ? { x: b.x, y: b.y } : {}), ...(b.action === 'loginCode' ? { code: b.code } : {}) };
+    let performed = false, screenshot = '';
     try {
-      const response = await (await request('/action', payload)).json();
-      let screenshot = '';
-      if (['search', 'open', 'cart', 'add'].includes(b.action)) screenshot = await capture(response.state).catch(() => '');
-      const summary = b.action === 'search' ? '查找商品：' + payload.query : b.action === 'add' ? response.added ? '已看到加购成功提示' : '没有确认加购成功，请核对购物车' : b.action === 'cart' ? '查看购物车' : '查看商品详情';
-      const activity = log(b.action, b.action === 'add' && !response.added ? 'unconfirmed' : 'completed', b, summary, screenshot);
-      if (record && ['open', 'add'].includes(b.action) && !['paid', 'refunded'].includes(record.status)) shopping.order({ id: record.id, status: b.action === 'add' && response.added ? 'cart' : b.action === 'add' ? 'failed' : record.status === 'saved' ? 'browsing' : record.status, activity: summary, ...(screenshot ? { screenshot } : {}), by: 'ayan' });
+      const response = b.action === 'recordScreen' ? { ok: true, state: await (await request('/state')).json() } : await (await request('/action', payload)).json();
+      performed = true;
+      if (['search', 'open', 'cart', 'add', 'recordScreen'].includes(b.action) && !response.state?.loginPage) {
+        screenshot = await capture(response.state);
+        if (!screenshot) throw Error('当前没有可归档的购物画面');
+      }
+      if (b.action === 'recordScreen' && !screenshot) { const e = new Error('登录二维码不归档，请完成登录后再留存购物截图'); e.status = 409; throw e; }
+      const blockedByLogin = ['search', 'open', 'cart', 'add'].includes(b.action) && response.state?.loginPage;
+      const summary = blockedByLogin ? '需要登录，当前购物步骤尚未完成' : b.action === 'search' ? '查找商品：' + payload.query : b.action === 'add' ? response.added ? '已看到加购成功提示' : '没有确认加购成功，请核对购物车' : b.action === 'cart' ? '查看购物车' : b.action === 'recordScreen' ? '留存当前购物截图' : '查看商品详情';
+      const activity = log(b.action, blockedByLogin || b.action === 'add' && !response.added ? 'unconfirmed' : 'completed', b, summary, screenshot);
+      if (record && ['open', 'add', 'recordScreen'].includes(b.action) && !['paid', 'refunded'].includes(record.status)) shopping.order({ id: record.id, status: b.action === 'add' && response.added ? 'cart' : b.action === 'add' ? 'failed' : b.action === 'open' && record.status === 'saved' ? 'browsing' : record.status, activity: summary, ...(screenshot ? { screenshot } : {}), by: 'ayan' });
       return { ...response, ...(activity ? { activity } : {}) };
-    } catch (e) { log(b.action, 'failed', b, '购物操作未完成：' + (e.status ? e.message : '请查看浏览器画面')); throw e; }
+    } catch (e) {
+      const missingEvidence = performed && !screenshot && ['search', 'open', 'cart', 'add'].includes(b.action);
+      const message = missingEvidence ? '这次操作已经发生，截图尚未保存；先留存当前截图并核对结果，不要重复刚才的操作。' : e.status ? e.message : '请查看浏览器画面';
+      log(b.action, performed ? 'unconfirmed' : 'failed', b, message, screenshot);
+      if (!e.status || missingEvidence) { e.status = 502; e.message = message; }
+      throw e;
+    }
   }
   function register(app) {
     const handle = fn => async (req, res) => { res.set('Cache-Control', 'no-store'); try { res.json(await fn(req)); } catch (e) { res.status(e.status || 500).json({ error: e.status ? e.message : '记录暂时没有保存，请保留当前画面后重试。' }); } };

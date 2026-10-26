@@ -29,6 +29,7 @@ export default function Shopping({ back, openLedger, initial = {} }) {
     <header className="fp-head"><button className="fp-back" onClick={back} aria-label="返回 Footprints">‹</button><div><h1 className="serif">Shopping</h1><p>他挑过、惦记着和买下的东西。</p></div><button className="fp-refresh" onClick={load} disabled={loading} aria-label="刷新购物记录">↻</button></header>
     <div className="shop-content">
       <div className="shop-overview glass1"><div><span className="shop-caption">晏白的账本余额</span><strong className="serif">{data ? money(data.balanceCents) : '—'}</strong></div><button className="tg-nav" onClick={openLedger}>打开账本 ↗</button></div>
+      <p className="shop-stage-note">给他的额度，由他自主安排。过程截图留在这里，Footprints 保留工具足迹，聊天不逐步播报。</p>
       <div className="shop-toolbar"><nav className="shop-filters" aria-label="按购物状态筛选">{Object.entries(filters).map(([key, label]) => <button key={key} className={filter === key ? 'on' : ''} onClick={() => setFilter(key)}>{label}</button>)}</nav><button className="tg-btn ghost" disabled={!data || saving} onClick={() => edit()}>＋ 记下商品</button></div>
       <ShoppingBrowserPanel onChanged={load} selectedOrder={data?.orders.find(o => o.id === selection)} onSaved={id => {setSelection(id);setFilter('all')}} />
       {notice && <p className="shop-stage-note" role="status">{notice}</p>}
