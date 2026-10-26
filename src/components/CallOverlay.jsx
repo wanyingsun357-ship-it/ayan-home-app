@@ -48,6 +48,8 @@ export default function CallOverlay() {
   useEffect(()=>{if(phase!=='idle')window.dispatchEvent(new Event('call:visible'))},[phase])
   useEffect(()=>{const fit=()=>setPillPosition(p=>p?{left:Math.max(8,Math.min(innerWidth-100,p.left)),top:Math.max(8,Math.min(innerHeight-48,p.top))}:p);window.addEventListener('resize',fit);return()=>window.removeEventListener('resize',fit)},[])
   const [input, setInput] = useState('')
+  const [sendingTyped, setSendingTyped] = useState(false)
+  const typedSending = useRef(false), typedAttempt = useRef(null)
   const [endInfo, setEndInfo] = useState('')
   const [needTap, setNeedTap] = useState(false)   // 刷新后恢复通话:麦克风要一次点击
   const [toast, setToast] = useState('')
@@ -180,7 +182,8 @@ export default function CallOverlay() {
     if ((m.call && m.call.id !== c.id) || (m.id && m.id !== c.id)) return
     if (m.ev === 'answer') { if (c.by === 'him' && phaseRef.current === 'ringing') return; stopRing(); clearTimeout(ringTimer.current); setCall(m.call); setPhase('active'); startMic() }
     else if (m.ev === 'seg') { busyRef.current = false; if (phaseRef.current === 'ringing') { if (c.by === 'him') return; stopRing(); setPhase('active'); startMic() } onSeg(m.text) }
-    else if (m.ev === 'reset') { playQueue.current = playQueue.current.filter((x) => !x.entry.seg) }
+    // Audio already queued is committed; the server suppresses repeated segments after a stream reset.
+    else if (m.ev === 'reset') { return }
     else if (m.ev === 'entry') { busyRef.current = false; if (m.entry.who === 'him' && !himDoneRef.current.has(m.entry.t)) { himDoneRef.current.add(m.entry.t); onFinal(m.entry, m.hangup) } }
     else if (m.ev === 'end') { finish(m.call) }
   }
@@ -308,7 +311,7 @@ export default function CallOverlay() {
     if (!entry.segs || !entry.segs.length) { enqueueHim(entry, hangup); return }
     let tail = entry.text.replace(/\s+/g, ' ').trim()
     const played = (turnRef.current?.played || []).concat(nowSegRef.current ? [nowSegRef.current] : [], playQueue.current.filter((x) => x.entry.seg).map((x) => x.entry.text))
-    for (const sg of played) { const k = tail.indexOf(sg); if (k >= 0) tail = (tail.slice(0, k) + tail.slice(k + sg.length)).trim() }
+    for (const raw of played) { const sg = raw.replace(/\s+/g, ' ').trim(); const k = tail.indexOf(sg); if (k >= 0) tail = (tail.slice(0, k) + tail.slice(k + sg.length)).trim() }
     playQueue.current.push({ entry: { text: tail, zh: entry.zh, seg: true, final: true }, hangup })
     if (!playingRef.current) playNext()
   }
@@ -416,7 +419,29 @@ export default function CallOverlay() {
   const micOff = () => muted || typing || playingRef.current || (nativeOwned.current&&!!speaking)
   const toggleTyping = () => { const v = !typing; setTyping(v); if(nativeOwned.current)nativeCalls.muted(muted||v).catch(()=>{});else asrRef.current?.mute(muted || v || playingRef.current); if (v) { setLive(''); bufRef.current = [] } }
   useEffect(() => { asrRef.current?.mute(micOff()) }, [typing, muted])
-  const sendTyped = () => { const t = input.trim(); if (!t) return; setInput(''); setHistory((h) => [...h, { who: 'her', text: t }]); say(t, 'text') }
+  const sendTyped = async () => {
+    const c = callRef.current, draft = input, text = draft.trim()
+    if (!c || phaseRef.current !== 'active' || !text || typedSending.current) return
+    if (typedAttempt.current?.callId !== c.id || typedAttempt.current?.text !== text) {
+      typedAttempt.current = {callId:c.id,text,id:crypto.randomUUID?.() || `text-${Date.now()}-${Math.random().toString(36).slice(2)}`}
+    }
+    const attempt = typedAttempt.current
+    typedSending.current = true; setSendingTyped(true)
+    const controller = new AbortController(), timeout = setTimeout(()=>controller.abort(),20000)
+    try {
+      const response = await fetch('/api/call/say', {method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({id:c.id,text,via:'text',clientMessageId:attempt.id})})
+      const result = await response.json().catch(()=>null)
+      if (!response.ok || result?.ok !== true) {
+        if (callRef.current?.id === c.id) flash(response.status === 429 ? '他还在回复，文字留着，稍后再发' : '没送到，文字还留着')
+        return
+      }
+      if (callRef.current?.id !== c.id || phaseRef.current !== 'active') return
+      if (!nativeOwned.current) { busyRef.current = true; setHistory(h=>[...h,{who:'her',text}]) }
+      setInput(current=>current === draft ? '' : current)
+      if (typedAttempt.current === attempt) typedAttempt.current = null
+    } catch { if (callRef.current?.id === c.id) flash('没确认送达，文字还留着，可重试') }
+    finally { clearTimeout(timeout); typedSending.current = false; setSendingTyped(false) }
+  }
 
   if (phase === 'idle') return toast ? <div className="call-toast glass3">{toast}</div> : null
 
@@ -491,7 +516,7 @@ export default function CallOverlay() {
       {typing && phase === 'active' && (
         <div className="call-type glass3">
           <textarea rows={1} value={input} onChange={(e) => { setInput(e.target.value); const el = e.target; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 132) + 'px' }} placeholder="打字也算说话…(打字时麦克风关着)" autoFocus />
-          <button className={input.trim() ? 'ready' : ''} onClick={sendTyped} disabled={!input.trim()}>↑</button>
+          <button className={input.trim() ? 'ready' : ''} aria-label="发送通话文字" onClick={sendTyped} disabled={!input.trim() || sendingTyped || phase !== 'active'}>{sendingTyped ? '…' : '↑'}</button>
         </div>
       )}
       {phase === 'ringing' && call?.by === 'him' ? (

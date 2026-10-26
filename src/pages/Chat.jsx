@@ -241,6 +241,8 @@ export default function Chat({ back }) {
   useEffect(() => () => { clearTimeout(voicePress.current?.timer) }, [])
   const startVoicePress = (e) => {
     if (!warm || historyView || e.button > 0) return
+    // Native editing owns touches while focused or when a draft already exists.
+    if (document.activeElement === e.currentTarget || e.currentTarget.value) return
     if(e.pointerType === 'touch') { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId) }
     cancelVoicePress()
     const press = { x:e.clientX, y:e.clientY }
@@ -436,9 +438,8 @@ export default function Chat({ back }) {
   useEffect(() => {
     if (!warm) return
     const input = inputRef.current
-    // Cancel native iOS selection before it can start a loupe. Short taps
-    // focus explicitly on pointerup; a hold remains a recording gesture.
-    const stopSelection = event => { if (!historyView && event.touches.length === 1) event.preventDefault() }
+    // Only an empty, unfocused field reserves a hold for recording.
+    const stopSelection = event => { if (!historyView && event.touches.length === 1 && document.activeElement !== input && !input.value) event.preventDefault() }
     input?.addEventListener('touchstart', stopSelection, {passive:false})
     return () => input?.removeEventListener('touchstart', stopSelection)
   }, [warm, historyView])
@@ -2115,9 +2116,9 @@ export default function Chat({ back }) {
           onPointerUp={endVoicePress}
           onPointerCancel={cancelVoicePress}
           onPointerLeave={cancelVoicePress}
-          onContextMenu={e => {if(warm)e.preventDefault()}}
-          style={warm?{touchAction:"none",WebkitTouchCallout:"none",WebkitUserSelect:recording?"none":undefined}:undefined}
-          aria-label={warm ? '消息，长按录音' : '消息'}
+          onContextMenu={e => {if(warm && (recording || voicePress.current))e.preventDefault()}}
+          style={warm?{touchAction:recording?"none":"auto",WebkitTouchCallout:recording?"none":"default",WebkitUserSelect:recording?"none":"text"}:undefined}
+          aria-label={warm ? '消息，空白未聚焦时长按录音' : '消息'}
           onChange={onInput}
           onFocus={() => { if(historyView)return; setTimeout(scrollBottom, 120); setTimeout(scrollBottom, 400) }}
           onKeyDown={(e) => {
