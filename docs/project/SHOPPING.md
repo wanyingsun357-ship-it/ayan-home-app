@@ -28,4 +28,4 @@
 
 `server/shopping.cjs` 是不含凭据的后端模块源码，复制到 VPS bridge 目录；在既有认证中间件之后注册，独立数据文件在 bridge 私有目录中，不属于 Git 或静态站点。写入广播 `shopping_changed`，页面只在可见时读取更新，无新增持续轮询。
 
-后端验证：`node server/shopping.test.cjs`。前端构建：`npm run build`。浏览器回归使用模拟接口与临时账本，不发起真实购物、聊天或模型调用。
+后端验证：`NODE_PATH=/root/ayan/bridge/node_modules node server/shopping.test.cjs`（使用现有后端 Express 依赖）。前端构建：`npm run build`。浏览器回归使用模拟接口与临时账本，不发起真实购物、聊天或模型调用。

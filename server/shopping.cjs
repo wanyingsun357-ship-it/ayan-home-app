@@ -124,6 +124,11 @@ function create(file, { getSession = () => '', notify = () => {} } = {}) {
     if (status !== previousStatus || b.activity) rec.events.push({ id: crypto.randomUUID(), at: now, status, text: text(b.activity || ({ saved: '记下这件商品', browsing: '正在挑选', cart: '已加入购物车', checkout: '核对结算信息', payment_pending: '等待付款', paid: '已登记付款与支出', failed: '本次操作未完成', cancelled: '已取消', refunded: '已登记退款' }[status]), 1000) });
     rec.events = rec.events.slice(-200);
     if (!rec.events.length) rec.events.push({ id: crypto.randomUUID(), at: now, status, text: '记下这件商品' });
+    // Keep editable labels aligned without changing the original payment amounts.
+    for (const entry of next.entries.filter(e => e.orderId === rec.id)) {
+      entry.note = rec.title;
+      if (entry.type === 'expense') entry.category = rec.category || '购物';
+    }
     commit(next); return { ok: true, order: structuredClone(rec), balanceCents: balance() };
   }
   function register(app) {

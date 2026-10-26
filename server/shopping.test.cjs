@@ -32,6 +32,9 @@ async function run() {
   assert.equal(book.view().balanceCents, 41950);
   assert.equal(book.view().entries.filter(e => e.orderId === wish.id).length, 1);
   const linked = book.view().entries.find(e => e.orderId === wish.id);
+  book.order({ id: wish.id, title: '改过名字的茶杯', category: '手作礼物' });
+  const editedLinked = book.view().entries.find(e => e.id === linked.id);
+  assert.equal(editedLinked.note, '改过名字的茶杯'); assert.equal(editedLinked.category, '手作礼物'); assert.equal(editedLinked.amountCents, 8050);
   assert.throws(() => book.ledger({ op: 'remove', id: linked.id }), /关联/);
   assert.throws(() => book.order({ id: wish.id, amount: '1' }), /金额/);
   assert.throws(() => book.order({ id: wish.id, status: 'cancelled' }), /已付款/);
