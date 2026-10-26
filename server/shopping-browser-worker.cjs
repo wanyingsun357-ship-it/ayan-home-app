@@ -35,11 +35,27 @@ function confirmedLogin(e) { return !e.redirected && !e.loginPrompt && !e.rateLi
 async function state() {
   const running = !!context && !!page && !page.isClosed();
   const loginPage = running && (/\b(?:passport|safe|aq)\.jd\.com\b/.test(page.url()) || await page.locator('.qrcode-img,.qrcode-main,[class*="qrcode"] img').first().isVisible().catch(() => false));
-  return { available: true, running, busy, loginPage, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false };
+  const qrRisk = !!loginPage && /本次扫码存在风险|扫码登录存在风险/.test(await page.locator('body').innerText({ timeout: 1500 }).catch(() => ''));
+  const passwordForm = !!loginPage && await page.getByPlaceholder('账号名/手机号/邮箱', { exact: true }).isVisible().catch(() => false) && await page.locator('input[type="password"]:visible').first().isVisible().catch(() => false);
+  return { available: true, running, busy, loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false };
+}
+async function submitPassword(target, body) {
+  if (new URL(target.url()).hostname !== 'passport.jd.com') fault('密码只在京东官方登录页面填写', 403);
+  if (typeof body.account !== 'string' || !body.account.trim() || body.account.length > 120 || typeof body.password !== 'string' || !body.password || body.password.length > 200) fault('请填写京东账号与密码');
+  const account = target.getByPlaceholder('账号名/手机号/邮箱', { exact: true });
+  const password = target.locator('input[type="password"]:visible').first();
+  try {
+    await account.fill(body.account.trim(), { timeout: 5000 });
+    await password.fill(body.password, { timeout: 5000 });
+    await target.getByText('登录', { exact: true }).first().click({ timeout: 5000 });
+  } catch {
+    await password.fill('', { timeout: 1000 }).catch(() => {});
+    fault('京东登录表单没有完成提交，请查看操作画面后再试。', 409);
+  }
 }
 async function go(url) { if (!allowed(url)) fault('这里只打开京东购物页面'); await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 }); await page.waitForTimeout(1000); }
 async function captureScreen(target, browserContext, options = {}) {
-  const masks = await target.evaluateHandle(() => [...document.querySelectorAll('input[type="password"],input[autocomplete="one-time-code"],#ttbar-login,.user-info')].map(node => {
+  const masks = await target.evaluateHandle(() => [...document.querySelectorAll('input[type="password"],input[autocomplete="one-time-code"],input[placeholder="账号名/手机号/邮箱"],#ttbar-login,.user-info')].map(node => {
     const value = node.style.getPropertyValue('visibility'), priority = node.style.getPropertyPriority('visibility');
     node.style.setProperty('visibility', 'hidden', 'important'); return { node, value, priority };
   }));
@@ -92,7 +108,7 @@ async function products() {
 }
 async function action(b) {
   const name = String(b.action || '');
-  if (!['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'loginClick', 'loginCode', 'close'].includes(name)) fault('不支持这个浏览器操作');
+  if (!['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'loginClick', 'loginCode', 'loginPassword', 'close'].includes(name)) fault('不支持这个浏览器操作');
   if (busy) fault('他正在操作这一页，等一下再试', 409);
   if (name === 'close') { if (context) await context.close(); context = null; page = null; confirmed = false; return { ok: true, state: await state() }; }
   if (name === 'add') {
@@ -121,6 +137,11 @@ async function action(b) {
       added = /商品已成功加入购物车|已成功加入购物车|加入购物车成功/.test(await page.locator('body').innerText());
       result.added = added;
       if (!added) result.message = '这次没有看到加购成功提示，请先查看购物车，不要连续重试。';
+    } else if (name === 'loginPassword') {
+      confirmed = false; loginEvidence = null;
+      await submitPassword(page, b);
+      await page.waitForTimeout(1000);
+      result.message = '已将登录资料提交给京东，请查看画面并按提示完成验证；完成后再点“检查登录”。';
     } else if (name === 'loginClick' || name === 'loginCode') {
       if (!/^(?:passport|safe|aq)\.jd\.com$/.test(new URL(page.url()).hostname)) fault('手动验证只在京东登录页面开放', 403);
       if (name === 'loginClick') {
@@ -162,4 +183,4 @@ const server = http.createServer(async (req, res) => {
 });
 if (require.main === module) server.listen(PORT, '127.0.0.1');
 process.on('SIGTERM', async () => { await context?.close().catch(() => {}); process.exit(0); });
-module.exports = { allowed, sku, hasSession, confirmedLogin, captureScreen };
+module.exports = { allowed, sku, hasSession, confirmedLogin, captureScreen, submitPassword };

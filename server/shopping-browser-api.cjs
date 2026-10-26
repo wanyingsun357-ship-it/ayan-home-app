@@ -5,7 +5,7 @@ function create({ shopping, dir, getSession = () => '', notify = () => {}, worke
   let activities = [];
   if (fs.existsSync(logFile)) { activities = JSON.parse(fs.readFileSync(logFile, 'utf8')); if (!Array.isArray(activities)) throw Error('购物浏览器记录格式错误'); }
   function log(action, status, b, summary, screenshot = '') {
-    if (['login', 'loginClick', 'loginCode', 'refresh', 'check', 'close'].includes(action)) return;
+    if (['login', 'loginClick', 'loginCode', 'loginPassword', 'refresh', 'check', 'close'].includes(action)) return;
     const rec = { id: crypto.randomUUID(), action, status, session: String(b.session || getSession()).slice(0, 100), orderId: String(b.orderId || '').slice(0, 100), summary: summary.slice(0, 300), screenshot, at: new Date().toISOString() };
     const next = [rec, ...activities].slice(0, 1000), tmp = logFile + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(next), { mode: 0o600 }); fs.renameSync(tmp, logFile); activities = next; notify();
@@ -31,7 +31,7 @@ function create({ shopping, dir, getSession = () => '', notify = () => {}, worke
     return '/api/shopping/browser/media/' + name;
   }
   async function action(b = {}) {
-    const allowed = ['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'recordScreen', 'loginClick', 'loginCode', 'close'];
+    const allowed = ['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'recordScreen', 'loginClick', 'loginCode', 'loginPassword', 'close'];
     if (!allowed.includes(b.action)) { const e = new Error('不支持这个购物操作'); e.status = 400; throw e; }
     let record;
     if (b.orderId) record = shopping.view().orders.find(o => o.id === b.orderId);
@@ -45,7 +45,7 @@ function create({ shopping, dir, getSession = () => '', notify = () => {}, worke
       const previous = activities.find(a => a.action === 'add' && a.orderId === record.id);
       if (previous && previous.status !== 'completed' && !activities.some(a => a.action === 'cart' && a.status === 'completed' && a.at > previous.at)) { const e = new Error('上次加购结果尚未确认，请先查看购物车，避免重复添加。'); e.status = 409; throw e; }
     }
-    const payload = { action: b.action, ...(skuId ? { skuId } : {}), ...(b.action === 'search' ? { query: String(b.query || '').slice(0, 100) } : {}), ...(b.action === 'add' ? { clientId: String(b.clientId || '') } : {}), ...(b.action === 'loginClick' ? { x: b.x, y: b.y } : {}), ...(b.action === 'loginCode' ? { code: b.code } : {}) };
+    const payload = { action: b.action, ...(skuId ? { skuId } : {}), ...(b.action === 'search' ? { query: String(b.query || '').slice(0, 100) } : {}), ...(b.action === 'add' ? { clientId: String(b.clientId || '') } : {}), ...(b.action === 'loginClick' ? { x: b.x, y: b.y } : {}), ...(b.action === 'loginCode' ? { code: b.code } : {}), ...(b.action === 'loginPassword' ? { account: b.account, password: b.password } : {}) };
     let performed = false, screenshot = '';
     try {
       const response = b.action === 'recordScreen' ? { ok: true, state: await (await request('/state')).json() } : await (await request('/action', payload)).json();
@@ -72,7 +72,7 @@ function create({ shopping, dir, getSession = () => '', notify = () => {}, worke
     const handle = fn => async (req, res) => { res.set('Cache-Control', 'no-store'); try { res.json(await fn(req)); } catch (e) { res.status(e.status || 500).json({ error: e.status ? e.message : '记录暂时没有保存，请保留当前画面后重试。' }); } };
     app.get('/api/shopping/browser', handle(status));
     app.post('/api/shopping/browser/action', handle(req => {
-      if (['loginClick', 'loginCode'].includes(req.body?.action) && req.headers.authorization) { const e = new Error('额外登录验证请由你在 Shopping 页面亲自完成'); e.status = 403; throw e; }
+      if (['loginClick', 'loginCode', 'loginPassword'].includes(req.body?.action) && req.headers.authorization) { const e = new Error('登录验证请由你在 Shopping 页面亲自完成'); e.status = 403; throw e; }
       return action(req.body);
     }));
     app.get('/api/shopping/browser/qr', async (req, res) => { res.set('Cache-Control', 'no-store'); try { res.type('image/png').send(Buffer.from(await (await request('/qr')).arrayBuffer())); } catch (e) { res.status(e.status || 503).json({ error: e.message }); } });

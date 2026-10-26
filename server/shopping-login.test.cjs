@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');
-const {hasSession,confirmedLogin,captureScreen}=require('./shopping-browser-worker.cjs');
+const {hasSession,confirmedLogin,captureScreen,submitPassword}=require('./shopping-browser-worker.cjs');
 (async()=>{
  assert(hasSession(['thor','pin']));assert(hasSession(['pt_key','pt_pin']));assert(!hasSession(['pin']));assert(!hasSession(['__jdu']));
  assert(!confirmedLogin({session:true,nickname:false,logout:false,loginPrompt:false,redirected:false}));
@@ -14,5 +14,10 @@ const {hasSession,confirmedLogin,captureScreen}=require('./shopping-browser-work
  await captureScreen(page,context,{format:'png',clip:{x:1,y:2,width:100,height:100}});assert.equal(options.format,'png');assert.equal(options.clip.scale,1);assert(!('quality' in options));
  await assert.rejects(()=>captureScreen(page,{newCDPSession:async()=>({send:async()=>{throw Error('capture failed')},detach:async()=>detached++})}));
  assert.equal(restored,3);assert.equal(disposed,3);assert.equal(detached,3);
+ const fields={},calls=[];const fake={url:()=> 'https://passport.jd.com/new/login.aspx',getByPlaceholder:()=>({fill:async value=>{fields.account=value}}),locator:()=>({first:()=>({fill:async value=>{fields.password=value}})}),getByText:()=>({first:()=>({click:async()=>calls.push('clicked')})})};
+ await assert.rejects(()=>submitPassword({...fake,url:()=> 'https://passport.jd.com.evil.test/login'},{account:'test',password:'fixture'}),e=>e.status===403);assert.equal(calls.length,0);
+ await assert.rejects(()=>submitPassword(fake,{account:'test',password:''}),e=>e.status===400);assert.equal(calls.length,0);
+ await submitPassword(fake,{account:' fixture-account ',password:' fixture-password '});assert.equal(fields.account,'fixture-account');assert.equal(fields.password,' fixture-password ');assert.deepEqual(calls,['clicked']);
+ await assert.rejects(()=>submitPassword({...fake,getByText:()=>({first:()=>({click:async()=>{throw Error('fixture secret must not escape')}})})},{account:'test',password:'fixture'}),e=>e.status===409&&!e.message.includes('secret'));assert.equal(fields.password,'');
  console.log('PASS desktop/mobile cookie markers, session alone never confirms login, guest and redirect guards, CDP screenshot and cropped QR without font wait, privacy masks restored on success/failure');
 })().catch(e=>{console.error(e);process.exitCode=1});
