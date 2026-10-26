@@ -69,6 +69,7 @@ function create({ shopping, dir, getSession = () => '', notify = () => {}, worke
     }
   }
   function register(app) {
+    require('./shopping-browser-desktop.cjs').register(app, { getState: async () => (await request('/state')).json(), action: async body => (await request('/action', body)).json() });
     const handle = fn => async (req, res) => { res.set('Cache-Control', 'no-store'); try { res.json(await fn(req)); } catch (e) { res.status(e.status || 500).json({ error: e.status ? e.message : '记录暂时没有保存，请保留当前画面后重试。' }); } };
     app.get('/api/shopping/browser', handle(status));
     app.post('/api/shopping/browser/action', handle(req => {

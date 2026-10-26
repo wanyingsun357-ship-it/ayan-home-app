@@ -66,3 +66,11 @@ Together“我的账本”保留原数据/API；“晏白的账本”使用独�
 后续用户手机确认后，实际京东登录页显示“本次扫码存在风险，请改用密码登录”。不要把手机确认当作已登录，也不要继续扫码试探；是否与海外出口有关未知。Shopping显示qrRisk提示，并提供账号/密码表单，passwordForm只表示当前官方输入框可见。
 
 loginPassword仅用于本人配对页面，内部助手Authorization调用403。官方passport.jd.com表单接收account/password；只在请求内存和当前官方表单使用，不入活动/截图历史，不在响应中回显，提交后前端清空。助手不能在聊天/终端/工具中索取或代填密码；用户自己在Shopping填写。当前画面遮挡账号/密码/验证码，身份验证不归档。提交后按京东提示人工验证，再由页面证据检查登录；不绕过风控或验证码，不改变付款未接通的状态。
+
+## 本人远程登录窗口（2026-10-26）
+
+用户可在已配对电脑打开/api/shopping/browser/desktop，使用真实Chromium窗口亲自键盘输入、鼠标拖动验证；noVNC1.7.0经同源受保护WebSocket连接服务私有显示，VNC仅127.0.0.1:5906。与原购物专用profile共用，切换可视浏览器需重开一次，不能保证保留当前验证码。验证画面不归档，不向助手暴露原始远程界面。
+
+窗口begin/end只允许本人设备Cookie，拒绝助手Authorization；连接校验Origin、认证及活跃人工租约，单连接，每15秒再验，失效断开。可见窗口每30秒续两分钟租约，完成/离开释放；人工操作期间worker拒绝其他自动动作。助手不可代替拖动/求解验证码或索取凭据。用户完成返回后才检查登录，不宣称连接窗口等于登录成功。
+
+独立测试：NODE_PATH=/root/ayan/bridge/node_modules:/opt/ayan-shopping/node_modules node server/shopping-desktop.test.cjs；真实显示传输测试shopping-desktop-ui.test.cjs仅使用独立Xvfb:97、VNC5907与普通范围控件fixture，无真实京东/凭据。生产启动script内Xvfb:96无TCP，x11vnc5906仅loopback，不开放公网VNC/CDP，不改Caddy/代理/支付。

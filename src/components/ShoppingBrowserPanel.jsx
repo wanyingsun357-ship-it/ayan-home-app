@@ -30,6 +30,7 @@ export default function ShoppingBrowserPanel({ onChanged, selectedOrder, onSaved
     <div className="shop-browser-head"><div><h2 className="serif">京东 · 逛一逛</h2><p>{state?.available ? state.running ? loginLabels[state.login] || '浏览器已打开' : '需要时再打开浏览器' : '正在准备浏览器连接'}</p></div>{state?.running && <button className="tg-nav" disabled={busy} onClick={() => act('close')}>关闭浏览器</button>}</div>
     <div className="shop-actions"><button className="tg-btn" disabled={busy || !state?.available} onClick={() => act('login')}>{busy ? '正在打开…' : state?.login === 'confirmed' ? '重新登录' : '扫码登录京东'}</button><button className="tg-btn ghost" disabled={busy || !state?.available} onClick={() => act('check')}>检查登录</button><button className="tg-btn ghost" disabled={busy || !state?.available} onClick={() => act('cart')}>查看购物车</button></div>
     <p className="shop-stage-note">现在支持找商品、查看和单件加购；下单与付款暂未开放。</p>
+    <div className="shop-actions"><a className="tg-btn ghost shop-desktop-link" href="/api/shopping/browser/desktop" target="_blank" rel="noopener noreferrer">打开登录窗口 ↗</a></div><p className="shop-stage-note">遇到滑块验证时，打开窗口直接用鼠标操作。完成后点窗口右上角返回。</p>
     {error && <p className="shop-alert" role="alert">{error}</p>}
     {state?.error && !error && <p className="shop-stage-note">{state.error}</p>}
     {loginPage && state.qrRisk && <p className="shop-alert" role="status">京东提示“本次扫码存在风险，请改用密码登录”。手机确认不代表网页已登录，请先不要重复扫码。</p>}

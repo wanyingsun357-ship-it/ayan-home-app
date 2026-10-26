@@ -10,11 +10,11 @@ Group=ayan-shopping
 WorkingDirectory=/opt/ayan-shopping
 Environment=PLAYWRIGHT_BROWSERS_PATH=/var/lib/ayan-shopping/browsers
 Environment=SHOPPING_PROFILE=/var/lib/ayan-shopping/profile
-ExecStart=/usr/bin/node /opt/ayan-shopping/shopping-browser-worker.cjs
+ExecStart=/bin/sh /opt/ayan-shopping/shopping-browser-start.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=15
-KillMode=control-group
+KillMode=mixed
 LimitCORE=0
 NoNewPrivileges=true
 PrivateTmp=true

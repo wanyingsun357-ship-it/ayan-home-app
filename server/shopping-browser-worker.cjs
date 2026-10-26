@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
 const PROFILE = process.env.SHOPPING_PROFILE || '/var/lib/ayan-shopping/profile';
 const PORT = Number(process.env.SHOPPING_BROWSER_PORT || 3025);
 const HOSTS = ['jd.com', '360buy.com'];
-let context, page, launch, busy = false, error = '', confirmed = false, lastAt = null, loginEvidence = null;
+let context, page, launch, busy = false, error = '', confirmed = false, lastAt = null, loginEvidence = null, manualUntil = 0;
 const attempts = new Map();
 function fault(message, status = 400) { const e = new Error(message); e.status = status; throw e; }
 function allowed(value) { try { const u = new URL(value); return u.protocol === 'https:' && !u.username && !u.password && HOSTS.some(host => u.hostname === host || u.hostname.endsWith('.' + host)); } catch { return false; } }
@@ -15,7 +15,7 @@ async function ensure() {
   if (launch) return launch;
   launch = (async () => {
     fs.mkdirSync(PROFILE, { recursive: true, mode: 0o700 });
-    context = await chromium.launchPersistentContext(PROFILE, { channel: 'chromium', headless: process.env.SHOPPING_HEADFUL !== '1', chromiumSandbox: true, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', viewport: { width: 1280, height: 900 }, acceptDownloads: false, timeout: 45000 });
+    context = await chromium.launchPersistentContext(PROFILE, { channel: 'chromium', headless: process.env.SHOPPING_HEADFUL !== '1', ...(process.env.SHOPPING_HEADFUL === '1' ? { args: ['--window-size=1360,1024', '--window-position=0,0'] } : {}), chromiumSandbox: true, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', viewport: { width: 1280, height: 900 }, acceptDownloads: false, timeout: 45000 });
     page = context.pages()[0] || await context.newPage();
     page.setDefaultTimeout(10000);
     context.on('page', async extra => { if (extra !== page) await extra.close().catch(() => {}); });
@@ -37,7 +37,7 @@ async function state() {
   const loginPage = running && (/\b(?:passport|safe|aq)\.jd\.com\b/.test(page.url()) || await page.locator('.qrcode-img,.qrcode-main,[class*="qrcode"] img').first().isVisible().catch(() => false));
   const qrRisk = !!loginPage && /本次扫码存在风险|扫码登录存在风险/.test(await page.locator('body').innerText({ timeout: 1500 }).catch(() => ''));
   const passwordForm = !!loginPage && await page.getByPlaceholder('账号名/手机号/邮箱', { exact: true }).isVisible().catch(() => false) && await page.locator('input[type="password"]:visible').first().isVisible().catch(() => false);
-  return { available: true, running, busy, loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false };
+  return { available: true, running, busy, manualActive: manualUntil > Date.now(), loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false };
 }
 async function submitPassword(target, body) {
   if (new URL(target.url()).hostname !== 'passport.jd.com') fault('密码只在京东官方登录页面填写', 403);
@@ -108,7 +108,9 @@ async function products() {
 }
 async function action(b) {
   const name = String(b.action || '');
-  if (!['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'loginClick', 'loginCode', 'loginPassword', 'close'].includes(name)) fault('不支持这个浏览器操作');
+  if (!['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'loginClick', 'loginCode', 'loginPassword', 'desktopBegin', 'desktopEnd', 'close'].includes(name)) fault('不支持这个浏览器操作');
+  if (name === 'desktopEnd') { manualUntil = 0; return { ok: true, state: await state() }; }
+  if (manualUntil > Date.now() && name !== 'desktopBegin') fault('你正在登录窗口里操作，请先在那个窗口点“完成，回 Shopping”', 409);
   if (busy) fault('他正在操作这一页，等一下再试', 409);
   if (name === 'close') { if (context) await context.close(); context = null; page = null; confirmed = false; return { ok: true, state: await state() }; }
   if (name === 'add') {
@@ -118,7 +120,8 @@ async function action(b) {
   busy = true; error = '';
   try {
     await ensure(); let result = {}, added = false;
-    if (name === 'login') { confirmed = false; loginEvidence = null; await go('https://passport.jd.com/new/login.aspx'); }
+    if (name === 'desktopBegin') { if (process.env.SHOPPING_HEADFUL !== '1') fault('远程登录窗口尚未准备好', 503); const wasRunning = !!context && !!page && !page.isClosed() && page.url() !== 'about:blank'; manualUntil = Date.now() + 120000; if (!wasRunning) await go('https://passport.jd.com/new/login.aspx'); }
+    else if (name === 'login') { confirmed = false; loginEvidence = null; await go('https://passport.jd.com/new/login.aspx'); }
     else if (name === 'refresh') { await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 }); }
     else if (name === 'cart' || name === 'check') { if (!await checkAccount()) result.message = error || '还未确认登录，请扫码后在京东 App 确认，再点“检查登录”。'; }
     else if (name === 'search') { const q = String(b.query || '').trim().slice(0, 100); if (!q) fault('先写下想找的东西'); await go('https://search.jd.com/Search?keyword=' + encodeURIComponent(q)); result.products = await products(); }
