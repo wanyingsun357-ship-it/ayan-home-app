@@ -1,6 +1,11 @@
 # 项目状态与待办
 
-## 2026-10-26 京东独立浏览器、扫码与单件加购（实现验证，待发布）
+## 2026-10-26 京东独立浏览器、扫码与单件加购（已上线）
+
+- 已发布：源码 `7a7e7e9bef8e813a1265278bef9b872bb6bdeda1`，入口 `/assets/index-xkF6Xdcj.js`、`/assets/index-BwVP4kSq.css`；私有备份 `/root/ayan/backups/shopping-browser-20261026-151627`。bridge精确注册、购物模块与代理已上线，仅重启bridge；独立worker已启用开机启动，资源额外限制均infinity。现有App重开载入网页，不需要新TestFlight。
+- 线上复查：真实构建加载、全模拟API的扫码/核对/搜索/保存商品/查看/加购及双账本回归通过；公开页面/资源/health200，未配对browser/screen/qr/media接口401，queue0、alerts0。无真实登录、加购、支付或生产假数据。用户仍需在Vultr后台完成套餐升级；升级尚未发生。随后用户扫码后再验真实账号行为。
+- 运行哈希：bridge `d130d59252a517840da202dbeac493de9145b9a0ea2da79ed8a3b1018e7d77bb`、shopping `94ef5988db7cab8ec87ca153cce4f39fe9f41353a5a291fb8793861515b5574e`、browser-api `c5e5a3bfbda427c90dc7235a37ccc8da055f76b3a75c02df084e02a9ed2d24e2`、worker `895496256b7b1773514c45853da550af4f481ec77f32db87b0de2fb414906332`；资料与活动/截图均留在VPS私有目录，不随源码提交。
+
 
 - 延续上一轮Shopping，用户要求下一步实际购物接入；随后确认不设置额外资源上限，选择升级VPS。当前仅准备升级，未操作Vultr控制台或付费套餐，需用户在后台完成后再核实内存。以线上干净fdba878c5a7600fe13ca119d8ba37056cd23eb9d建独立work/shopping-browser-20261026，不修改home/src和旧发布副本。
 - 独立低权限账户ayan-shopping、/opt/ayan-shopping的Playwright1.64.1与完整Chromium156、私有持久化profile。systemd仅监听127.0.0.1:3025，无公网CDP。按用户决定已去掉原650MB及CPU/线程额外限制；文件系统/私密资料隔离保留。不会自动升级机器或购买套餐。
