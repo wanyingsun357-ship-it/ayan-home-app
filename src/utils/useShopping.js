@@ -24,7 +24,7 @@ export function useShopping() {
     const stream = new EventSource('/api/stream')
     let refresh
     stream.addEventListener('u', event => {
-      try { if (JSON.parse(event.data).type === 'shopping_changed' && !document.hidden) { clearTimeout(refresh); refresh = setTimeout(resume, 120) } } catch {}
+      try { if (JSON.parse(event.data).type === 'shopping_changed' && !document.hidden) { clearTimeout(refresh); refresh = setTimeout(() => {resume();window.dispatchEvent(new Event('shopping:changed'))}, 120) } } catch {}
     })
     window.addEventListener('focus', resume); document.addEventListener('visibilitychange', resume)
     return () => { mounted.current = false; seq.current++; clearTimeout(refresh); stream.close(); window.removeEventListener('focus', resume); document.removeEventListener('visibilitychange', resume) }

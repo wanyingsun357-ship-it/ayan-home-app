@@ -24,6 +24,7 @@ function url(value) {
   try { const u = new URL(String(value)); if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) throw Error(); return u.href.slice(0, 2000); } catch { fail('请填写有效的商品网页链接'); }
 }
 function create(file, { getSession = () => '', notify = () => {} } = {}) {
+  let browserConnected = false;
   let data = { version: 1, entries: [], orders: [], categories: ['购物', '礼物', '生活', '零花钱', '退款', '其他'], monthlyPlanCents: 0 };
   if (fs.existsSync(file)) {
     const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -38,7 +39,7 @@ function create(file, { getSession = () => '', notify = () => {} } = {}) {
     try { notify(); } catch {}
   }
   const balance = (state = data) => state.entries.reduce((n, e) => n + (e.type === 'expense' ? -e.amountCents : e.amountCents), 0);
-  function view() { return structuredClone({ ...data, balanceCents: balance(), browserConnected: false }); }
+  function view() { return structuredClone({ ...data, balanceCents: balance(), browserConnected }); }
   function ledger(body) {
     const b = body || {}, op = b.op || 'add', next = structuredClone(data);
     if (!['add', 'update', 'remove'].includes(op)) fail('不支持的记账操作');
@@ -106,7 +107,7 @@ function create(file, { getSession = () => '', notify = () => {} } = {}) {
     }
     if (b.screenshot !== undefined) {
       const shot = text(b.screenshot, 500);
-      if (!/^\/(?:uploads|made)\/[\w./%-]+\.(?:png|jpe?g|webp)$/i.test(shot) || /(?:\.\.|%2e|%2f|%5c)/i.test(shot)) fail('截图必须来自已上传的本地图片');
+      if ((!/^\/(?:uploads|made)\/[\w./%-]+\.(?:png|jpe?g|webp)$/i.test(shot) && !/^\/api\/shopping\/browser\/media\/[a-f0-9-]{36}\.jpg$/.test(shot)) || /(?:\.\.|%2e|%2f|%5c)/i.test(shot)) fail('截图必须来自已上传的本地图片或购物浏览器');
       if (!rec.screenshots.includes(shot)) rec.screenshots.push(shot);
       rec.screenshots = rec.screenshots.slice(-30);
     }
@@ -138,8 +139,8 @@ function create(file, { getSession = () => '', notify = () => {} } = {}) {
     app.post('/api/shopping/ledger', handle(req => ledger(req.body)));
     app.post('/api/shopping/settings', handle(req => settings(req.body)));
     app.post('/api/shopping/orders', handle(req => order(req.body)));
-    app.get('/api/shopping/guide', (req, res) => res.type('text/plain').send('Shopping 购物记录与晏白独立账本。GET /api/shopping 看商品、活动、账本余额；POST /api/shopping/orders 创建或更新记录，字段 id(更新时)、title、url、platform、category、amount(元)、quantity、session、status、activity、screenshot(/uploads下的图片路径)。状态 saved/browsing/cart/checkout/payment_pending/paid/failed/cancelled/refunded。只有真实付款已核实后才能登记 paid，必须带实际 amount 和 merchantOrderId 或 paymentNote，自动生成独立支出；同一订单重复 paid 不重复扣账。refunded 仅用于已实际全额退款的订单，自动生成退款收入。部分退款请单独记账并备注。GET /api/shopping/ledger 查账；POST 同路径 {op:add|update|remove,id,type:income|expense|refund,amount,date,category,note,by:ayan,clientId:稳定唯一ID}。汇款是手工账本收入，不是实际充值。本阶段未接浏览器或支付，禁止把工具调用完成说成已付款；自主唤醒可以查记录、整理心愿和记真实活动，不凭空编商品/截图/订单。所有调用沿用家的 Authorization；不要传密码或个人收货信息。'));
+    app.get('/api/shopping/guide', (req, res) => res.type('text/plain').send('Shopping 购物记录与晏白独立账本。GET /api/shopping 看商品、活动、账本余额；POST /api/shopping/orders 创建或更新记录，字段 id(更新时)、title、url、platform、category、amount(元)、quantity、session、status、activity、screenshot(/uploads下的图片路径)。状态 saved/browsing/cart/checkout/payment_pending/paid/failed/cancelled/refunded。只有真实付款已核实后才能登记 paid，必须带实际 amount 和 merchantOrderId 或 paymentNote，自动生成独立支出；同一订单重复 paid 不重复扣账。refunded 仅用于已实际全额退款的订单，自动生成退款收入。部分退款请单独记账并备注。GET /api/shopping/ledger 查账；POST 同路径 {op:add|update|remove,id,type:income|expense|refund,amount,date,category,note,by:ayan,clientId:稳定唯一ID}。汇款是手工账本收入，不是实际充值。京东独立浏览器已接入登录、搜索、查看和单件加购，下单与支付未开放。GET /api/shopping/browser查状态，POST /api/shopping/browser/action调用action:login|check|search|open|cart|add|close；搜索传query，查看传skuId或orderId，加购必须传orderId及稳定clientId，仅在明确成功提示后记加购。登录二维码不存公开图片。禁止把工具调用完成说成已付款；自主唤醒可以查记录、整理心愿和记真实活动，不凭空编商品/截图/订单。所有调用沿用家的 Authorization；不要传密码或个人收货信息。'));
   }
-  return { register, view, ledger, settings, order };
+  return { register, view, ledger, settings, order, setBrowserConnected: value => { browserConnected = !!value; } };
 }
 module.exports = { create, amount };

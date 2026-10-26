@@ -67,7 +67,7 @@ async function run() {
     const read = await fetch(base + '/api/shopping', { headers }); assert.equal(read.headers.get('cache-control'), 'no-store');
     assert.equal((await read.json()).browserConnected, false);
     assert.equal((await fetch(base + '/api/shopping/ledger', { method: 'POST', headers, body: JSON.stringify({ amount: '-5' }) })).status, 400);
-    assert((await (await fetch(base + '/api/shopping/guide', { headers })).text()).includes('未接浏览器'));
+    assert((await (await fetch(base + '/api/shopping/guide', { headers })).text()).includes('下单与支付未开放'));
   } finally { await new Promise(resolve => server.close(resolve)); }
   console.log('PASS API responses, auth middleware placement, no-store and honest shopping capability guide');
   const fixture = path.join(__dirname, 'backend-fixture');

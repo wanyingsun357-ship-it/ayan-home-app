@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useShopping, money, shoppingStates } from '../utils/useShopping.js'
 import { compressImage, postUpload } from '../utils/compressImage.js'
+import ShoppingBrowserPanel from '../components/ShoppingBrowserPanel.jsx'
+import ShoppingImage from '../components/ShoppingImage.jsx'
 import './footprints.css'
 import './shopping.css'
 
@@ -28,7 +30,7 @@ export default function Shopping({ back, openLedger, initial = {} }) {
     <div className="shop-content">
       <div className="shop-overview glass1"><div><span className="shop-caption">晏白的账本余额</span><strong className="serif">{data ? money(data.balanceCents) : '—'}</strong></div><button className="tg-nav" onClick={openLedger}>打开账本 ↗</button></div>
       <div className="shop-toolbar"><nav className="shop-filters" aria-label="按购物状态筛选">{Object.entries(filters).map(([key, label]) => <button key={key} className={filter === key ? 'on' : ''} onClick={() => setFilter(key)}>{label}</button>)}</nav><button className="tg-btn ghost" disabled={!data || saving} onClick={() => edit()}>＋ 记下商品</button></div>
-      <p className="shop-stage-note">购物记录已开放；实际浏览、下单和支付尚未接通。</p>
+      <ShoppingBrowserPanel onChanged={load} selectedOrder={data?.orders.find(o => o.id === selection)} onSaved={id => {setSelection(id);setFilter('all')}} />
       {notice && <p className="shop-stage-note" role="status">{notice}</p>}
       {error && <div className="shop-alert" role="alert">{error}<button className="shop-text-button" onClick={load}>重新读取</button></div>}
       {form && <form className="shop-edit glass1 shop-form" onSubmit={async e => { e.preventDefault(); const result = await post('orders', { ...form, ...(form.screenshot ? {} : { screenshot: undefined }) }); if (result) { setSelection(result.order.id); setFilter('all'); setForm(null) } }}>
@@ -54,7 +56,7 @@ export default function Shopping({ back, openLedger, initial = {} }) {
           {item.url && <a className="shop-text-button" href={item.url} target="_blank" rel="noopener noreferrer">打开商品 ↗</a>}
           {item.merchantOrderId && <p className="shop-stage-note">订单号：{item.merchantOrderId}</p>}
           {item.paymentNote && <p className="shop-stage-note">付款说明：{item.paymentNote}</p>}
-          {!!item.screenshots?.length && <div className="shop-screenshots">{item.screenshots.map(src => <a href={src} target="_blank" rel="noopener noreferrer" key={src}><img src={src} loading="lazy" alt={`${item.title}的操作截图`} /></a>)}</div>}
+          {!!item.screenshots?.length && <div className="shop-screenshots">{item.screenshots.map(src => <a href={src} target="_blank" rel="noopener noreferrer" key={src}><ShoppingImage src={src} loading="lazy" alt={`${item.title}的操作截图`} /></a>)}</div>}
           <ol className="shop-history">{item.events?.map(ev => <li key={ev.id}><span className="shop-event-dot" /><div><p>{ev.text}</p><time dateTime={ev.at}>{new Date(ev.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {shoppingStates[ev.status] || '已记录'}</time></div></li>)}</ol>
           <div className="tg-actions"><button className="tg-btn ghost" onClick={() => edit(item)}>编辑记录</button>{['paid', 'refunded'].includes(item.status) && <button className="tg-btn ghost" onClick={openLedger}>查看账本</button>}</div>
         </div>}

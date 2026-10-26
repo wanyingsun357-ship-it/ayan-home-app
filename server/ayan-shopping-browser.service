@@ -1,0 +1,26 @@
+[Unit]
+Description=Private single-page shopping browser
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ayan-shopping
+Group=ayan-shopping
+WorkingDirectory=/opt/ayan-shopping
+Environment=PLAYWRIGHT_BROWSERS_PATH=/var/lib/ayan-shopping/browsers
+Environment=SHOPPING_PROFILE=/var/lib/ayan-shopping/profile
+ExecStart=/usr/bin/node /opt/ayan-shopping/shopping-browser-worker.cjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+KillMode=control-group
+LimitCORE=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/ayan-shopping
+
+[Install]
+WantedBy=multi-user.target
