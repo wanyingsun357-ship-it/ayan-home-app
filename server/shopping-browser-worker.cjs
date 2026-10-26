@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
 const PROFILE = process.env.SHOPPING_PROFILE || '/var/lib/ayan-shopping/profile';
 const PORT = Number(process.env.SHOPPING_BROWSER_PORT || 3025);
 const HOSTS = ['jd.com', '360buy.com'];
-let context, page, launch, busy = false, error = '', confirmed = false, lastAt = null;
+let context, page, launch, busy = false, error = '', confirmed = false, lastAt = null, loginEvidence = null;
 const attempts = new Map();
 function fault(message, status = 400) { const e = new Error(message); e.status = status; throw e; }
 function allowed(value) { try { const u = new URL(value); return u.protocol === 'https:' && !u.username && !u.password && HOSTS.some(host => u.hostname === host || u.hostname.endsWith('.' + host)); } catch { return false; } }
@@ -29,23 +29,54 @@ async function ensure() {
   })();
   try { await launch; } finally { launch = null; }
 }
-async function sessionPresent() { if (!context) return false; const names = (await context.cookies('https://www.jd.com')).map(c => c.name); return names.includes('pt_key') && names.includes('pt_pin'); }
+function hasSession(names) { return names.includes('thor') && names.includes('pin') || names.includes('pt_key') && names.includes('pt_pin'); }
+async function sessionPresent() { if (!context) return false; return hasSession((await context.cookies('https://www.jd.com')).map(c => c.name)); }
+function confirmedLogin(e) { return !e.redirected && !e.loginPrompt && (e.nickname || e.logout); }
 async function state() {
   const running = !!context && !!page && !page.isClosed();
   const loginPage = running && (/\b(?:passport|safe|aq)\.jd\.com\b/.test(page.url()) || await page.locator('.qrcode-img,.qrcode-main,[class*="qrcode"] img').first().isVisible().catch(() => false));
-  return { available: true, running, busy, loginPage, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false };
+  return { available: true, running, busy, loginPage, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false };
 }
 async function go(url) { if (!allowed(url)) fault('这里只打开京东购物页面'); await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 }); await page.waitForTimeout(1000); }
+async function captureScreen(target, browserContext, options = {}) {
+  const masks = await target.evaluateHandle(() => [...document.querySelectorAll('input[type="password"],input[autocomplete="one-time-code"],#ttbar-login,.user-info')].map(node => {
+    const value = node.style.getPropertyValue('visibility'), priority = node.style.getPropertyPriority('visibility');
+    node.style.setProperty('visibility', 'hidden', 'important'); return { node, value, priority };
+  }));
+  let cdp;
+  try {
+    cdp = await browserContext.newCDPSession(target);
+    const result = await cdp.send('Page.captureScreenshot', { format: options.format || 'jpeg', ...(options.format === 'png' ? {} : { quality: 70 }), fromSurface: true, captureBeyondViewport: false, ...(options.clip ? { clip: { ...options.clip, scale: 1 } } : {}) });
+    return Buffer.from(result.data, 'base64');
+  } finally {
+    await cdp?.detach().catch(() => {});
+    await target.evaluate(items => { for (const { node, value, priority } of items) { if (value) node.style.setProperty('visibility', value, priority); else node.style.removeProperty('visibility'); } }, masks).catch(() => {});
+    await masks.dispose();
+  }
+}
 async function screenshot() {
   if (!context || !page || page.isClosed()) fault('先打开京东浏览器', 409);
-  const mask = page.locator('input[type="password"],input[autocomplete="one-time-code"],#ttbar-login,.user-info');
-  return page.screenshot({ type: 'jpeg', quality: 70, mask, timeout: 10000 });
+  return captureScreen(page, context);
 }
 async function checkAccount() {
   await go('https://cart.jd.com/cart_index');
-  const redirected = /passport\.jd\.com/.test(page.url());
-  const nickname = await page.locator('#ttbar-login .nickname,#ttbar-login .link-user,#loginbar .nickname').first().isVisible().catch(() => false);
-  confirmed = !redirected && (nickname || await sessionPresent() && !(await page.getByText('你好，请登录', { exact: true }).isVisible().catch(() => false)));
+  for (let i = 0; i < 16; i++) {
+    const session = await sessionPresent();
+    const signals = await page.evaluate(hasCookie => {
+      const visible = node => { const r = node.getBoundingClientRect(), s = getComputedStyle(node); return r.width > 0 && r.height > 0 && r.top >= 0 && r.top < 240 && s.visibility !== 'hidden' && s.display !== 'none'; };
+      const text = node => (node.textContent || '').replace(/\s+/g, ' ').trim();
+      const controls = [...document.querySelectorAll('a,button')].filter(visible);
+      const loginPrompt = controls.some(node => /^(?:你好，?\s*请登录|请登录|登录)$/.test(text(node)));
+      const logout = controls.some(node => /^(?:退出登录|安全退出|退出)$/.test(text(node)));
+      const known = [...document.querySelectorAll('#ttbar-login .nickname,#ttbar-login .link-user,#loginbar .nickname')].some(node => visible(node) && text(node) && !/登录|注册/.test(text(node)));
+      const generic = hasCookie && [...document.querySelectorAll('[class*="nickname"],[class*="userName"],[class*="username"],[class*="user-name"]')].some(node => visible(node) && text(node).length > 0 && text(node).length < 80 && !/登录|注册|我的京东|购物车|帮助中心/.test(text(node)));
+      return { loginPrompt, logout, nickname: !!(known || generic) };
+    }, session);
+    loginEvidence = { session, ...signals, redirected: /passport\.jd\.com/.test(page.url()) };
+    if (loginEvidence.redirected || signals.loginPrompt || signals.nickname || signals.logout) break;
+    await page.waitForTimeout(500);
+  }
+  confirmed = confirmedLogin(loginEvidence);
   return confirmed;
 }
 async function products() {
@@ -69,7 +100,7 @@ async function action(b) {
   busy = true; error = '';
   try {
     await ensure(); let result = {}, added = false;
-    if (name === 'login') await go('https://passport.jd.com/new/login.aspx');
+    if (name === 'login') { confirmed = false; loginEvidence = null; await go('https://passport.jd.com/new/login.aspx'); }
     else if (name === 'refresh') { await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 }); }
     else if (name === 'cart' || name === 'check') { if (!await checkAccount()) result.message = '还未确认登录，请扫码后在京东 App 确认，再点“检查登录”。'; }
     else if (name === 'search') { const q = String(b.query || '').trim().slice(0, 100); if (!q) fault('先写下想找的东西'); await go('https://search.jd.com/Search?keyword=' + encodeURIComponent(q)); result.products = await products(); }
@@ -115,7 +146,9 @@ const server = http.createServer(async (req, res) => {
         if (index < 0) fault('这一页没有二维码，请查看操作画面', 409);
         qr = page.locator('img').nth(index);
       }
-      const bytes = await qr.screenshot({ type: 'png', timeout: 8000 }); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' }); return res.end(bytes);
+      await qr.scrollIntoViewIfNeeded(); const clip = await qr.boundingBox();
+      if (!clip) fault('二维码还未显示，请刷新画面', 409);
+      const bytes = await captureScreen(page, context, { format: 'png', clip }); res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' }); return res.end(bytes);
     }
     if (req.method === 'POST' && req.url === '/action') {
       let content = ''; for await (const chunk of req) { content += chunk; if (content.length > 8000) fault('请求太长', 413); }
@@ -127,4 +160,4 @@ const server = http.createServer(async (req, res) => {
 });
 if (require.main === module) server.listen(PORT, '127.0.0.1');
 process.on('SIGTERM', async () => { await context?.close().catch(() => {}); process.exit(0); });
-module.exports = { allowed, sku };
+module.exports = { allowed, sku, hasSession, confirmedLogin, captureScreen };
