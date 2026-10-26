@@ -80,3 +80,9 @@ loginPassword仅用于本人配对页面，内部助手Authorization调用403。
 生产engine-access会包装global.fetch，为本机3000/api自请求补内部Authorization。远程本人通道不能通过该fetch请求desktop-auth再判断身份，否则会被本人专用规则拒绝。当前WebSocket直接复用engine-access.authorized验证原请求设备Cookie（仍先拒绝Bearer/跨站），只从3025读取人工租约，不放宽验证，也不生成生产测试设备。画面断开与真正401/403授权失败分开提示；不根据黑屏或回主页推断京东登录。
 
 本轮诊断误将内部导出值写进私有工具日志，部署仅改变内部HMAC派生域以失效旧值；签名secret和现有设备Cookie/配对码不变。敏感认证源码只在VPS私有备份保留，不进入此仓库。shopping-desktop-auth.test.cjs以隔离目录复制通用认证代码，拦截本机API网络，验证注入根因、真实签名Cookie及内部值更新不会丢配对；不输出值、不创建生产设备或读取现有Cookie。
+
+## 与原语音WebSocket共用服务器（2026-10-26）
+
+原bridge已在同一httpServer注册server-bound WebSocket.Server，直接再加购物upgrade监听器会让原语音处理器先拒绝购物路径（真实本机/公网400）。购物attach在最后注册，收集已注册的rawListeners后统一分流：购物路径专属处理，其余路由以原this转发原处理器，保留未知路径和once策略。不要恢复为两个独立upgrade监听器各自抢处理；不修改语音内容/认证。
+
+新增shopping-desktop-routing.test.cjs复现server-bound监听冲突并验证语音二进制流和VNC输入并存；实际noVNC显示测试也必须先注册模拟语音监听器。无凭据公网购物握手应由本人保护返回403，不能停留在抢占的400；真实本人画面仍由用户窗口确认，不生成生产测试设备。

@@ -44,9 +44,8 @@ function attach(server, { authorize, getState, vncPort = 5906, origin = ORIGIN, 
       return !!state.running && !state.headless && !!state.manualActive;
     } catch { return false; }
   }
-  server.on('upgrade', async (req, socket, head) => {
-    if (req.url !== BASE + '/desktop-ws') return;
-    const reject = status => { socket.end('HTTP/1.1 ' + status + '\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'); };
+  const upgradeDesktop = async (req, socket, head) => {
+    const reject = status => { socket.end('HTTP/1.1 ' + status + '\r\nConnection: close\r\nX-Ayan-Desktop-Route: owner\r\nContent-Length: 0\r\n\r\n'); };
     if (!owner(req, origin) || req.headers.origin !== origin) return reject('403 Forbidden');
     if (!await authorized(req)) return reject('401 Unauthorized');
     if (wss.clients.size) return reject('409 Conflict');
@@ -61,6 +60,18 @@ function attach(server, { authorize, getState, vncPort = 5906, origin = ORIGIN, 
       const timer = setInterval(async () => { if (!await authorized(req)) { ws.close(1008, '登录窗口已结束'); remote.destroy(); } }, recheckMs);
       timer.unref();
     });
+  };
+  // Existing server-bound ws listeners reject nonmatching paths before our async
+  // authentication can finish. Route the desktop path exclusively, and preserve
+  // the original listeners (including once wrappers) for every other upgrade.
+  const previous = server.rawListeners('upgrade');
+  for (const listener of previous) server.removeListener('upgrade', listener);
+  server.on('upgrade', function (req, socket, head) {
+    if (req.url === BASE + '/desktop-ws') {
+      upgradeDesktop(req, socket, head).catch(() => socket.destroy());
+      return;
+    }
+    for (const listener of previous) listener.call(this, req, socket, head);
   });
   return wss;
 }
