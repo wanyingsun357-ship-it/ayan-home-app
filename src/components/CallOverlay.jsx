@@ -7,6 +7,7 @@ import { NAMES } from '../config.js'
 import { isApp, callAudio, buzz } from '../utils/native.js'
 import {nativeCalls,setupNativeCalls} from '../utils/nativeCalls.js'
 import {voiceTranscript} from '../utils/voiceText.js'
+import usePageVisible from '../utils/usePageVisible.js'
 import './call.css'
 
 // 通话(一期):她打过去 → 响铃 → 他 [ANSWER]/[DECLINE] → 通话中:
@@ -28,6 +29,7 @@ const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
 const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
 
 export default function CallOverlay() {
+  const visible = usePageVisible()
   const warm=useAppearance().theme==='orange'
   const [call, setCall] = useState(null)          // 服务器视角的通话
   const [phase, setPhase] = useState('idle')      // idle | ringing | active | ended
@@ -106,7 +108,12 @@ export default function CallOverlay() {
   const flash = (t) => { setToast(t); setTimeout(() => setToast(''), 2200) }
 
   // ---- 时钟 & 自动滚到底 ----
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(t) }, [])
+  useEffect(() => {
+    if (phase !== 'active' || !visible) return
+    setNow(Date.now())
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [phase, visible])
   useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight }, [history, live, speaking])
 
   // ---- 事件:Chat 顶栏的电话键 ----
@@ -157,6 +164,7 @@ export default function CallOverlay() {
     if (phase === 'idle' || phase === 'ended') return
     const t = setInterval(async () => {
       try {
+        if(nativeOwned.current)return
         const d = await (await fetch('/api/call/active')).json()
         if(nativeOwned.current)return
         const c = callRef.current; if (!c) return
@@ -294,11 +302,12 @@ export default function CallOverlay() {
   }
   // 他答完(entry 到)或超时,把排队的话发出去
   useEffect(() => {
+    if (phase !== 'active' || nativeOwned.current) return
     const t = setInterval(() => {
       if (!busyRef.current && sayQueue.current.length && phaseRef.current === 'active') { const [text, via] = sayQueue.current.shift(); say(text, via) }
     }, 1500)
     return () => clearInterval(t)
-  }, [])
+  }, [phase])
   // 他太久没回也别永远卡住
   useEffect(() => { if (!busyRef.current) return; const t = setTimeout(() => { busyRef.current = false }, 90000); return () => clearTimeout(t) }, [speaking])
 

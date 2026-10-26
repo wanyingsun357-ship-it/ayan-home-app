@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { buzz } from '../utils/native.js'
+import usePageVisible from '../utils/usePageVisible.js'
 import './command.css'
 
 // 指令浮窗:他下任务 → 右侧贴边药丸(倒计时+细线) → 点开卡片 → 左滑完成 / 长按取消
-// 计时只记 startedAt,每帧用 now-start 算,后台节流也不会乱
+// 计时只记 startedAt，用当前时间算秒数，后台暂停刷新也不会丢时间。
 const pad = (n) => String(Math.max(0, n)).padStart(2, '0')
 const fmt = (sec) => { const s = Math.abs(sec); const m = Math.floor(s / 60); return `${pad(m)}:${pad(s % 60)}` }
 
 export default function CommandWidget() {
+  const visible = usePageVisible()
   const [queue, setQueue] = useState([])      // 未完成的指令,只显示第一个
   const [open, setOpen] = useState(false)
   const [now, setNow] = useState(Date.now())
@@ -52,14 +54,13 @@ export default function CommandWidget() {
       .then((r) => r.json()).then((d) => { syncOffset(d.serverNow); if (d.command) setQueue((q) => q.map((x) => (x.id === d.command.id ? d.command : x))) }).catch(() => {})
   }, [cur?.id])
 
-  // 每帧刷新
+  // 数字只显示秒，不为它每帧重渲染整张玻璃卡片。
   useEffect(() => {
-    if (!cur) return
-    let raf
-    const tick = () => { setNow(Date.now()); raf = requestAnimationFrame(tick) }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [cur?.id])
+    if (!cur || !visible) return
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [cur?.id, visible])
 
   const finish = async (kind) => {
     if (!cur) return

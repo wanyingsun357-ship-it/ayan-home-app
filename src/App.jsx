@@ -46,6 +46,11 @@ const MORE_ITEMS = [
 ]
 
 export default function App() {
+  useEffect(()=>{
+    const update=()=>{document.documentElement.dataset.pageVisible=String(!document.hidden)}
+    update();document.addEventListener('visibilitychange',update)
+    return()=>{document.removeEventListener('visibilitychange',update);delete document.documentElement.dataset.pageVisible}
+  },[])
   const appearance=useAppearance()
   const warm=appearance.theme==='orange'
   const [splashDone, setSplashDone] = useState(false)

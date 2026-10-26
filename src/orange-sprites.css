@@ -1,23 +1,30 @@
 /* Original operit-clawd sprite sheets, AGPL-3.0; see reference-operit/LICENSE. */
-.sprite-ai_idle{background-image:url("/orange/operit/ai_idle.png");--frames:8;animation:operit-frames 2.0779220779220777s steps(8) infinite}
-.sprite-ai_look{background-image:url("/orange/operit/ai_look.png");--frames:8;animation:operit-frames 2.4024024024024024s steps(8) infinite}
-.sprite-ai_read{background-image:url("/orange/operit/ai_read.png");--frames:4;animation:operit-frames 1.3986013986013988s steps(4) infinite}
-.sprite-ai_talk{background-image:url("/orange/operit/ai_talk.png");--frames:4;animation:operit-frames 0.8791208791208791s steps(4) infinite}
-.sprite-ai_wave{background-image:url("/orange/operit/ai_wave.png");--frames:4;animation:operit-frames 0.64s steps(4) infinite}
-.sprite-neo_bash{background-image:url("/orange/operit/neo_bash.png");--frames:9;animation:operit-frames 1.8s steps(9) infinite}
-.sprite-neo_bash_test{background-image:url("/orange/operit/neo_bash_test.png");--frames:7;animation:operit-frames 1.4s steps(7) infinite}
-.sprite-neo_confused{background-image:url("/orange/operit/neo_confused.png");--frames:6;animation:operit-frames 2s steps(6) infinite}
-.sprite-neo_done{background-image:url("/orange/operit/neo_done.png");--frames:6;animation:operit-frames 0.8571428571428571s steps(6) infinite}
-.sprite-neo_happy{background-image:url("/orange/operit/neo_happy.png");--frames:4;animation:operit-frames 0.6666666666666666s steps(4) infinite}
-.sprite-neo_listen{background-image:url("/orange/operit/neo_listen.png");--frames:4;animation:operit-frames 1s steps(4) infinite}
-.sprite-neo_paint{background-image:url("/orange/operit/neo_paint.png");--frames:13;animation:operit-frames 3.25s steps(13) infinite}
-.sprite-neo_sad{background-image:url("/orange/operit/neo_sad.png");--frames:4;animation:operit-frames 1.3333333333333333s steps(4) infinite}
-.sprite-neo_search{background-image:url("/orange/operit/neo_search.png");--frames:8;animation:operit-frames 2s steps(8) infinite}
-.sprite-neo_shy{background-image:url("/orange/operit/neo_shy.png");--frames:6;animation:operit-frames 1.5s steps(6) infinite}
-.sprite-neo_sleep_bubble{background-image:url("/orange/operit/neo_sleep_bubble.png");--frames:9;animation:operit-frames 3s steps(9) infinite}
-.sprite-neo_sleep_cap{background-image:url("/orange/operit/neo_sleep_cap.png");--frames:4;animation:operit-frames 2s steps(4) infinite}
-.sprite-neo_surf{background-image:url("/orange/operit/neo_surf.png");--frames:6;animation:operit-frames 1s steps(6) infinite}
-.sprite-neo_toast{background-image:url("/orange/operit/neo_toast.png");--frames:8;animation:operit-frames 1.3333333333333333s steps(8) infinite}
-.sprite-neo_type_kb{background-image:url("/orange/operit/neo_type_kb.png");--frames:8;animation:operit-frames 1.3333333333333333s steps(8) infinite}
+.sprite-ai_idle{--sprite-image:url("/orange/operit/ai_idle.png");--frames:8;--sprite-duration:2.0779220779220777s}
+.sprite-ai_look{--sprite-image:url("/orange/operit/ai_look.png");--frames:8;--sprite-duration:2.4024024024024024s}
+.sprite-ai_read{--sprite-image:url("/orange/operit/ai_read.png");--frames:4;--sprite-duration:1.3986013986013988s}
+.sprite-ai_talk{--sprite-image:url("/orange/operit/ai_talk.png");--frames:4;--sprite-duration:0.8791208791208791s}
+.sprite-ai_wave{--sprite-image:url("/orange/operit/ai_wave.png");--frames:4;--sprite-duration:0.64s}
+.sprite-neo_bash{--sprite-image:url("/orange/operit/neo_bash.png");--frames:9;--sprite-duration:1.8s}
+.sprite-neo_bash_test{--sprite-image:url("/orange/operit/neo_bash_test.png");--frames:7;--sprite-duration:1.4s}
+.sprite-neo_confused{--sprite-image:url("/orange/operit/neo_confused.png");--frames:6;--sprite-duration:2s}
+.sprite-neo_done{--sprite-image:url("/orange/operit/neo_done.png");--frames:6;--sprite-duration:0.8571428571428571s}
+.sprite-neo_happy{--sprite-image:url("/orange/operit/neo_happy.png");--frames:4;--sprite-duration:0.6666666666666666s}
+.sprite-neo_listen{--sprite-image:url("/orange/operit/neo_listen.png");--frames:4;--sprite-duration:1s}
+.sprite-neo_paint{--sprite-image:url("/orange/operit/neo_paint.png");--frames:13;--sprite-duration:3.25s}
+.sprite-neo_sad{--sprite-image:url("/orange/operit/neo_sad.png");--frames:4;--sprite-duration:1.3333333333333333s}
+.sprite-neo_search{--sprite-image:url("/orange/operit/neo_search.png");--frames:8;--sprite-duration:2s}
+.sprite-neo_shy{--sprite-image:url("/orange/operit/neo_shy.png");--frames:6;--sprite-duration:1.5s}
+.sprite-neo_sleep_bubble{--sprite-image:url("/orange/operit/neo_sleep_bubble.png");--frames:9;--sprite-duration:3s}
+.sprite-neo_sleep_cap{--sprite-image:url("/orange/operit/neo_sleep_cap.png");--frames:4;--sprite-duration:2s}
+.sprite-neo_surf{--sprite-image:url("/orange/operit/neo_surf.png");--frames:6;--sprite-duration:1s}
+.sprite-neo_toast{--sprite-image:url("/orange/operit/neo_toast.png");--frames:8;--sprite-duration:1.3333333333333333s}
+.sprite-neo_type_kb{--sprite-image:url("/orange/operit/neo_type_kb.png");--frames:8;--sprite-duration:1.3333333333333333s}
 
-.warm-companion{display:inline-block;width:var(--sprite-size);height:var(--sprite-size);background-repeat:no-repeat;background-size:calc(var(--frames)*var(--sprite-size)) var(--sprite-size);image-rendering:pixelated;flex-shrink:0}.warm-companion.offline{filter:grayscale(1);opacity:.6;animation:none}@keyframes operit-frames{from{background-position-x:0}to{background-position-x:calc(-1*var(--frames)*var(--sprite-size))}}@media(prefers-reduced-motion:reduce){.warm-companion{animation:none}}
+/* Move an already-painted strip; changing background-position repainted the chat viewport. */
+.warm-companion{display:inline-block;position:relative;overflow:hidden;contain:layout paint;width:var(--sprite-size);height:var(--sprite-size);image-rendering:pixelated;flex-shrink:0}
+.warm-companion::before{content:'';position:absolute;left:0;top:0;width:calc(var(--frames)*var(--sprite-size));height:100%;background:var(--sprite-image) 0 0/100% 100% no-repeat;animation:operit-frames var(--sprite-duration) steps(var(--frames)) infinite;will-change:transform}
+.warm-companion.offline{filter:grayscale(1);opacity:.6}
+.warm-companion.offline::before{animation:none;will-change:auto}
+@keyframes operit-frames{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+:root[data-page-visible='false'] .warm-companion::before,:root[data-page-visible='false'] .paper-quill-icon{animation-play-state:paused!important;will-change:auto}
+@media(prefers-reduced-motion:reduce){.warm-companion::before{animation:none;will-change:auto}}
