@@ -1,12 +1,17 @@
 # 项目状态与待办
 
-## 2026-10-26 可亲自操作的远程京东登录窗口（已验证，待上线）
+## 2026-10-26 可亲自操作的远程京东登录窗口（已上线，待本人验证）
+
+- 已上线源码 `cbffe0f8bd336cc827268c9f44b0da797bc530d1`，入口 `/assets/index-C9rsrmxH.js`、`/assets/index-DgbHw90H.css`；私有备份 `/root/ayan/backups/shopping-remote-20261026-172528`。bridge仅在文件末追加远程窗口WebSocket注册，其余相关购物模块/服务精确更新，空闲重启bridge与购物服务；保留profile，恢复一次官方登录页。实际headless=false、login=needed，真实验证由用户本人完成。
+- 线上实际构建的全模拟API回归通过暖橘/原版日夜320/390/1280新窗口链接、密码入口及双账本/Shopping；服务active、health queue0/alerts[]；未配对及伪造设备Cookie访问远程页均401。VNC5906和worker3025只绑定loopback。
+- worker `fc0b53bc429281eebe885d8af714e3f753cfe3fcce3e12b853a85bc6ac8c3a07`、desktop `0417cd49a324e99baad82969802cd77018f6a87f2385ead0371f54dc82fad6de`、browser-api `e83118c02286269930427302f09547bbba4b540ea979bbec51331de1e5f565e7`、bridge `483b69cc4394f3a20777568cbe49ac15ea1578d4eb20f5b94df7ea25b77c8f74`。无自动解验证、真实密码代填、加购/付款、聊天或账本修改；已给用户直接窗口链接，也可从Shopping同源入口进入。
+
 
 - 用户遇到拼图滑块，明确要求直接打开服务器浏览器亲自登录。当前私有画面确有滑块，未替用户拖动、求解验证码或改指纹。新增独立受配对保护的远程窗口，直接显示同一专用profile的真实Chromium窗口，用户键盘/鼠标传入；界面不归档。
 - noVNC锁定1.7.0，x11vnc0.9.16，Xvfb只开服务私有Unix显示；VNC仅127.0.0.1:5906，无公网VNC/CDP。网页登录及WebSocket均校验配对Cookie并拒绝助手Bearer，WebSocket要求同源Origin，单连接且定期复核认证。未改Caddy、网络出口或增加内存上限。
 - Shopping增加“打开登录窗口 ↗”及直接路径/api/shopping/browser/desktop。窗口本人操作租约阻止自动浏览/检查/关闭等干扰，完成退出释放；断网/后台最长两分钟失效。真实账号成功仍以原购物车页面证据核对，不因密码提交或连接成功就确认。
 - 本地前端构建与暖橘/原版日夜320/390/1280模拟回归通过；远端隔离测试通过本人Cookie/Origin保护、助手拒绝、二进制输入、单连接、结束撤销。另起Xvfb:97/临时Chrome/普通滑块fixture，真实noVNC验证键盘输入、连续鼠标拖动、结束释放和CSP加载通过，无京东请求或真实凭据。
-- 待上线时仅在空闲更新bridge窄追加WebSocket注册及购物代理/worker，重开购物浏览器保留profile，不保留当前验证码画面。真实登录由用户亲自重试；没有自动解验证码、购买、付款或修改账本。
+- 已在空闲更新bridge窄追加WebSocket注册及购物代理/worker，重开购物浏览器保留profile；旧验证码画面不保证保留。真实登录由用户亲自重试；没有自动解验证码、购买、付款或修改账本。
 
 ## 2026-10-26 京东扫码风险提示与本人密码登录（已上线，待本人登录）
 
