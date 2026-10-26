@@ -6,6 +6,7 @@ const {hasSession,confirmedLogin,captureScreen}=require('./shopping-browser-work
  assert(confirmedLogin({session:true,nickname:true,loginPrompt:false,redirected:false}));
  assert(confirmedLogin({logout:true,loginPrompt:false,redirected:false}));
  assert(!confirmedLogin({nickname:true,loginPrompt:true,redirected:false}));assert(!confirmedLogin({nickname:true,redirected:true}));
+ assert(!confirmedLogin({nickname:true,rateLimited:true,redirected:false,loginPrompt:false}));
  let restored=0,disposed=0,detached=0,options;
  const page={evaluateHandle:async()=>({dispose:async()=>disposed++}),evaluate:async()=>restored++};
  const context={newCDPSession:async()=>({send:async(name,value)=>{assert.equal(name,'Page.captureScreenshot');options=value;return {data:Buffer.from('image-fixture').toString('base64')}},detach:async()=>detached++})};

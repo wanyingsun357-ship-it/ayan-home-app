@@ -31,7 +31,7 @@ async function ensure() {
 }
 function hasSession(names) { return names.includes('thor') && names.includes('pin') || names.includes('pt_key') && names.includes('pt_pin'); }
 async function sessionPresent() { if (!context) return false; return hasSession((await context.cookies('https://www.jd.com')).map(c => c.name)); }
-function confirmedLogin(e) { return !e.redirected && !e.loginPrompt && (e.nickname || e.logout); }
+function confirmedLogin(e) { return !e.redirected && !e.loginPrompt && !e.rateLimited && (e.nickname || e.logout); }
 async function state() {
   const running = !!context && !!page && !page.isClosed();
   const loginPage = running && (/\b(?:passport|safe|aq)\.jd\.com\b/.test(page.url()) || await page.locator('.qrcode-img,.qrcode-main,[class*="qrcode"] img').first().isVisible().catch(() => false));
@@ -70,13 +70,15 @@ async function checkAccount() {
       const logout = controls.some(node => /^(?:退出登录|安全退出|退出)$/.test(text(node)));
       const known = [...document.querySelectorAll('#ttbar-login .nickname,#ttbar-login .link-user,#loginbar .nickname')].some(node => visible(node) && text(node) && !/登录|注册/.test(text(node)));
       const generic = hasCookie && [...document.querySelectorAll('[class*="nickname"],[class*="userName"],[class*="username"],[class*="user-name"]')].some(node => visible(node) && text(node).length > 0 && text(node).length < 80 && !/登录|注册|我的京东|购物车|帮助中心/.test(text(node)));
-      return { loginPrompt, logout, nickname: !!(known || generic) };
+      const rateLimited = /操作太频繁|访问过于频繁|访问频繁/.test(document.body.innerText || '');
+      return { loginPrompt, logout, nickname: !!(known || generic), rateLimited };
     }, session);
     loginEvidence = { session, ...signals, redirected: /passport\.jd\.com/.test(page.url()) };
-    if (loginEvidence.redirected || signals.loginPrompt || signals.nickname || signals.logout) break;
+    if (loginEvidence.redirected || signals.loginPrompt || signals.nickname || signals.logout || signals.rateLimited) break;
     await page.waitForTimeout(500);
   }
   confirmed = confirmedLogin(loginEvidence);
+  if (loginEvidence.rateLimited) error = '京东提示访问频繁，请先暂停，稍后手动重试，不要连续扫码或刷新。';
   return confirmed;
 }
 async function products() {
@@ -102,12 +104,12 @@ async function action(b) {
     await ensure(); let result = {}, added = false;
     if (name === 'login') { confirmed = false; loginEvidence = null; await go('https://passport.jd.com/new/login.aspx'); }
     else if (name === 'refresh') { await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 }); }
-    else if (name === 'cart' || name === 'check') { if (!await checkAccount()) result.message = '还未确认登录，请扫码后在京东 App 确认，再点“检查登录”。'; }
+    else if (name === 'cart' || name === 'check') { if (!await checkAccount()) result.message = error || '还未确认登录，请扫码后在京东 App 确认，再点“检查登录”。'; }
     else if (name === 'search') { const q = String(b.query || '').trim().slice(0, 100); if (!q) fault('先写下想找的东西'); await go('https://search.jd.com/Search?keyword=' + encodeURIComponent(q)); result.products = await products(); }
     else if (name === 'open') await go('https://item.jd.com/' + sku(b.skuId) + '.html');
     else if (name === 'add') {
       const id = sku(b.skuId);
-      if (!await checkAccount()) fault('先扫码登录，并在购物车确认登录状态', 409);
+      if (!await checkAccount()) fault(error || '先扫码登录，并在购物车确认登录状态', loginEvidence?.rateLimited ? 429 : 409);
       await go('https://item.jd.com/' + id + '.html');
       const shown = page.url().match(/item\.jd\.com\/(\d+)\.html/)?.[1];
       if (shown !== id) fault('商品页已跳转，先核对规格后再加购', 409);
