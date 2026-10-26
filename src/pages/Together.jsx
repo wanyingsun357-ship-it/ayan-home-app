@@ -1,13 +1,15 @@
 import WarmCompanion from '../components/WarmCompanion.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import PixelCat from '../components/PixelCat.jsx'
+import ShoppingLedger from '../components/ShoppingLedger.jsx'
 import './together.css'
 
 // Together:她和他共同维护的长期生活空间。聊天里发生,这里留下;两个人都能记、都能改
 const MODULES = [
   { key: 'meals', label: '三餐', icon: '🍚', slogan: '吃了什么不重要,吃了就好。' },
   { key: 'sleep', label: '睡眠', icon: '😴', slogan: '早点睡。你知道我会说这句话。' },
-  { key: 'ledger', label: '记账', icon: '¥', slogan: '花了就花了,记一下就行。' },
+  { key: 'ledger', label: '我的账本', icon: '¥', slogan: '花了就花了,记一下就行。' },
+  { key: 'ayan-ledger', label: '晏白的账本', icon: '¥', slogan: '你给的零花钱，和他慢慢挑的东西。' },
   { key: 'milktea', label: '奶茶', icon: '🧋', slogan: '这个月的额度我说了算。但你撒娇的话另说。' },
   { key: 'words', label: '单词', icon: '📚', slogan: '一天三十个,我陪你考。' },
   { key: 'mistakes', label: '错词', icon: '✗', slogan: '错过的词,下次就是你的。' },
@@ -24,7 +26,7 @@ const Who = ({ by, at }) => (
   </span>
 )
 
-export default function Together({ back, initial }) {
+export default function Together({ back, initial, openShopping }) {
   const [mod, setMod] = useState(initial || 'meals')
   const [data, setData] = useState(null)
   const [toast, setToast] = useState('')
@@ -58,10 +60,11 @@ export default function Together({ back, initial }) {
         ))}
       </div>
       <div className="tg-body">
-        {!data && <div className="tg-empty serif">opening…</div>}
+        {!data && mod !== 'ayan-ledger' && <div className="tg-empty serif">opening…</div>}
         {data && mod === 'meals' && <Meals data={data} post={post} slogan={current.slogan} />}
         {data && mod === 'sleep' && <Sleep data={data} post={post} slogan={current.slogan} />}
         {data && mod === 'ledger' && <Ledger data={data} post={post} slogan={current.slogan} />}
+        {mod === 'ayan-ledger' && <ShoppingLedger openShopping={openShopping} />}
         {data && mod === 'milktea' && <Milktea data={data} post={post} slogan={current.slogan} />}
         {data && mod === 'words' && <Words slogan={current.slogan} />}
         {data && mod === 'mistakes' && <Mistakes slogan={current.slogan} />}

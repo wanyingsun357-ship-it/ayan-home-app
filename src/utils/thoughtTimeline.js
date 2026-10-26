@@ -1,6 +1,10 @@
 export function toolInfo(raw) {
   const name = raw.match(/^([^\s({]+)/)?.[1] || '工具'
   const s = raw.toLowerCase()
+  if (/\/api\/shopping(?:\b|\/)|\bshopping[._]|\b(?:jd|jingdong)[._](?:search|browse|cart|checkout|pay|order)|\b(?:shopping|shop)-(?:outbox|browser)/.test(s)) {
+    const label = /\/ledger|wallet|balance/.test(s) ? '查看或记录购物账本' : /\/settings/.test(s) ? '整理购物设置' : /refund/.test(s) ? '核对购物退款' : /checkout|payment|\bpay\b/.test(s) ? '核对购物订单' : /cart/.test(s) ? '查看或整理购物车' : /search|browse/.test(s) ? '浏览与挑选商品' : /\/orders/.test(s) ? '记录购物进展' : '查看 Shopping'
+    return { name, label, icon: 'shopping', target: '', shopping: true, orderId: raw.match(/["']?(?:orderId|id)["']?\s*[:=]\s*["']([a-f0-9-]{36})["']/i)?.[1] || '' }
+  }
   if (/chat-favorites/.test(s)) {
     const locked=/月亮锁收藏|["']?locked["']?\s*:\s*true/.test(s)
     const method=s.match(/(?:-x|method["']?\s*:)\s*["']?(post|patch|delete)/)?.[1]

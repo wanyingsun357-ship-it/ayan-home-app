@@ -16,6 +16,7 @@ import Stub from './pages/Stub.jsx'
 import Settings from './pages/Settings.jsx'
 import Together from './pages/Together.jsx'
 import Footprints from './pages/Footprints.jsx'
+import Shopping from './pages/Shopping.jsx'
 import Gallery from './pages/Gallery.jsx'
 import CommandWidget from './components/CommandWidget.jsx'
 import CallOverlay from './components/CallOverlay.jsx'
@@ -57,6 +58,10 @@ export default function App() {
   const [splashReveal, setSplashReveal] = useState(false)
   useEffect(()=>{const done=()=>setSplashDone(true);window.addEventListener('call:visible',done);return()=>window.removeEventListener('call:visible',done)},[])
   const [view, setView] = useState('home')
+  const [shoppingTarget, setShoppingTarget] = useState({})
+  const [togetherInitial, setTogetherInitial] = useState(null)
+  const openShopping = (target = {}) => { setShoppingTarget(target); go('shopping') }
+  const openShoppingLedger = () => { setTogetherInitial('ayan-ledger'); go('together') }
   useEffect(()=>{applyAppearance(view)},[view,appearance])
   useEffect(() => {
     document.documentElement.dataset.paperSurface = ['home','together','settings'].includes(view) ? 'home' : 'chat'
@@ -186,8 +191,9 @@ export default function App() {
       {view === 'mind' && <Mind back={() => go('home')} />}
       {view === 'read' && <Read back={() => go('home')} />}
       {view === 'settings' && <Settings back={() => go('home')} />}
-      {view === 'together' && <Together back={() => go('home')} />}
-      {view === 'footprints' && <Footprints back={() => go('home')} />}
+      {view === 'together' && <Together back={() => {setTogetherInitial(null); go('home')}} initial={togetherInitial} openShopping={openShopping} />}
+      {view === 'footprints' && <Footprints back={() => go('home')} openShopping={openShopping} />}
+      {view === 'shopping' && <Shopping back={() => go('footprints')} initial={shoppingTarget} openLedger={openShoppingLedger} />}
       {view === 'gallery' && <Gallery back={() => go('home')} go={go} />}
       {PAGES[view] && <Stub page={PAGES[view]} back={() => go('home')} />}
 

@@ -23,7 +23,7 @@ function load() {
 }
 let state=load()
 export function applyAppearance(view=document.documentElement.dataset.view||'home') {
-  const root=document.documentElement,p=state.profiles[state.theme],area=areas.includes(view)?view:'home',a=p.areas[area]
+  const root=document.documentElement,p=state.profiles[state.theme],area=view==='shopping'?'footprints':areas.includes(view)?view:'home',a=p.areas[area]
   root.dataset.visual=state.theme;root.dataset.theme=p.mode;root.dataset.view=view
   root.style.setProperty('--warm-strength',a.strength/100)
   root.style.setProperty('--warm-bg-blur',a.backgroundBlur+'px')
