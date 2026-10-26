@@ -10,7 +10,7 @@ async function main() {
  register(app, { getState: async () => ({ manualActive: active, running: true, headless: false }), action: async b => { actions.push(b.action); active = b.action === 'desktopBegin'; return { ok: true }; } });
  const server = http.createServer(app); await listen(server); const base = 'http://127.0.0.1:' + server.address().port;
  const vnc = net.createServer(socket => { socket.write('RFB-FIXTURE'); socket.on('data', data => socket.write(data)); }); await listen(vnc);
- const wss = attach(server, { authUrl: base + basePath + '/desktop-auth', vncPort: vnc.address().port, recheckMs: 80 });
+ const wss = attach(server, { authorize: req => req.headers.cookie === cookie, getState: async () => ({ running: true, headless: false, manualActive: active }), vncPort: vnc.address().port, recheckMs: 80 });
  const post = action => fetch(base + basePath + '/desktop-control', { method: 'POST', headers: { cookie, origin, 'content-type': 'application/json' }, body: JSON.stringify({ action }) });
  const url = base.replace('http:', 'ws:') + basePath + '/desktop-ws';
  const rejected = headers => new Promise((resolve, reject) => { const ws = new WebSocket(url, { headers }); ws.once('unexpected-response', (req, res) => { res.resume(); req.destroy(); resolve(res.statusCode); }); ws.once('open', () => { ws.close(); reject(Error('unauthorized connection accepted')); }); ws.once('error', () => {}); });

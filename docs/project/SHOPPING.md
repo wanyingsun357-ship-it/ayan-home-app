@@ -74,3 +74,9 @@ loginPassword仅用于本人配对页面，内部助手Authorization调用403。
 窗口begin/end只允许本人设备Cookie，拒绝助手Authorization；连接校验Origin、认证及活跃人工租约，单连接，每15秒再验，失效断开。可见窗口每30秒续两分钟租约，完成/离开释放；人工操作期间worker拒绝其他自动动作。助手不可代替拖动/求解验证码或索取凭据。用户完成返回后才检查登录，不宣称连接窗口等于登录成功。
 
 独立测试：NODE_PATH=/root/ayan/bridge/node_modules:/opt/ayan-shopping/node_modules node server/shopping-desktop.test.cjs；真实显示传输测试shopping-desktop-ui.test.cjs仅使用独立Xvfb:97、VNC5907与普通范围控件fixture，无真实京东/凭据。生产启动script内Xvfb:96无TCP，x11vnc5906仅loopback，不开放公网VNC/CDP，不改Caddy/代理/支付。
+
+## 远程通道的设备验证修复（2026-10-26）
+
+生产engine-access会包装global.fetch，为本机3000/api自请求补内部Authorization。远程本人通道不能通过该fetch请求desktop-auth再判断身份，否则会被本人专用规则拒绝。当前WebSocket直接复用engine-access.authorized验证原请求设备Cookie（仍先拒绝Bearer/跨站），只从3025读取人工租约，不放宽验证，也不生成生产测试设备。画面断开与真正401/403授权失败分开提示；不根据黑屏或回主页推断京东登录。
+
+本轮诊断误将内部导出值写进私有工具日志，部署仅改变内部HMAC派生域以失效旧值；签名secret和现有设备Cookie/配对码不变。敏感认证源码只在VPS私有备份保留，不进入此仓库。shopping-desktop-auth.test.cjs以隔离目录复制通用认证代码，拦截本机API网络，验证注入根因、真实签名Cookie及内部值更新不会丢配对；不输出值、不创建生产设备或读取现有Cookie。

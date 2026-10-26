@@ -29,10 +29,20 @@ function register(app, { getState, action, assets = '/opt/ayan-shopping/node_mod
     res.sendStatus(204);
   }));
 }
-function attach(server, { authUrl = 'http://127.0.0.1:3000' + BASE + '/desktop-auth', vncPort = 5906, origin = ORIGIN, recheckMs = 15000 } = {}) {
+function attach(server, { authorize, getState, vncPort = 5906, origin = ORIGIN, recheckMs = 15000 } = {}) {
+  const checkDevice = authorize || require('./engine-access.js').authorized;
+  const desktopState = getState || (async () => {
+    const response = await fetch('http://127.0.0.1:3025/state', { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) throw Error('Browser state unavailable');
+    return response.json();
+  });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024, perMessageDeflate: false });
   async function authorized(req) {
-    try { return (await fetch(authUrl, { headers: { cookie: req.headers.cookie || '', origin }, signal: AbortSignal.timeout(5000) })).status === 204; } catch { return false; }
+    try {
+      if (!await checkDevice(req)) return false;
+      const state = await desktopState();
+      return !!state.running && !state.headless && !!state.manualActive;
+    } catch { return false; }
   }
   server.on('upgrade', async (req, socket, head) => {
     if (req.url !== BASE + '/desktop-ws') return;
