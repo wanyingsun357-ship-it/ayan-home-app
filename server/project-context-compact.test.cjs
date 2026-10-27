@@ -1,0 +1,26 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const {buildTranscript,isInternal,priorMemory}=require('./compact-transcript.cjs');
+const {stripSnapshot}=require('./project-context.cjs');
+const prefix='<当前项目资料>\n当前会话属于 Project home。\n项目版本：'+'a'.repeat(64)+'\n'+'PROJECT_DOCUMENT_ONLY '.repeat(4000)+'\n</当前项目资料>\n\n';
+test('project snapshots do not displace retained conversation text or change internal-memory detection',()=>{
+ const user=text=>({type:'user',message:{role:'user',content:text},timestamp:'2026-10-27T00:00:00Z'});
+ const assistant={type:'assistant',message:{role:'assistant',content:[{type:'text',text:'ANSWER_TEXT'}]}};
+ const plain=[user('EARLIER_REAL_TEXT'),assistant,user('LATEST_REAL_TEXT'),assistant];
+ const withProject=[user(prefix+'EARLIER_REAL_TEXT'),assistant,user('LATEST_REAL_TEXT'),assistant];
+ const before=buildTranscript(plain,'new','MEMORY',{budget:500});
+ const after=buildTranscript(withProject,'new','MEMORY',{budget:500});
+ assert.equal(after.stats.retainedConversationTokens,before.stats.retainedConversationTokens);
+ assert.equal(after.stats.kept,before.stats.kept);
+ assert.equal(JSON.stringify(after.chain).includes('PROJECT_DOCUMENT_ONLY'),false);
+ assert.ok(JSON.stringify(after.chain).includes('EARLIER_REAL_TEXT'));
+ assert.ok(isInternal(user(prefix+'(内部整理，不是婉莹在说话。请整理记忆)')));
+ const memory=user(prefix+'<过往记忆>EXISTING_MEMORY</过往记忆>');
+ assert.equal(priorMemory([memory]),'<过往记忆>EXISTING_MEMORY</过往记忆>');
+ const array=user([{type:'text',text:prefix+'REAL_ARRAY_TEXT'}]);
+ const kept=buildTranscript([array,assistant],'new','MEMORY');
+ assert.ok(JSON.stringify(kept.chain).includes('REAL_ARRAY_TEXT'));
+ assert.equal(JSON.stringify(kept.chain).includes('PROJECT_DOCUMENT_ONLY'),false);
+ assert.equal(stripSnapshot('USER_QUOTE\n'+prefix),'USER_QUOTE\n'+prefix);
+ assert.equal(stripSnapshot('<当前项目资料>\nUSER_WRITTEN\n</当前项目资料>\n\nKEEP'),'<当前项目资料>\nUSER_WRITTEN\n</当前项目资料>\n\nKEEP');
+});
