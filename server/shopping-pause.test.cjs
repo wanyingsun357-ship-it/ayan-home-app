@@ -1,0 +1,24 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),os=require('node:os'),path=require('node:path');
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'shopping-pause-'));
+const source=fs.readFileSync(__dirname+'/shopping-browser-worker.cjs','utf8');
+let visits=0,body='访问频繁',url='https://cart.jd.com/cart_index',ready=false;
+const target={isClosed:()=>false,url:()=>url,goto:async()=>{visits++},waitForTimeout:async()=>{},title:async()=>'',locator:()=>({innerText:async()=>body,evaluateAll:async()=>[],first(){return this},isVisible:async()=>false}),evaluate:async()=>({loginPrompt:false,nickname:true,logout:false,rateLimited:body.includes('访问频繁'),cartUnavailable:!ready,cartReady:ready})};
+const ctx={cookies:async()=>[{name:'thor'},{name:'pin'}]};
+function load(){const sandbox={require,module:{exports:{}},URL,Buffer,console,process:{env:{SHOPPING_PROFILE:dir,SHOPPING_HEADFUL:'1'},on(){}},setTimeout};vm.runInNewContext(source+'\nmodule.exports.test={action,state,set:(p,c)=>{page=p;context=c;},paused:()=>automationPaused};',sandbox);sandbox.module.exports.test.set(target,ctx);return sandbox.module.exports.test;}
+(async()=>{let w=load();
+ assert.equal((await w.state()).automationPaused,true);
+ for(const action of ['cart','search','open','add','refresh','login']) await assert.rejects(()=>w.action({action,clientId:'fixture-1234567890',skuId:'12345',query:'test'}),e=>e.status===429);
+ assert.equal(visits,0);
+ w=load();assert.equal(w.paused(),true,'pause survives worker restart');
+ body='';url='https://www.jd.com/';await w.action({action:'check'});assert.equal(w.paused(),true);assert.equal(visits,0);
+ url='https://cart.jd.com/cart_index';ready=false;await w.action({action:'check'});assert.equal(w.paused(),true);
+ ready=true;await w.action({action:'check'});assert.equal(w.paused(),false);assert.equal(visits,0,'check never navigates');
+ await w.action({action:'cart'});assert.equal(visits,0,'existing cart is observed without reload');
+ body='访问频繁';await assert.rejects(()=>w.action({action:'search',query:'test'}),e=>e.status===429);assert.equal(visits,0);
+ body='';ready=true;await w.action({action:'check'});
+ target.goto=async()=>{visits++;body='访问频繁'};
+ await assert.rejects(()=>w.action({action:'search',query:'test'}),e=>e.status===429);assert.equal(w.paused(),true);assert.equal(visits,1);
+ await assert.rejects(()=>w.action({action:'open',skuId:'12345'}),e=>e.status===429);assert.equal(visits,1);
+ console.log('PASS persistent pause, all navigation blocked, local-only check, recovery requires ready cart, search limit stops next action');
+})().finally(()=>fs.rmSync(dir,{recursive:true,force:true})).catch(e=>{console.error(e);process.exitCode=1});

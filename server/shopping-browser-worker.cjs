@@ -9,6 +9,23 @@ const PORT = Number(process.env.SHOPPING_BROWSER_PORT || 3025);
 const HOSTS = ['jd.com', '360buy.com'];
 let context, page, launch, busy = false, error = '', confirmed = false, lastAt = null, loginEvidence = null, manualUntil = 0;
 const attempts = new Map();
+const pauseFile = path.join(PROFILE, '.automation-paused.json');
+const pauseMessage = '京东提示访问频繁，自动访问已暂停；请勿连续刷新或扫码。稍后亲自在登录窗口确认购物车恢复，再点“检查登录”。';
+let automationPaused = fs.existsSync(pauseFile);
+function setPaused(value) {
+  if (value === automationPaused) return;
+  if (value) {
+    fs.mkdirSync(PROFILE, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(pauseFile, JSON.stringify({ reason: 'rateLimited' }), { mode: 0o600 });
+  } else fs.rmSync(pauseFile, { force: true });
+  automationPaused = value;
+}
+function onCart() { try { const u = new URL(page.url()); return u.hostname === 'cart.jd.com' && u.pathname === '/cart_index'; } catch { return false; } }
+async function observeLimit() {
+  if (!page || page.isClosed()) return;
+  const text = await page.locator('body').innerText({ timeout: 1500 }).catch(() => '');
+  if (/操作太频繁|访问过于频繁|访问频繁/.test(text)) { setPaused(true); error = pauseMessage; }
+}
 function fault(message, status = 400) { const e = new Error(message); e.status = status; throw e; }
 function trustedNavigation(u) {
   return !u.username && !u.password && !u.port && (HOSTS.some(host => u.hostname === host || u.hostname.endsWith('.' + host)) || (u.hostname === 'sso.jd.hk' && u.pathname === '/sso/sync/redirect'));
@@ -70,11 +87,12 @@ function hasSession(names) { return names.includes('thor') && names.includes('pi
 async function sessionPresent() { if (!context) return false; return hasSession((await context.cookies('https://www.jd.com')).map(c => c.name)); }
 function confirmedLogin(e) { return !e.redirected && !e.loginPrompt && !e.rateLimited && (e.nickname || e.logout); }
 async function state() {
+  await observeLimit();
   const running = !!context && !!page && !page.isClosed();
   const loginPage = running && (/\b(?:passport|safe|aq)\.jd\.com\b/.test(page.url()) || await page.locator('.qrcode-img,.qrcode-main,[class*="qrcode"] img').first().isVisible().catch(() => false));
   const qrRisk = !!loginPage && /本次扫码存在风险|扫码登录存在风险/.test(await page.locator('body').innerText({ timeout: 1500 }).catch(() => ''));
   const passwordForm = !!loginPage && await page.getByPlaceholder('账号名/手机号/邮箱', { exact: true }).isVisible().catch(() => false) && await page.locator('input[type="password"]:visible').first().isVisible().catch(() => false);
-  return { available: true, running, busy, manualActive: manualUntil > Date.now(), loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false, proxyConfigured: !!PROXY };
+  return { available: true, automationPaused, running, busy, manualActive: manualUntil > Date.now(), loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false, proxyConfigured: !!PROXY };
 }
 async function submitPassword(target, body) {
   if (new URL(target.url()).hostname !== 'passport.jd.com') fault('密码只在京东官方登录页面填写', 403);
@@ -111,8 +129,11 @@ async function screenshot() {
   if (!context || !page || page.isClosed()) fault('先打开京东浏览器', 409);
   return captureScreen(page, context);
 }
-async function checkAccount() {
-  await go('https://cart.jd.com/cart_index');
+async function checkAccount(navigate = true) {
+  if (!onCart()) {
+    if (!navigate) { confirmed = false; loginEvidence = null; error = automationPaused ? pauseMessage : '当前不是购物车页面，暂不跳转检查。请亲自打开购物车后再检查登录。'; return false; }
+    await go('https://cart.jd.com/cart_index');
+  }
   for (let i = 0; i < 16; i++) {
     const session = await sessionPresent();
     const signals = await page.evaluate(hasCookie => {
@@ -136,7 +157,8 @@ async function checkAccount() {
     await page.waitForTimeout(500);
   }
   confirmed = confirmedLogin(loginEvidence);
-  if (loginEvidence.rateLimited) error = '京东提示访问频繁，请先暂停，稍后手动重试，不要连续扫码或刷新。';
+  if (loginEvidence.rateLimited) { setPaused(true); error = pauseMessage; }
+  else if (confirmed && loginEvidence.cartReady) { setPaused(false); error = ''; }
   else if (loginEvidence.cartUnavailable) error = '京东购物车没有加载成功（购物车跑丢了），这不代表购物车为空，也不代表需要重新扫码。';
   return confirmed;
 }
@@ -160,14 +182,17 @@ async function action(b) {
     if (!/^[a-zA-Z0-9-]{16,100}$/.test(String(b.clientId || ''))) fault('加购需要独立操作编号');
     if (attempts.has(b.clientId)) fault('这次加购已经尝试过，请先查看购物车再决定是否再次添加', 409);
   }
-  busy = true; error = '';
+  await observeLimit();
+  if (automationPaused && !['check', 'desktopBegin', 'loginClick', 'loginCode', 'loginPassword'].includes(name)) fault(pauseMessage, 429);
+  if (name === 'check' && (!context || !page || page.isClosed())) fault('浏览器尚未打开，检查登录不会自动打开京东。', 409);
+  busy = true; error = automationPaused ? pauseMessage : '';
   try {
     await ensure(); let result = {}, added = false;
-    if (name === 'desktopBegin') { if (process.env.SHOPPING_HEADFUL !== '1') fault('远程登录窗口尚未准备好', 503); const wasRunning = !!context && !!page && !page.isClosed() && page.url() !== 'about:blank'; manualUntil = Date.now() + 120000; if (!wasRunning) await go('https://passport.jd.com/new/login.aspx'); }
+    if (name === 'desktopBegin') { if (process.env.SHOPPING_HEADFUL !== '1') fault('远程登录窗口尚未准备好', 503); const wasRunning = !!context && !!page && !page.isClosed() && page.url() !== 'about:blank'; manualUntil = Date.now() + 120000; if (!wasRunning && !automationPaused) await go('https://passport.jd.com/new/login.aspx'); }
     else if (name === 'login') { confirmed = false; loginEvidence = null; await go('https://passport.jd.com/new/login.aspx'); }
     else if (name === 'refresh') { await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 }); }
     else if (name === 'cart' || name === 'check') {
-      const loggedIn = await checkAccount();
+      const loggedIn = await checkAccount(name !== 'check');
       result.cartReady = !!loggedIn && !!loginEvidence?.cartReady;
       if (error || !loggedIn || name === 'cart' && !result.cartReady) result.message = error || (!loggedIn ? '暂未核实登录状态，请查看当前京东页面；不必重复扫码。' : '登录已确认，但尚未看到购物车内容，请先核对当前画面。');
     }
@@ -202,6 +227,8 @@ async function action(b) {
         await page.mouse.click(x * size.width / 1280, y * size.height / 900);
       } else { const code = String(b.code || ''); if (!/^\d{4,8}$/.test(code)) fault('只输入京东发来的数字验证码'); await page.keyboard.type(code, { delay: 80 }); }
     }
+    await observeLimit();
+    if (automationPaused && ['search', 'open', 'add', 'refresh', 'login'].includes(name)) fault(pauseMessage, 429);
     lastAt = new Date().toISOString();
     return { ok: true, ...result, state: { ...await state(), busy: false } };
   } catch (e) { error = e.status ? e.message : /timeout/i.test(e.message) ? '京东页面暂时没有加载完成，可以刷新或稍后重试。' : '浏览器操作暂未完成，请查看画面后再试。'; const out = new Error(error); out.status = e.status || 502; throw out; }
