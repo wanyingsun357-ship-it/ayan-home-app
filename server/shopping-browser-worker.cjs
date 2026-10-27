@@ -124,14 +124,20 @@ async function checkAccount() {
       const known = [...document.querySelectorAll('#ttbar-login .nickname,#ttbar-login .link-user,#loginbar .nickname')].some(node => visible(node) && text(node) && !/登录|注册/.test(text(node)));
       const generic = hasCookie && [...document.querySelectorAll('[class*="nickname"],[class*="userName"],[class*="username"],[class*="user-name"]')].some(node => visible(node) && text(node).length > 0 && text(node).length < 80 && !/登录|注册|我的京东|购物车|帮助中心/.test(text(node)));
       const rateLimited = /操作太频繁|访问过于频繁|访问频繁/.test(document.body.innerText || '');
-      return { loginPrompt, logout, nickname: !!(known || generic), rateLimited };
+      const bodyText = document.body.innerText || '';
+      const cartUnavailable = /购物车跑丢了|购物车加载失败|购物车暂时不可用/.test(bodyText);
+      const cartReady = !cartUnavailable && !rateLimited && (/购物车(?:还是)?空空的|购物车内暂时没有商品|购物车中还没有商品/.test(bodyText) || [...document.querySelectorAll('.item-item[data-sku],.cart-item-list .item-form')].some(node => { const r = node.getBoundingClientRect(); return r.width > 0 && r.height > 0; }));
+      return { loginPrompt, logout, nickname: !!(known || generic), rateLimited, cartUnavailable, cartReady };
     }, session);
     loginEvidence = { session, ...signals, redirected: /passport\.jd\.com/.test(page.url()) };
-    if (loginEvidence.redirected || signals.loginPrompt || signals.nickname || signals.logout || signals.rateLimited) break;
+    // Initial guest markup is replaced after asynchronous account/cart requests.
+    // Observe the full bounded window rather than treating it as a login failure.
+    if (loginEvidence.redirected || signals.rateLimited) break;
     await page.waitForTimeout(500);
   }
   confirmed = confirmedLogin(loginEvidence);
   if (loginEvidence.rateLimited) error = '京东提示访问频繁，请先暂停，稍后手动重试，不要连续扫码或刷新。';
+  else if (loginEvidence.cartUnavailable) error = '京东购物车没有加载成功（购物车跑丢了），这不代表购物车为空，也不代表需要重新扫码。';
   return confirmed;
 }
 async function products() {
@@ -160,12 +166,17 @@ async function action(b) {
     if (name === 'desktopBegin') { if (process.env.SHOPPING_HEADFUL !== '1') fault('远程登录窗口尚未准备好', 503); const wasRunning = !!context && !!page && !page.isClosed() && page.url() !== 'about:blank'; manualUntil = Date.now() + 120000; if (!wasRunning) await go('https://passport.jd.com/new/login.aspx'); }
     else if (name === 'login') { confirmed = false; loginEvidence = null; await go('https://passport.jd.com/new/login.aspx'); }
     else if (name === 'refresh') { await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 }); }
-    else if (name === 'cart' || name === 'check') { if (!await checkAccount()) result.message = error || '还未确认登录，请扫码后在京东 App 确认，再点“检查登录”。'; }
+    else if (name === 'cart' || name === 'check') {
+      const loggedIn = await checkAccount();
+      result.cartReady = !!loggedIn && !!loginEvidence?.cartReady;
+      if (error || !loggedIn || name === 'cart' && !result.cartReady) result.message = error || (!loggedIn ? '暂未核实登录状态，请查看当前京东页面；不必重复扫码。' : '登录已确认，但尚未看到购物车内容，请先核对当前画面。');
+    }
     else if (name === 'search') { const q = String(b.query || '').trim().slice(0, 100); if (!q) fault('先写下想找的东西'); await go('https://search.jd.com/Search?keyword=' + encodeURIComponent(q)); result.products = await products(); }
     else if (name === 'open') await go('https://item.jd.com/' + sku(b.skuId) + '.html');
     else if (name === 'add') {
       const id = sku(b.skuId);
       if (!await checkAccount()) fault(error || '先扫码登录，并在购物车确认登录状态', loginEvidence?.rateLimited ? 429 : 409);
+      if (!loginEvidence?.cartReady) fault(error || '购物车内容尚未加载完成，暂不继续加购。', 409);
       await go('https://item.jd.com/' + id + '.html');
       const shown = page.url().match(/item\.jd\.com\/(\d+)\.html/)?.[1];
       if (shown !== id) fault('商品页已跳转，先核对规格后再加购', 409);

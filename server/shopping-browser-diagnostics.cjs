@@ -1,4 +1,5 @@
 'use strict';
+const { createHash } = require('node:crypto');
 function endpoint(value) {
   try {
     const u = new URL(value);
@@ -42,10 +43,22 @@ function createDiagnostics() {
         const request = response.request(), type = request.resourceType(), status = response.status();
         if (!['document', 'xhr', 'fetch'].includes(type) && status < 400) return;
         const info = { ...target, type, status };
+        const functionId = new URL(response.url()).searchParams.get('functionId');
+        if (functionId) {
+          info.operationKey = createHash('sha256').update(functionId).digest('hex').slice(0, 12);
+          if (['pcCart_jc_getCurrentCart', 'pcCart_jc_getCartCount'].includes(functionId)) info.operationName = functionId;
+        }
         const headers = response.headers();
-        if (/json/i.test(headers['content-type'] || '') && Number(headers['content-length'] || 0) < 131072) {
+        info.responseType = /json/i.test(headers['content-type'] || '') ? 'json' : /html/i.test(headers['content-type'] || '') ? 'html' : 'other';
+        if ((info.responseType === 'json' || status >= 400 && ['xhr', 'fetch'].includes(type)) && Number(headers['content-length'] || 0) < 131072) {
           const text = await response.text();
-          if (text.length < 131072) { try { Object.assign(info, signals(JSON.parse(text))); } catch {} }
+          if (text.length < 131072) {
+            try { Object.assign(info, signals(JSON.parse(text))); } catch {}
+            if (status >= 400) {
+              info.accessDenied = /forbidden|access denied|拒绝访问/i.test(text);
+              info.verification = !!info.verification || /captcha|risk_handler|安全验证|风控/.test(text);
+            }
+          }
         }
         push(info);
       } catch { /* A closing tab is normal; no diagnostic may crash the browser. */ }

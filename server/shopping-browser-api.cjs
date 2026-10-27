@@ -56,8 +56,9 @@ function create({ shopping, dir, getSession = () => '', notify = () => {}, worke
       }
       if (b.action === 'recordScreen' && !screenshot) { const e = new Error('登录二维码不归档，请完成登录后再留存购物截图'); e.status = 409; throw e; }
       const blockedByLogin = ['search', 'open', 'cart', 'add'].includes(b.action) && response.state?.loginPage;
+      const cartUnconfirmed = b.action === 'cart' && response.cartReady !== true;
       const summary = blockedByLogin ? '需要登录，当前购物步骤尚未完成' : b.action === 'search' ? '查找商品：' + payload.query : b.action === 'add' ? response.added ? '已看到加购成功提示' : '没有确认加购成功，请核对购物车' : b.action === 'cart' ? '查看购物车' : b.action === 'recordScreen' ? '留存当前购物截图' : '查看商品详情';
-      const activity = log(b.action, blockedByLogin || b.action === 'add' && !response.added ? 'unconfirmed' : 'completed', b, summary, screenshot);
+      const activity = log(b.action, blockedByLogin || cartUnconfirmed || b.action === 'add' && !response.added ? 'unconfirmed' : 'completed', b, cartUnconfirmed ? '购物车内容未确认，查看步骤尚未完成' : summary, screenshot);
       if (record && ['open', 'add', 'recordScreen'].includes(b.action) && !['paid', 'refunded'].includes(record.status)) shopping.order({ id: record.id, status: b.action === 'add' && response.added ? 'cart' : b.action === 'add' ? 'failed' : b.action === 'open' && record.status === 'saved' ? 'browsing' : record.status, activity: summary, ...(screenshot ? { screenshot } : {}), by: 'ayan' });
       return { ...response, ...(activity ? { activity } : {}) };
     } catch (e) {
