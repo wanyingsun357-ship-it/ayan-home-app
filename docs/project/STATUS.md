@@ -1,5 +1,13 @@
 # 项目状态与待办
 
+## 2026-10-27 每日备份时间修正与补跑（已完成）
+
+- 用户在已说明“修正为北京时间凌晨03:05并补跑，包含原GitHub异地备份”后回复“好”，已授权本次执行。诊断基线223f63e07730be6867fcdc659ce164f1b8ebfc01，保护其他窗口改动，没有修改App/bridge或重启服务。
+- 服务器Asia/Shanghai；cron在10月26日23:40重启后按当前时区读取旧19:05计划，导致原北京时间03:05备份漏跑。仅把root cron中的backup.sh一行改为`5 3 * * * /root/ayan/backup.sh >> /root/backups/backup.log 2>&1`，保留其余字节；cron日志确认RELOAD，原crontab及核对哈希保存在私有/root/ayan/backup-schedule-20261027/root.cron.before和proposal.json，不把整份crontab上传源码仓库。
+- 无其他备份运行后补跑原backup.sh，后台独立worker及锁避免本次重复启动；运行2026-10-27T10:21:48.627712+00:00至2026-10-27T10:23:44.016118+00:00。本机2026-10-27的home/context/codex-context/recovery-source/mind-private共5份归档存在且全部流式gzip CRC校验通过，home归档含sessions.json和echo.json；未读取或输出这些文件内容。
+- 原home-backup仓库已提交并推送`eb8a3155f488f4bb74ab9867a505fd382e79cc96`；远端main与本机提交一致，备份仓库干净。沿用原脚本的数据范围与凭据排除规则；private thought/desire仍单独本机归档，不解包入GitHub。没有改变备份脚本或扩大本次上传范围。
+- /api/health备份时间已更新为`2026-10-27T10:23:43.995Z`，备份超时警报已消除；完成状态/归档大小/远端匹配记录在私有run-result.json，原脚本日志仍为/root/backups/backup.log。前端若停留旧Settings需退出该页再进入刷新；未改变界面。下一次计划为北京时间10月28日03:05，尚未发生，不能把本次手动补跑当作已验证下一次自动触发。
+
 ## 2026-10-26 购物车加载失败诊断（断线已本人确认解决，购物车未恢复）
 
 - 用户确认不再因点击购物车断线，但仍“购物车跑丢了”；服务 NRestarts=0。用户明确退出并允许重启诊断。
