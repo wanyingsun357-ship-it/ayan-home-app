@@ -18,6 +18,34 @@ function httpsNavigation(value) {
 }
 function sku(value) { const s = String(value || ''); if (!/^\d{4,20}$/.test(s)) fault('请选择有效的京东商品'); return s; }
 function safeUrl(value) { try { const u = new URL(value); return u.origin + u.pathname; } catch { return ''; } }
+async function navigationRoute(route) {
+  try {
+    const req = route.request(), u = new URL(req.url());
+    if (/^(?:localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|\[?::1\]?)/i.test(u.hostname) || /^172\.(?:1[6-9]|2\d|3[01])\./.test(u.hostname)) return await route.abort();
+    if (req.isNavigationRequest()) {
+      // A popup's first request can arrive before Playwright creates its frame.
+      // Treat it as a top-level navigation and apply the same allowlist.
+      let topLevel = true;
+      try { topLevel = !req.frame().parentFrame(); } catch {}
+      if (topLevel) {
+        const upgraded = httpsNavigation(req.url());
+        if (upgraded && ['GET', 'HEAD'].includes(req.method())) return await route.fulfill({ status: 307, headers: { location: upgraded, 'cache-control': 'no-store' }, body: '' });
+        if (!allowed(req.url())) return await route.abort();
+      }
+    }
+    await route.continue();
+  } catch {
+    // Closing a tab while a request is intercepted must not kill the worker.
+    await route.abort().catch(() => {});
+  }
+}
+function trackManualPage(extra) {
+  page = extra;
+  extra.setDefaultTimeout(10000);
+  extra.on('close', () => {
+    if (page === extra) page = context?.pages().filter(candidate => !candidate.isClosed()).at(-1) || null;
+  });
+}
 async function ensure() {
   if (context && page && !page.isClosed()) return;
   if (launch) return launch;
@@ -25,18 +53,13 @@ async function ensure() {
     fs.mkdirSync(PROFILE, { recursive: true, mode: 0o700 });
     context = await chromium.launchPersistentContext(PROFILE, { ...(PROXY ? { proxy: { server: PROXY } } : {}), channel: 'chromium', headless: process.env.SHOPPING_HEADFUL !== '1', args: ['--window-size=1920,1080', '--window-position=0,0', '--disable-blink-features=AutomationControlled'], chromiumSandbox: true, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', viewport: { width: 1920, height: 960 }, screen: { width: 1920, height: 1080 }, acceptDownloads: false, timeout: 45000 });
     page = context.pages()[0] || await context.newPage();
-    page.setDefaultTimeout(10000);
-    context.on('page', async extra => { if (extra !== page) await extra.close().catch(() => {}); });
-    await context.route('**/*', route => {
-      const req = route.request(); let u; try { u = new URL(req.url()); } catch { return route.abort(); }
-      if (/^(?:localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|\[?::1\]?)/i.test(u.hostname) || /^172\.(?:1[6-9]|2\d|3[01])\./.test(u.hostname)) return route.abort();
-      if (req.isNavigationRequest() && req.frame() === page.mainFrame()) {
-        const upgraded = httpsNavigation(req.url());
-        if (upgraded && ['GET', 'HEAD'].includes(req.method())) return route.fulfill({ status: 307, headers: { location: upgraded, 'cache-control': 'no-store' }, body: '' });
-        if (!allowed(req.url())) return route.abort();
-      }
-      return route.continue();
+    trackManualPage(page);
+    context.on('page', extra => {
+      if (extra === page) return;
+      if (manualUntil > Date.now()) trackManualPage(extra);
+      else void extra.close().catch(() => {});
     });
+    await context.route('**/*', navigationRoute);
     error = '';
   })();
   try { await launch; } finally { launch = null; }
@@ -200,4 +223,4 @@ const server = http.createServer(async (req, res) => {
 });
 if (require.main === module) server.listen(PORT, '127.0.0.1');
 process.on('SIGTERM', async () => { await context?.close().catch(() => {}); process.exit(0); });
-module.exports = { allowed, httpsNavigation, sku, hasSession, confirmedLogin, captureScreen, submitPassword };
+module.exports = { allowed, httpsNavigation, navigationRoute, sku, hasSession, confirmedLogin, captureScreen, submitPassword };
