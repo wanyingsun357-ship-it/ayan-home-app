@@ -1,6 +1,6 @@
 'use strict';
 const path = require('path'), net = require('net'), express = require('express');
-const { WebSocketServer, WebSocket } = require('ws');
+const { WebSocketServer, WebSocket, createWebSocketStream } = require('ws');
 const BASE = '/api/shopping/browser';
 const ORIGIN = 'https://entangledforever.com';
 function owner(req, origin = ORIGIN) {
@@ -53,9 +53,11 @@ function attach(server, { authorize, getState, vncPort = 5906, origin = ORIGIN, 
     wss.handleUpgrade(req, socket, head, ws => {
       const remote = net.connect({ host: '127.0.0.1', port: vncPort });
       const finish = () => { remote.destroy(); if (ws.readyState === WebSocket.OPEN) ws.close(); };
-      remote.on('data', data => { if (ws.readyState !== WebSocket.OPEN || ws.bufferedAmount > 4 * 1024 * 1024) return finish(); ws.send(data, { binary: true }); });
+      // Backpressure pauses the producer; a large screen update is not a disconnect.
+      const stream = createWebSocketStream(ws, { highWaterMark: 256 * 1024 });
+      stream.on('error', finish);
       remote.on('error', finish); remote.on('close', finish);
-      ws.on('message', data => { if (remote.writableLength > 4 * 1024 * 1024) return finish(); remote.write(data); });
+      remote.pipe(stream).pipe(remote);
       ws.on('error', finish); ws.on('close', () => { clearInterval(timer); remote.destroy(); });
       const timer = setInterval(async () => { if (!await authorized(req)) { ws.close(1008, '登录窗口已结束'); remote.destroy(); } }, recheckMs);
       timer.unref();

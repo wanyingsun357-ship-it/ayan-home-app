@@ -1,5 +1,15 @@
 # 项目状态与待办
 
+## 2026-10-26 购物远程画面大更新断线修复（已上线，待本人复测）
+
+- 用户完成国内出口扫码后，截图顶部昵称/右侧账号均正常，但报告操作一次就画面断开。购物车最终可用性仍未确认，远程断线不等于京东退出。
+- 查明desktop旧实现ws.bufferedAmount/remote.writableLength超过4MiB直接断开。隔离24MiB随机画面/慢客户端测试旧实现约7.95MB后断线，新实现完整接收、摘要一致且连接保持；这是已复现的一类原因，不冒充已测用户真实网络。
+- 改用ws.createWebSocketStream与双向pipe背压，拥塞暂停生产者而不是断线或无界积压；原配对、同源、单连接、租约复核、1MiB输入消息保护保留。客户端旧RFB连接迟到的connect/disconnect事件不再覆盖新连接状态或清掉新保活计时器。
+- 现有路由/语音并存、真实隔离认证、noVNC键盘/连续拖动/断线重连/结束释放测试通过；新慢客户端大画面测试通过。全部模拟服务/临时浏览器，无京东请求或用户凭据。
+- 空闲核对聊天队列0、无bridge子任务/进行中电话后，仅部署desktop.cjs/js并重启bridge，购物worker PID与哈希保持不变，用户浏览器/profile/国内出口均保留。请本人刷新外层远程窗口加载新脚本，再测试操作，无需先重新扫码。
+- 备份 /root/ayan/backups/shopping-stream-20261027-054200；desktop SHA256 5dd87a265886a7b741f14bb13a88a1fe2b26e8338aee2fd5818c78857f39fb48。
+
+
 ## 2026-10-26 京东登录同步跳转修复（已部署，待本人登录验证）
 
 - 部署备份 /root/ayan/backups/shopping-navigation-20261027-133631；worker SHA256 f76df5dfe34f6d400b51ccfc14296801bee71b0722758abfbf98d13e6e839c2a。购物/出口服务active，proxyConfigured=true；浏览器按需重新打开，聊天/前端/代理配置均未修改。

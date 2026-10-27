@@ -21,8 +21,9 @@ async function connect() {
     screen.replaceChildren();
     rfb = new RFB(screen, `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/shopping/browser/desktop-ws`);
     rfb.scaleViewport = true; rfb.resizeSession = false; rfb.clipViewport = false; rfb.viewOnly = false; rfb.focusOnClick = true;
-    rfb.addEventListener('connect', () => { status.textContent = '已连接，可以直接操作。验证完成后点右上角返回。'; });
-    rfb.addEventListener('disconnect', () => { clearInterval(timer); if (!ending) { status.textContent = '设备连接已通过，但远程画面已断开。请点“重新连接”。'; retryMessage.textContent = '这不是京东登录结果，也不表示主页未配对。先重新连接画面，不用重新输入设备连接码。'; retry.hidden = false; } });
+    const connection = rfb;
+    rfb.addEventListener('connect', () => { if (rfb !== connection) return; status.textContent = '已连接，可以直接操作。验证完成后点右上角返回。'; });
+    rfb.addEventListener('disconnect', () => { if (rfb !== connection) return; clearInterval(timer); if (!ending) { status.textContent = '设备连接已通过，但远程画面已断开。请点“重新连接”。'; retryMessage.textContent = '这不是京东登录结果，也不表示主页未配对。先重新连接画面，不用重新输入设备连接码。'; retry.hidden = false; } });
     timer = setInterval(() => { if (!document.hidden) control('begin').catch(() => { rfb?.disconnect(); }); }, 30000);
   } catch (e) { status.textContent = e.message; retryMessage.textContent = e.needsPairing ? '请打开主页完成设备连接，再回到此窗口。' : '暂时无法连接远程画面，可以稍后重试。'; retry.hidden = false; }
   finally { connecting = false; }
