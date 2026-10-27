@@ -1,10 +1,12 @@
 # 项目状态与待办
 
-## 2026-10-26 京东登录同步跳转修复（已准备并测试，未部署）
+## 2026-10-26 京东登录同步跳转修复（已部署，待本人登录验证）
+
+- 部署备份 /root/ayan/backups/shopping-navigation-20261027-133631；worker SHA256 f76df5dfe34f6d400b51ccfc14296801bee71b0722758abfbf98d13e6e839c2a。购物/出口服务active，proxyConfigured=true；浏览器按需重新打开，聊天/前端/代理配置均未修改。
 
 - 用户扫码后先遇http://passport.jd.com/relay/loginRelay被旧HTTPS-only策略拦截，手动改HTTPS后出现安全验证；随后首页有账户卡片但顶部仍请登录。再扫码跳到https://sso.jd.hk/sso/sync/redirect被旧jd.com/360buy.com主导航白名单拦截。不能据此确认登录成功，也不能把所有ERR_FAILED归为京东风控。
 - 隔离工作树work/shopping-navigation-20261026：仅增加sso.jd.hk精确/sso/sync/redirect路径，京东可信域HTTP GET/HEAD主导航在本地307升级HTTPS，保留编码查询，不把登录参数输出/归档。不放开整个jd.hk或任意域，拒绝用户信息/非默认端口；旧HTTPS购物允许规则保留。
-- 无网络单测通过精确允许、恶意后缀/用户信息/私网/非默认端口拒绝、编码参数保持及首页升级。线上未修改、服务未重启；用户明确仍在远程窗口操作，必须等本人完成退出再应用，不能以租约超时替代用户退出确认。
+- 无网络单测通过精确允许、恶意后缀/用户信息/私网/非默认端口拒绝、编码参数保持及首页升级。用户随后明确回复“好啦”已退出；核对busy/manualActive均false后，仅更新worker并重启购物服务。登录资料保留，未主动请求京东或重放带参数的登录地址，真实登录待本人验证。
 - 京东官方https://global.m.jd.com/rules.html及security.jd.com/static/JSRC-V7.0.pdf确认jd.hk属于京东；未请求用户带凭据的跳转URL。国内出口继续保留，未再次访问京东账号。
 
 
