@@ -15,7 +15,7 @@ async function ensure() {
   if (launch) return launch;
   launch = (async () => {
     fs.mkdirSync(PROFILE, { recursive: true, mode: 0o700 });
-    context = await chromium.launchPersistentContext(PROFILE, { channel: 'chromium', headless: process.env.SHOPPING_HEADFUL !== '1', ...(process.env.SHOPPING_HEADFUL === '1' ? { args: ['--window-size=1360,1024', '--window-position=0,0'] } : {}), chromiumSandbox: true, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', viewport: { width: 1280, height: 900 }, acceptDownloads: false, timeout: 45000 });
+    context = await chromium.launchPersistentContext(PROFILE, { channel: 'chromium', headless: process.env.SHOPPING_HEADFUL !== '1', args: ['--window-size=1920,1080', '--window-position=0,0', '--disable-blink-features=AutomationControlled'], chromiumSandbox: true, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', viewport: { width: 1920, height: 960 }, screen: { width: 1920, height: 1080 }, acceptDownloads: false, timeout: 45000 });
     page = context.pages()[0] || await context.newPage();
     page.setDefaultTimeout(10000);
     context.on('page', async extra => { if (extra !== page) await extra.close().catch(() => {}); });
@@ -149,7 +149,9 @@ async function action(b) {
       if (!/^(?:passport|safe|aq)\.jd\.com$/.test(new URL(page.url()).hostname)) fault('手动验证只在京东登录页面开放', 403);
       if (name === 'loginClick') {
         const x = Number(b.x), y = Number(b.y); if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1280 || y < 0 || y > 900) fault('请点登录画面内的位置');
-        await page.mouse.click(x, y);
+        // The existing screenshot UI sends normalized 1280x900 coordinates.
+        const size = page.viewportSize();
+        await page.mouse.click(x * size.width / 1280, y * size.height / 900);
       } else { const code = String(b.code || ''); if (!/^\d{4,8}$/.test(code)) fault('只输入京东发来的数字验证码'); await page.keyboard.type(code, { delay: 80 }); }
     }
     lastAt = new Date().toISOString();

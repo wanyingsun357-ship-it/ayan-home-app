@@ -12,7 +12,7 @@ cleanup() {
   if [ -n "$display_pid" ]; then kill "$display_pid" 2>/dev/null || true; fi
 }
 trap cleanup EXIT TERM INT
-/usr/bin/Xvfb "$DISPLAY" -screen 0 1360x1024x24 -nolisten tcp -ac &
+/usr/bin/Xvfb "$DISPLAY" -screen 0 1920x1080x24 -nolisten tcp -ac &
 display_pid=$!
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if [ -S /tmp/.X11-unix/X96 ]; then break; fi
