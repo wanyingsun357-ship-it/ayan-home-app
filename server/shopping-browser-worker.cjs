@@ -1,6 +1,7 @@
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
+const diagnostics = require('./shopping-browser-diagnostics.cjs').createDiagnostics();
 const PROFILE = process.env.SHOPPING_PROFILE || '/var/lib/ayan-shopping/profile';
 const PROXY = process.env.SHOPPING_PROXY_SERVER || '';
 if (PROXY && PROXY !== 'socks5://127.0.0.1:3026') throw new Error('Invalid private shopping proxy endpoint');
@@ -52,6 +53,7 @@ async function ensure() {
   launch = (async () => {
     fs.mkdirSync(PROFILE, { recursive: true, mode: 0o700 });
     context = await chromium.launchPersistentContext(PROFILE, { ...(PROXY ? { proxy: { server: PROXY } } : {}), channel: 'chromium', headless: process.env.SHOPPING_HEADFUL !== '1', args: ['--window-size=1920,1080', '--window-position=0,0', '--disable-blink-features=AutomationControlled'], chromiumSandbox: true, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', viewport: { width: 1920, height: 960 }, screen: { width: 1920, height: 1080 }, acceptDownloads: false, timeout: 45000 });
+    diagnostics.install(context);
     page = context.pages()[0] || await context.newPage();
     trackManualPage(page);
     context.on('page', extra => {
@@ -198,6 +200,7 @@ const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'a
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'GET' && req.url === '/state') return json(res, 200, await state());
+    if (req.method === 'GET' && req.url === '/diagnostics') return json(res, 200, { entries: diagnostics.snapshot() });
     if (req.method === 'GET' && req.url === '/screen') { const image = await screenshot(); res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' }); return res.end(image); }
     if (req.method === 'GET' && req.url === '/qr') {
       if (!page || !/\bpassport\.jd\.com\b/.test(page.url())) fault('登录二维码尚未准备好', 409);

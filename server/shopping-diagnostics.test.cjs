@@ -1,0 +1,13 @@
+'use strict';
+const assert = require('node:assert/strict');
+const { endpoint, signals, createDiagnostics } = require('./shopping-browser-diagnostics.cjs');
+const { EventEmitter } = require('node:events');
+assert.deepEqual(endpoint('https://api.m.jd.com/secret-user?functionId=pcCart&token=secret'), { host: 'api.m.jd.com', operation: 'cart' });
+assert.equal(endpoint('https://jd.com.evil.test/'), null);
+assert.deepEqual(signals({ code: 403, msg: '用户 secret 风险验证', data: { token: 'secret' } }), { verification: true, codes: [{ field: 'code', value: '403' }] });
+assert.deepEqual(signals({ code: 'secret', message: 'private account', data: { pin: 'secret' } }), {});
+const context = new EventEmitter(), diagnostics = createDiagnostics(); diagnostics.install(context);
+for (let i = 0; i < 105; i++) context.emit('requestfailed', { url: () => 'https://cart.jd.com/private?token=secret', resourceType: () => 'xhr', failure: () => ({ errorText: 'net::ERR_FAILED secret' }) });
+assert.equal(diagnostics.snapshot().length, 100);
+assert.equal(JSON.stringify(diagnostics.snapshot()).includes('secret'), false);
+console.log('PASS: diagnostic metadata strips URLs, credentials, messages and bodies; bounded to 100 entries');
