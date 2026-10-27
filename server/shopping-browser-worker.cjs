@@ -2,6 +2,8 @@
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
 const PROFILE = process.env.SHOPPING_PROFILE || '/var/lib/ayan-shopping/profile';
+const PROXY = process.env.SHOPPING_PROXY_SERVER || '';
+if (PROXY && PROXY !== 'socks5://127.0.0.1:3026') throw new Error('Invalid private shopping proxy endpoint');
 const PORT = Number(process.env.SHOPPING_BROWSER_PORT || 3025);
 const HOSTS = ['jd.com', '360buy.com'];
 let context, page, launch, busy = false, error = '', confirmed = false, lastAt = null, loginEvidence = null, manualUntil = 0;
@@ -15,7 +17,7 @@ async function ensure() {
   if (launch) return launch;
   launch = (async () => {
     fs.mkdirSync(PROFILE, { recursive: true, mode: 0o700 });
-    context = await chromium.launchPersistentContext(PROFILE, { channel: 'chromium', headless: process.env.SHOPPING_HEADFUL !== '1', args: ['--window-size=1920,1080', '--window-position=0,0', '--disable-blink-features=AutomationControlled'], chromiumSandbox: true, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', viewport: { width: 1920, height: 960 }, screen: { width: 1920, height: 1080 }, acceptDownloads: false, timeout: 45000 });
+    context = await chromium.launchPersistentContext(PROFILE, { ...(PROXY ? { proxy: { server: PROXY } } : {}), channel: 'chromium', headless: process.env.SHOPPING_HEADFUL !== '1', args: ['--window-size=1920,1080', '--window-position=0,0', '--disable-blink-features=AutomationControlled'], chromiumSandbox: true, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', viewport: { width: 1920, height: 960 }, screen: { width: 1920, height: 1080 }, acceptDownloads: false, timeout: 45000 });
     page = context.pages()[0] || await context.newPage();
     page.setDefaultTimeout(10000);
     context.on('page', async extra => { if (extra !== page) await extra.close().catch(() => {}); });
@@ -37,7 +39,7 @@ async function state() {
   const loginPage = running && (/\b(?:passport|safe|aq)\.jd\.com\b/.test(page.url()) || await page.locator('.qrcode-img,.qrcode-main,[class*="qrcode"] img').first().isVisible().catch(() => false));
   const qrRisk = !!loginPage && /本次扫码存在风险|扫码登录存在风险/.test(await page.locator('body').innerText({ timeout: 1500 }).catch(() => ''));
   const passwordForm = !!loginPage && await page.getByPlaceholder('账号名/手机号/邮箱', { exact: true }).isVisible().catch(() => false) && await page.locator('input[type="password"]:visible').first().isVisible().catch(() => false);
-  return { available: true, running, busy, manualActive: manualUntil > Date.now(), loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false };
+  return { available: true, running, busy, manualActive: manualUntil > Date.now(), loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false, proxyConfigured: !!PROXY };
 }
 async function submitPassword(target, body) {
   if (new URL(target.url()).hostname !== 'passport.jd.com') fault('密码只在京东官方登录页面填写', 403);

@@ -1,0 +1,16 @@
+[Unit]
+Description=Private shopping browser Hangzhou egress
+After=network-online.target
+Wants=network-online.target
+[Service]
+User=ayan-shopping
+Group=ayan-shopping
+ExecStart=/usr/bin/ssh -N -T -D 127.0.0.1:3026 -i /var/lib/ayan-shopping/egress/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/var/lib/ayan-shopping/egress/known_hosts -o ExitOnForwardFailure=yes -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 ayan-egress@121.43.185.197
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target

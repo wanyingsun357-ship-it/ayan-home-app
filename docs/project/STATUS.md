@@ -1,5 +1,16 @@
 # 项目状态与待办
 
+## 2026-10-26 阿里云杭州购物专用出口（已接通，京东仍受限）
+
+- 用户自行领取杭州ECS试用：121.43.185.197，Ubuntu22.04、2核2GiB、40GiB。试用是300元总抵扣/每小时0.833元上限/有效期3个月；中国内地公网流量20GB每月，不是220GB全部适用。未替用户购买付费资源或承诺试用无限免费。
+- 本人Workbench核对ED25519主机指纹SHA256:BvWckx+7pwus6Ufkrt02FfJ9EZFRFRJ7xou7QfZQdE0，手动加入仅允许原VPS来源的专用setup公钥后连接成功。setup密钥仅在原VPS /root/.ssh/ayan_aliyun_setup，禁止输出私钥；管理公钥禁用转发。独立代理密钥在/var/lib/ayan-shopping/egress，低权限ayan-shopping所有，不入Git。
+- 阿里云新增低权限ayan-egress用户、nologin/ForceCommand false，仅原VPS来源公钥、local转发至80/443、禁PTY/密码/agent/X11；配置/etc/ssh/sshd_config.d/60-ayan-egress.conf，sshd -t通过后reload。未开放公网代理端口、未改安全组或现有登录方式。
+- VPS新增ayan-shopping-egress.service：固定主机身份，经SSH加密隧道在127.0.0.1:3026提供SOCKS5，开机启动/断线重连。购物worker接受唯一私有代理端点，systemd drop-in 30-egress.conf只给购物设置环境变量。其他服务、聊天、主站、系统网络均未修改。
+- curl及低权限Chromium临时profile实际验证出口121.43.185.197/中国浙江杭州阿里云；失效代理测试确认Chromium报PROXY错误而不回退直连。初次api.ipify.org查询被目的端拒绝，换国内可达查询站确认，不是隧道认证失败。
+- 已保留用户profile，空闲时只重启购物服务；worker SHA256 9a788d88bb96015ea858e8093e16a4fdbce448cc39e5ff4c8dd5a35296c9e552，备份/root/ayan/backups/shopping-egress-20261027-131952。随后仅一次check访问cart.jd.com，仍session=true/loginPrompt=true/rateLimited=true，login=unverified；未自动扫码、加购或付款，停止进一步京东请求。换国内机房出口未解决，不能认定海外IP是唯一原因，后续需本人重新验证会话或进一步对照，不推荐继续购买服务器。
+- 回退只需移除购物服务30-egress.conf并恢复备份worker，daemon-reload且空闲重启购物服务；可停止egress服务。不要删除用户profile/账号资料，不覆盖主站。固定IP依赖保留当前云资源及其IP，不保证释放/节省停机后仍相同。
+
+
 ## 2026-10-26 购物浏览器环境对齐（配置上线，京东结果待验证）
 
 - 用户确认本人电脑网页购物车登录后可用；开代理时最初扫码也出现风险。问题缩小到远程网页环境/出口/会话，但未确定是IP原因。
