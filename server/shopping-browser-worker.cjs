@@ -9,7 +9,13 @@ const HOSTS = ['jd.com', '360buy.com'];
 let context, page, launch, busy = false, error = '', confirmed = false, lastAt = null, loginEvidence = null, manualUntil = 0;
 const attempts = new Map();
 function fault(message, status = 400) { const e = new Error(message); e.status = status; throw e; }
-function allowed(value) { try { const u = new URL(value); return u.protocol === 'https:' && !u.username && !u.password && HOSTS.some(host => u.hostname === host || u.hostname.endsWith('.' + host)); } catch { return false; } }
+function trustedNavigation(u) {
+  return !u.username && !u.password && !u.port && (HOSTS.some(host => u.hostname === host || u.hostname.endsWith('.' + host)) || (u.hostname === 'sso.jd.hk' && u.pathname === '/sso/sync/redirect'));
+}
+function allowed(value) { try { const u = new URL(value); return u.protocol === 'https:' && trustedNavigation(u); } catch { return false; } }
+function httpsNavigation(value) {
+  try { const u = new URL(value); if (u.protocol !== 'http:' || !trustedNavigation(u)) return null; u.protocol = 'https:'; return u.href; } catch { return null; }
+}
 function sku(value) { const s = String(value || ''); if (!/^\d{4,20}$/.test(s)) fault('请选择有效的京东商品'); return s; }
 function safeUrl(value) { try { const u = new URL(value); return u.origin + u.pathname; } catch { return ''; } }
 async function ensure() {
@@ -24,7 +30,11 @@ async function ensure() {
     await context.route('**/*', route => {
       const req = route.request(); let u; try { u = new URL(req.url()); } catch { return route.abort(); }
       if (/^(?:localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|\[?::1\]?)/i.test(u.hostname) || /^172\.(?:1[6-9]|2\d|3[01])\./.test(u.hostname)) return route.abort();
-      if (req.isNavigationRequest() && req.frame() === page.mainFrame() && !allowed(req.url())) return route.abort();
+      if (req.isNavigationRequest() && req.frame() === page.mainFrame()) {
+        const upgraded = httpsNavigation(req.url());
+        if (upgraded && ['GET', 'HEAD'].includes(req.method())) return route.fulfill({ status: 307, headers: { location: upgraded, 'cache-control': 'no-store' }, body: '' });
+        if (!allowed(req.url())) return route.abort();
+      }
       return route.continue();
     });
     error = '';
@@ -190,4 +200,4 @@ const server = http.createServer(async (req, res) => {
 });
 if (require.main === module) server.listen(PORT, '127.0.0.1');
 process.on('SIGTERM', async () => { await context?.close().catch(() => {}); process.exit(0); });
-module.exports = { allowed, sku, hasSession, confirmedLogin, captureScreen, submitPassword };
+module.exports = { allowed, httpsNavigation, sku, hasSession, confirmedLogin, captureScreen, submitPassword };
