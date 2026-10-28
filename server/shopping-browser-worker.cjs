@@ -22,7 +22,7 @@ function setPaused(value) {
 }
 function onCart() { try { const u = new URL(page.url()); return u.hostname === 'cart.jd.com' && u.pathname === '/cart_index'; } catch { return false; } }
 async function observeLimit() {
-  if (!page || page.isClosed()) return;
+  if (!page || page.isClosed() || page.url() === 'about:blank') return;
   const text = await page.locator('body').innerText({ timeout: 1500 }).catch(() => '');
   if (/操作太频繁|访问过于频繁|访问频繁/.test(text)) { setPaused(true); error = pauseMessage; }
 }
@@ -86,13 +86,31 @@ async function ensure() {
 function hasSession(names) { return names.includes('thor') && names.includes('pin') || names.includes('pt_key') && names.includes('pt_pin'); }
 async function sessionPresent() { if (!context) return false; return hasSession((await context.cookies('https://www.jd.com')).map(c => c.name)); }
 function confirmedLogin(e) { return !e.redirected && !e.loginPrompt && !e.rateLimited && (e.nickname || e.logout); }
-async function state() {
+async function browserState() {
   await observeLimit();
   const running = !!context && !!page && !page.isClosed();
   const loginPage = running && (/\b(?:passport|safe|aq)\.jd\.com\b/.test(page.url()) || await page.locator('.qrcode-img,.qrcode-main,[class*="qrcode"] img').first().isVisible().catch(() => false));
   const qrRisk = !!loginPage && /本次扫码存在风险|扫码登录存在风险/.test(await page.locator('body').innerText({ timeout: 1500 }).catch(() => ''));
   const passwordForm = !!loginPage && await page.getByPlaceholder('账号名/手机号/邮箱', { exact: true }).isVisible().catch(() => false) && await page.locator('input[type="password"]:visible').first().isVisible().catch(() => false);
   return { available: true, automationPaused, running, busy, manualActive: manualUntil > Date.now(), loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false, proxyConfigured: !!PROXY };
+}
+// Desktop leases must remain usable even when Chromium cannot answer DOM queries.
+let stateProbe = null;
+function connectionState() {
+  const running = !!context && !!page && !page.isClosed();
+  return { available: true, running, busy, manualActive: manualUntil > Date.now(), automationPaused,
+    loginPage: false, login: 'unverified', loginEvidence: null, title: '', url: '', lastAt,
+    error: automationPaused ? pauseMessage : error, headless: process.env.SHOPPING_HEADFUL !== '1',
+    paymentsEnabled: false, proxyConfigured: !!PROXY, pageStateUnavailable: true };
+}
+async function state() {
+  if (!context || !page || page.isClosed() || page.url() === 'about:blank') return connectionState();
+  if (!stateProbe) {
+    stateProbe = browserState().catch(() => connectionState()).finally(() => { stateProbe = null; });
+  }
+  let timer;
+  try { return await Promise.race([stateProbe, new Promise(resolve => { timer = setTimeout(() => resolve(connectionState()), 1500); })]); }
+  finally { clearTimeout(timer); }
 }
 async function submitPassword(target, body) {
   if (new URL(target.url()).hostname !== 'passport.jd.com') fault('密码只在京东官方登录页面填写', 403);
@@ -174,7 +192,13 @@ async function products() {
 async function action(b) {
   const name = String(b.action || '');
   if (!['login', 'refresh', 'check', 'search', 'open', 'cart', 'add', 'loginClick', 'loginCode', 'loginPassword', 'desktopBegin', 'desktopEnd', 'close'].includes(name)) fault('不支持这个浏览器操作');
-  if (name === 'desktopEnd') { manualUntil = 0; return { ok: true, state: await state() }; }
+  if (name === 'desktopEnd') { manualUntil = 0; return { ok: true, state: connectionState() }; }
+  if (name === 'desktopBegin' && context && page && !page.isClosed()) {
+    if (busy) fault('他正在操作这一页，等一下再试', 409);
+    if (process.env.SHOPPING_HEADFUL !== '1') fault('远程登录窗口尚未准备好', 503);
+    manualUntil = Date.now() + 120000;
+    return { ok: true, state: connectionState() };
+  }
   if (manualUntil > Date.now() && name !== 'desktopBegin') fault('你正在登录窗口里操作，请先在那个窗口点“完成，回 Shopping”', 409);
   if (busy) fault('他正在操作这一页，等一下再试', 409);
   if (name === 'close') { if (context) await context.close(); context = null; page = null; confirmed = false; return { ok: true, state: await state() }; }

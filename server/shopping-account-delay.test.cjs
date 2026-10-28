@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(__dirname+'/shopping-browser-worker.cjs','utf8');
-const sandbox={require,module:{exports:{}},URL,Buffer,console,process:{env:{},on(){}},setTimeout};
+const sandbox={require,module:{exports:{}},URL,Buffer,console,process:{env:{},on(){}},setTimeout,clearTimeout};
 vm.runInNewContext(source+'\nmodule.exports.test = async (target) => { page=target; context={cookies:async()=>[{name:"thor"},{name:"pin"}]}; const loggedIn=await checkAccount(); return {loggedIn,evidence:loginEvidence,error}; };',sandbox);
 (async()=>{
  let samples=0;

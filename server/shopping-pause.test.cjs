@@ -5,7 +5,7 @@ const source=fs.readFileSync(__dirname+'/shopping-browser-worker.cjs','utf8');
 let visits=0,body='访问频繁',url='https://cart.jd.com/cart_index',ready=false;
 const target={isClosed:()=>false,url:()=>url,goto:async()=>{visits++},waitForTimeout:async()=>{},title:async()=>'',locator:()=>({innerText:async()=>body,evaluateAll:async()=>[],first(){return this},isVisible:async()=>false}),evaluate:async()=>({loginPrompt:false,nickname:true,logout:false,rateLimited:body.includes('访问频繁'),cartUnavailable:!ready,cartReady:ready})};
 const ctx={cookies:async()=>[{name:'thor'},{name:'pin'}]};
-function load(){const sandbox={require,module:{exports:{}},URL,Buffer,console,process:{env:{SHOPPING_PROFILE:dir,SHOPPING_HEADFUL:'1'},on(){}},setTimeout};vm.runInNewContext(source+'\nmodule.exports.test={action,state,set:(p,c)=>{page=p;context=c;},paused:()=>automationPaused};',sandbox);sandbox.module.exports.test.set(target,ctx);return sandbox.module.exports.test;}
+function load(){const sandbox={require,module:{exports:{}},URL,Buffer,console,process:{env:{SHOPPING_PROFILE:dir,SHOPPING_HEADFUL:'1'},on(){}},setTimeout,clearTimeout};vm.runInNewContext(source+'\nmodule.exports.test={action,state,set:(p,c)=>{page=p;context=c;},paused:()=>automationPaused};',sandbox);sandbox.module.exports.test.set(target,ctx);return sandbox.module.exports.test;}
 (async()=>{let w=load();
  assert.equal((await w.state()).automationPaused,true);
  for(const action of ['cart','search','open','add','refresh','login']) await assert.rejects(()=>w.action({action,clientId:'fixture-1234567890',skuId:'12345',query:'test'}),e=>e.status===429);
