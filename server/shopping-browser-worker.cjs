@@ -20,7 +20,7 @@ function setPaused(value) {
   } else fs.rmSync(pauseFile, { force: true });
   automationPaused = value;
 }
-function onCart() { try { const u = new URL(page.url()); return u.hostname === 'cart.jd.com' && u.pathname === '/cart_index'; } catch { return false; } }
+function onCart() { try { const u = new URL(page.url()); return u.hostname === 'cart.jd.com' && /^\/cart_index(?:&czLogin=1)?$/.test(u.pathname); } catch { return false; } }
 async function observeLimit() {
   if (!page || page.isClosed() || page.url() === 'about:blank') return;
   const text = await page.locator('body').innerText({ timeout: 1500 }).catch(() => '');
