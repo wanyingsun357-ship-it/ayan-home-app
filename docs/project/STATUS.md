@@ -1,5 +1,15 @@
 # 项目状态与待办
 
+## 2026-10-28 晏白整理恢复与失败隔离（已部署）
+
+- 基线54734903干净；最后正常聊天水位150136不是失败整理的实际水位。首次整理输入152065，长思考/记忆写入后达到五分钟超时；重试输入183412，随后明确Prompt is too long。未发现认证/额度错误证据。
+- 完整原始记录和sessions先备份。恢复副本只取最后正常回复前843行，确认之后仅内部整理；在独立副本生成有效交接1689字符。未删除原始记录、未替用户发送聊天。已核实两批16条Echo写入均完整入库，无需重复生成。
+- 同一App会话s-a608eb96接入新Claude上下文ec64013a-aa7b-4180-bcce-af489111b102，估算29124 tokens，含约19496 tokens近期原文及交接/固定记忆；完整App消息逐项保持，仅追加整理完成标记。聊天模型仍account/claude-opus-4-6。原始transcript哈希不变；原会话保留供恢复，不宣称压缩后模型仍逐字携带全部历史。
+- 整理专用调用新增native fork-session，失败内容不再追加到活动聊天；工具限定Write并禁用MCP，effort low，超时15分钟。仅影响memory整理，不改变普通聊天工具/模型。公共模块server/compact-handover-policy.cjs、限定集成补丁及实际处理器隔离测试入库，完整私有bridge不入库。
+- 验证：候选bridge语法、真实处理器的模拟调用（fork/工具/MCP/timeout/结果解析）通过；恢复副本真实模型成功；部署后health queue0，原记录哈希和App历史一致，Echo核对通过。未来正常自动整理的完整真实链路待下一次实际触发验证，不宣称绝不再超长。
+- 备份/root/ayan/backups/compact-repair-2026-10-28T11-32-48-298Z；恢复材料/root/ayan/compact-repair-20261028及旧transcript均私有保留。本轮只重启bridge，未触碰购物浏览器/前端/个人资料。购物cart_index&czLogin=1路径漏认仍是另一个待修任务。
+
+
 ## 2026-10-28 远程窗口状态读取卡住修复（已部署）
 
 - 基线f049e9e干净，服务active/NRestarts0且内存充足；/diagnostics即时可读、VNC/worker监听正常，但/state实测55秒不返回。故障定位到页面状态读取阻塞连接流程，尚未确定具体Chromium调用卡住的内部原因。
