@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'shopping-state-proof-'));
+const sandbox={require,module:{exports:{}},URL,Buffer,console,setTimeout,clearTimeout,process:{env:{SHOPPING_PROFILE:dir},on(){}}};
+vm.runInNewContext(fs.readFileSync(__dirname+'/shopping-browser-worker.cjs','utf8')+'\nmodule.exports.test={state,set:(p,c,verified)=>{page=p;context=c;confirmed=verified;}};',sandbox);
+const w=sandbox.module.exports.test;let probes=0,limited=false,loginPage=false;
+const p={isClosed:()=>false,url:()=> 'https://cart.jd.com/cart_index&czLogin=1',locator(){throw Error('status must not query serial locators')},evaluate:async()=>{probes++;return {title:'cart',loginPage,qrRisk:false,passwordForm:false,rateLimited:limited}}};
+(async()=>{w.set(p,{cookies:async()=>[{name:'thor'},{name:'pin'}]},true);let s=await w.state();assert.equal(s.login,'confirmed');assert.equal(probes,1);assert(!s.pageStateUnavailable);
+w.set(p,{cookies:async()=>[]},false);s=await w.state();assert.equal(s.login,'needed');
+w.set(p,{cookies:async()=>[{name:'thor'},{name:'pin'}]},false);s=await w.state();assert.equal(s.login,'unverified');
+w.set(p,{cookies:async()=>[{name:'thor'},{name:'pin'}]},true);limited=true;s=await w.state();assert(s.automationPaused);assert.notEqual(s.login,'confirmed');
+limited=false;loginPage=true;s=await w.state();assert.notEqual(s.login,'confirmed');
+console.log('PASS one DOM snapshot, verified state retained, cookies alone not verified, limit/login page cannot report confirmed');})().finally(()=>fs.rmSync(dir,{recursive:true,force:true})).catch(e=>{console.error(e);process.exitCode=1});

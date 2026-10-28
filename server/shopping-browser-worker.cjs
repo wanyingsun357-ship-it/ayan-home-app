@@ -87,12 +87,25 @@ function hasSession(names) { return names.includes('thor') && names.includes('pi
 async function sessionPresent() { if (!context) return false; return hasSession((await context.cookies('https://www.jd.com')).map(c => c.name)); }
 function confirmedLogin(e) { return !e.redirected && !e.loginPrompt && !e.rateLimited && (e.nickname || e.logout); }
 async function browserState() {
-  await observeLimit();
-  const running = !!context && !!page && !page.isClosed();
-  const loginPage = running && (/\b(?:passport|safe|aq)\.jd\.com\b/.test(page.url()) || await page.locator('.qrcode-img,.qrcode-main,[class*="qrcode"] img').first().isVisible().catch(() => false));
-  const qrRisk = !!loginPage && /本次扫码存在风险|扫码登录存在风险/.test(await page.locator('body').innerText({ timeout: 1500 }).catch(() => ''));
-  const passwordForm = !!loginPage && await page.getByPlaceholder('账号名/手机号/邮箱', { exact: true }).isVisible().catch(() => false) && await page.locator('input[type="password"]:visible').first().isVisible().catch(() => false);
-  return { available: true, automationPaused, running, busy, manualActive: manualUntil > Date.now(), loginPage, qrRisk, passwordForm, login: running ? confirmed ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed' : 'needed', loginEvidence, title: running ? (await page.title().catch(() => '')).slice(0, 150) : '', url: running ? safeUrl(page.url()) : '', lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false, proxyConfigured: !!PROXY };
+  const target = page;
+  const running = !!context && !!target && !target.isClosed();
+  if (!running) return connectionState();
+  // A single DOM snapshot avoids serial locator probes consuming the state deadline.
+  const view = await target.evaluate(() => {
+    const visible = node => { if (!node) return false; const r = node.getBoundingClientRect(), s = getComputedStyle(node); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
+    const text = document.body?.innerText || '';
+    const loginPage = /^(?:passport|safe|aq)\.jd\.com$/.test(location.hostname) || [...document.querySelectorAll('.qrcode-img,.qrcode-main,[class*="qrcode"] img')].some(visible);
+    return { title: document.title.slice(0, 150), loginPage,
+      qrRisk: loginPage && /本次扫码存在风险|扫码登录存在风险/.test(text),
+      passwordForm: loginPage && visible(document.querySelector('input[placeholder="账号名/手机号/邮箱"]')) && [...document.querySelectorAll('input[type="password"]')].some(visible),
+      rateLimited: /操作太频繁|访问过于频繁|访问频繁/.test(text) };
+  });
+  if (target !== page || target.isClosed()) return connectionState();
+  if (view.rateLimited) { setPaused(true); error = pauseMessage; }
+  const login = confirmed && !view.loginPage && !view.rateLimited ? 'confirmed' : await sessionPresent() ? 'unverified' : 'needed';
+  return { available: true, automationPaused, running, busy, manualActive: manualUntil > Date.now(),
+    loginPage: view.loginPage, qrRisk: view.qrRisk, passwordForm: view.passwordForm, login, loginEvidence,
+    title: view.title, url: safeUrl(target.url()), lastAt, error, headless: process.env.SHOPPING_HEADFUL !== '1', paymentsEnabled: false, proxyConfigured: !!PROXY };
 }
 // Desktop leases must remain usable even when Chromium cannot answer DOM queries.
 let stateProbe = null;

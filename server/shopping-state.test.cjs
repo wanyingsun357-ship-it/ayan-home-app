@@ -3,7 +3,7 @@ const source=fs.readFileSync(__dirname+'/shopping-browser-worker.cjs','utf8');
 const sandbox={require:require('node:module').createRequire(__dirname+'/shopping-browser-worker.cjs'),module:{exports:{}},URL,Buffer,console,setTimeout,clearTimeout,process:{env:{SHOPPING_HEADFUL:'1',SHOPPING_PROFILE:'/tmp/unused-shopping-state-test'},on(){}}};
 vm.runInNewContext(source+'\nmodule.exports.test={state,action,set:(p,c)=>{page=p;context=c;}};',sandbox);
 const w=sandbox.module.exports.test;let reads=0;
-const p={isClosed:()=>false,url:()=> 'https://cart.jd.com/cart_index',locator:()=>{reads++;return {innerText:()=>new Promise(()=>{})}}};
+const p={isClosed:()=>false,url:()=> 'https://cart.jd.com/cart_index',evaluate:()=>{reads++;return new Promise(()=>{})}};
 (async()=>{w.set(p,{});let start=Date.now();let s=await w.state();assert(s.pageStateUnavailable);assert(Date.now()-start<2200);await w.state();assert.equal(reads,1,'only one hung probe retained');
 start=Date.now();s=await w.action({action:'desktopBegin'});assert(s.state.manualActive);assert(Date.now()-start<100);s=await w.action({action:'desktopEnd'});assert(!s.state.manualActive);
 p.url=()=> 'about:blank';s=await w.state();assert(s.running);assert.equal(reads,1);

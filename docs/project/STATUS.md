@@ -1,5 +1,13 @@
 # 项目状态与待办
 
+## 2026-10-28 登录检查成功却显示待核对（已部署）
+
+- 基线9fb089ee干净；真实单次只读check返回cartReady=true，但附带state因1500ms超时返回unverified/loginEvidence=null/pageStateUnavailable=true。旧暂停已解除，当前问题是状态读取覆盖成功结果。
+- browserState改为一次DOM快照读取页面标题、登录控件和限流标记，避免串行locator探测耗尽状态读取时限；保留1500ms上限和单挂起探测。未将cookie存在或截图直接当作登录确认，仍需真实check确认；登录页及限流不能显示confirmed。
+- 四组测试通过：单快照/真实已确认结果/未登录与仅cookie/限流/登录页，卡住探测有界与人工窗口，购物车后缀恢复，暂停保护；语法通过。
+- 空闲且暂停已解除后仅替换worker并重启购物服务，profile保留。重启后只执行一次正常cart打开核对，没有反复请求、加购或付款。真实核实通过=True；cartReady=True，actionLogin=confirmed，stateLogin=confirmed，pageStateUnavailable=False，paused=False。
+- 备份/root/ayan/backups/shopping-state-proof-20261028-200813。未修改bridge、前端或晏白会话；若真实核实未通过，需继续查状态读取或第三方响应，不能宣称已恢复。
+
 ## 2026-10-28 正常购物车登录后缀识别修复（已部署）
 
 - 用户实际远程窗口已恢复，购物车明确显示“空空的”，用户确认本来无商品；但检查登录仍保留暂停。只读state确认URL为https://cart.jd.com/cart_index&czLogin=1、loginEvidence=null，精确路径判断导致未检查DOM，不是新一次限流证据。
