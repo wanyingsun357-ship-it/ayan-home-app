@@ -1,0 +1,35 @@
+/* Reserve a little white room above the textured wall instead of clipping a
+   translated avatar at the scroll viewport's top edge. */
+:root[data-visual='orange'][data-view='moments'] .lavender-moments .mo-feed{padding-top:18px;border-top:0}
+:root[data-visual='orange'][data-view='moments'] .lavender-moments .mo-feed::before{content:'';position:absolute;top:0;left:0;right:0;height:18px;background:var(--mo-card);pointer-events:none}
+:root[data-visual='orange'][data-view='moments'] .vera-profile{padding-top:0;z-index:1}
+:root[data-visual='orange'][data-view='moments'] .vera-profile::before,:root[data-visual='orange'][data-view='moments'] .vera-profile::after{display:none}
+:root[data-visual='orange'][data-view='moments'] .vera-profile>.paper-avatar{transform:translateY(-12px);box-shadow:0 0 0 6px var(--mo-card)}
+:root[data-visual='orange'][data-view='moments'] .vera-profile>h2{margin-top:-12px}
+/* One compact disclosure at the end of a message; no second caption card. */
+.call-caption.compact{width:100%;min-width:0}
+.call-caption.compact .call-caption-primary{display:block;white-space:pre-wrap;overflow-wrap:anywhere}
+.call-caption.compact .call-translation-toggle{float:right;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;margin:1px -3px 0 8px;padding:2px;border:0;background:none;color:inherit;width:22px;height:22px;cursor:pointer;opacity:.7}
+.call-caption.compact .call-translation-toggle svg{display:block;width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+:root[data-visual='orange'][data-theme] .call .call-caption.compact .call-translation-toggle svg{width:15px;height:15px;stroke-width:1.4}
+.call-caption.compact .call-caption-translation{clear:both;font:12px/1.8 Arial,sans-serif;opacity:.76;padding-top:7px;white-space:pre-wrap;overflow-wrap:anywhere}
+:root[data-visual='orange'][data-theme] .call .call-line{align-self:flex-start;width:fit-content;max-width:88%;text-align:left}
+:root[data-visual='orange'][data-theme] .call .call-line.her{align-self:flex-end;text-align:left}
+:root[data-visual='orange'][data-theme] .call .call-type textarea::placeholder{color:var(--text-dim);opacity:.8}
+:root[data-visual='orange'][data-theme] .call.call-history{height:var(--app-viewport-height,calc(100dvh - var(--kb,0px)));bottom:auto;z-index:180;padding-top:calc(10px + var(--app-safe-top,env(safe-area-inset-top,0px)));padding-bottom:max(16px,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)));backdrop-filter:none;-webkit-backdrop-filter:none}
+:root[data-visual='orange'][data-theme] .call-history-head{display:flex;align-items:center;gap:10px;padding:0 14px 20px;flex:none;background:none;border:0;color:var(--text)}
+:root[data-visual='orange'][data-theme] .call-history-head>div{flex:1;text-align:center;min-width:0}
+:root[data-visual='orange'][data-theme] .call-history-head>span{width:40px;flex:none}
+:root[data-visual='orange'][data-theme] .call-history-head h2{font:500 18px/1.6 var(--sans);margin:0;color:var(--text)}
+:root[data-visual='orange'][data-theme] .call-history-head p{font:10px/1.8 var(--sans);margin:4px 0 0;color:var(--text-dim)}
+:root[data-visual='orange'][data-theme] .call.call-history .call-history-list{padding-top:18px;gap:20px;mask-image:none;-webkit-mask-image:none;justify-content:flex-start}
+.call-history .call-record{display:flex;flex-direction:column;align-items:flex-start;width:100%;gap:7px}
+.call-history .call-record.her{align-items:flex-end}
+.call-history .call-history-who{display:flex;align-items:center;gap:7px;padding:0 4px;font:11px/1.6 var(--sans);color:var(--text-soft)}
+.call-history-cloud{display:grid;place-items:center;width:25px;height:25px;padding:3px;border:0;background:none;color:inherit;cursor:pointer}
+.call-history-cloud svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+:root[data-visual='orange'][data-theme][data-view='chat'] .call-history-cloud svg{width:17px;height:17px;stroke-width:1.4}
+.call-history-empty{font:13px/1.7 var(--sans);color:var(--text-dim);text-align:center;width:100%;margin-top:30px}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-thought-mask .thought{height:calc(var(--app-viewport-height,100dvh) * .56);max-height:calc(var(--app-viewport-height,100dvh) - max(12px,var(--app-safe-top,env(safe-area-inset-top,0px))))}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-thought-mask .thought.full{height:calc(var(--app-viewport-height,100dvh) - max(12px,var(--app-safe-top,env(safe-area-inset-top,0px))))}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-thought-mask .thought-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}

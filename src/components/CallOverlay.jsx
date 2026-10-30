@@ -1,5 +1,6 @@
 import {isPreviewHost} from '../utils/previewHost.js'
 import CallCaption from './CallCaption.jsx'
+import {callEntries,appendCallEntry} from '../utils/callEntries.js'
 import {fadeCallTranscript} from '../utils/callTranscript.js'
 import {useCallName} from '../utils/chatLook.js'
 import {useAppearance} from '../utils/appearance.js'
@@ -18,7 +19,7 @@ import './call.css'
 //   她说:流式识别,一句定稿后静音 1 秒算说完 → /api/call/say
 //   他答:英文字幕大字 + 中文小字,ElevenLabs 流式放;放的时候麦克风静音(防回声,一期不做打断)
 //   挂断:她按红钮 / 他 [HANGUP] 放完这句 → 聊天里落通话卡
-// 界面:正在说的那句大字居中,说完往上推变小变淡;上滑看完整记录;只有说完的才标 You / 晏白
+// 原版保留大字播放态；紫色只显示完成消息的普通气泡，播放状态不额外造一份消息。
 const fmt = (n) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
 const SILENT = 'data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YUAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 const Ic = {
@@ -37,6 +38,7 @@ const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Typ
 export default function CallOverlay() {
   const visible = usePageVisible()
   const warm=useAppearance().theme==='orange'
+  const warmRef=useRef(warm);warmRef.current=warm
   const [call, setCall] = useState(null)          // 服务器视角的通话
   const callName=useCallName(call?.session)
   const [phase, setPhase] = useState('idle')      // idle | ringing | active | ended
@@ -106,7 +108,7 @@ export default function CallOverlay() {
       if(event.call&&event.mediaOwned){
         if(!nativeOwned.current){nativeOwned.current=true;cleanupMedia();stopRing()}
         window.__inCall=true;setCall(event.call);setPhase(event.call.status);setNeedTap(false)
-        setHistory((event.call.entries||[]).map(e=>({who:e.who,text:e.text,zh:e.zh})))
+        setHistory(callEntries(event.call.entries||[]))
         if(!typingRef.current)setMuted(!!event.muted)
       }
     }).then(d=>{if(stopped)d();else dispose=d}).catch(()=>{})
@@ -138,7 +140,7 @@ export default function CallOverlay() {
         offsetRef.current = Date.now() - (d.serverNow || Date.now())
         if (d.call.by === 'him' && d.call.status === 'ringing') { incoming(d.call); return }
         setCall(d.call); setPhase(d.call.status); setNeedTap(true); d.call.entries.forEach((e) => { if (e.who === 'him') himDoneRef.current.add(e.t) })
-        setHistory(d.call.entries.map((e) => ({ who: e.who, text: e.text, zh: e.zh })))
+        setHistory(callEntries(d.call.entries))
       }
     }).catch(() => {})
   }, [])
@@ -332,6 +334,7 @@ export default function CallOverlay() {
   const onSeg = (text) => { if (!text) return; playQueue.current.push({ entry: { text, zh: '', seg: true } }); if (!playingRef.current) playNext() }
   // 整段落库:把已经念过的句子从全文里抠掉,剩下的尾巴念完;中文补到这轮上
   const onFinal = (entry, hangup) => {
+    if(warmRef.current)setHistory(h=>appendCallEntry(h,{...entry,who:'him'}))
     if (!entry.segs || !entry.segs.length) { enqueueHim(entry, hangup); return }
     let tail = entry.text.replace(/\s+/g, ' ').trim()
     const played = (turnRef.current?.played || []).concat(nowSegRef.current ? [nowSegRef.current] : [], playQueue.current.filter((x) => x.entry.seg).map((x) => x.entry.text))
@@ -347,7 +350,7 @@ export default function CallOverlay() {
     turnRef.current = t
     if (close) {
       const full = t.played.join(' ').trim()
-      if (full) setHistory((h) => [...h, { who: 'him', text: full, zh: t.zh || '' }])
+      if (full&&!warmRef.current) setHistory((h) => [...h, { who: 'him', text: full, zh: t.zh || '' }])
       turnRef.current = null
     }
   }
@@ -361,12 +364,12 @@ export default function CallOverlay() {
     const done = async () => {
       setSpeaking(null); nowSegRef.current = ''
       if (entry.seg) turnAppend(entry.text, entry.zh, !!entry.final)
-      else setHistory((h) => [...h, { who: 'him', text: entry.text, zh: entry.zh }])
+      else if(!warmRef.current)setHistory((h) => [...h, { who: 'him', text: entry.text, zh: entry.zh }])
       if (hangup) { await hangUp('him'); return }
       playNext()
     }
     if (!entry.text) { done(); return }
-    // 流式的一轮:大字区显示整轮到目前为止的话,正在念的这句在最后
+    // Keep playback state for microphone ownership and the original theme.
     setSpeaking(entry.seg ? { text: [...(turnRef.current?.played || []), entry.text].join(' '), zh: entry.zh || turnRef.current?.zh || '', cur: entry.text } : { text: entry.text, zh: entry.zh })
     if (quietRef.current) { setTimeout(done, Math.min(12000, 1200 + entry.text.length * 55)); return }
     if (IOS && ctxRef.current) {
@@ -481,8 +484,7 @@ export default function CallOverlay() {
 
   const status = phase === 'ringing' ? (call?.by === 'him' ? `${callName} 来电` : '呼叫中…') : phase === 'ended' ? endInfo : speaking ? `${callName} 在说…` : live ? '你在说…' : `通话中 ${fmt(dur(call))}`
   const anim = phase === 'active' && (speaking || live)
-  const spokenText = voiceTranscript(speaking?.text || ''), spokenCur = voiceTranscript(speaking?.cur || '')
-  const spokenPast = spokenCur && spokenText.endsWith(spokenCur) ? spokenText.slice(0, -spokenCur.length) : ''
+  const spokenText = voiceTranscript(speaking?.text || '')
 
   if (min && phase !== 'ended') {
     return <button className={`call-pill glass3 ${anim ? 'anim' : ''}`} aria-label="返回通话，可拖动" style={pillPosition?{...pillPosition,right:'auto',bottom:'auto',transform:'none'}:{touchAction:'none'}} onPointerDown={pillDown} onPointerMove={pillMove} onPointerUp={()=>{pillDrag.current=null}} onPointerCancel={()=>{pillDrag.current=null;pillMoved.current=true}} onClick={() => {if(!pillMoved.current)setMin(false)}}><span className="call-pill-ico">☏</span><span className="call-pill-num">{phase === 'ringing' ? '呼叫中' : fmt(dur(call))}</span></button>
@@ -529,18 +531,18 @@ export default function CallOverlay() {
       {warm && phase==='ended' && <button className="warm-call-return" onClick={()=>setPhase('idle')}>回到聊天</button>}
       <div className="call-list" ref={listRef} onScroll={warm?e=>fadeCallTranscript(e.currentTarget):undefined}>
         {history.map((h, i) => (
-          <div key={i} className={`call-line ${h.who}`}>
+          <div key={h.t?`${h.who}|${h.t}`:i} className={`call-line ${h.who}`}>
             <span className="call-who">{h.who === 'him' ? callName : 'You'}</span>
-            {h.who==='him'?<CallCaption text={h.text} zh={h.zh}/>:<span className="call-line-t">{h.text}</span>}
+            {h.who==='him'?<CallCaption text={h.text} zh={h.zh} compact={warm}/>:<span className="call-line-t">{h.text}</span>}
           </div>
         ))}
-        {speaking && (
+        {!warm && speaking && (
           <div className="call-cur him">
             <CallCaption text={spokenText} zh={speaking.zh} live/>
           </div>
         )}
-        {!speaking && live && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}{live}</div></div>}
-        {!speaking && !live && bufRef.current.length > 0 && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}</div></div>}
+        {!warm && !speaking && live && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}{live}</div></div>}
+        {!warm && !speaking && !live && bufRef.current.length > 0 && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}</div></div>}
         {!warm && phase === 'ringing' && call?.by !== 'him' && <div className="call-hint">等他接…</div>}
         {!warm && phase === 'ringing' && call?.by === 'him' && <div className="call-reason serif">{call.reason || '他想和你说说话'}</div>}
         {phase === 'active' && needTap && <button className="call-resume glass2" onClick={startMic}>点一下打开麦克风继续</button>}

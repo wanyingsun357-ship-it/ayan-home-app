@@ -1,5 +1,6 @@
 import {isPreviewHost} from '../utils/previewHost.js'
 import CallCaption from '../components/CallCaption.jsx'
+import CallHistory from '../components/CallHistory.jsx'
 import ChatLookEditor from '../components/ChatLookEditor.jsx'
 import {useLooks,colorStyle} from '../utils/chatLook.js'
 import { useAppearance } from '../utils/appearance.js'
@@ -325,6 +326,19 @@ export default function Chat({ back }) {
   const [thought, setThought] = useState(null)
   const [thoughtFull, setThoughtFull] = useState(false)
   const touchYRef = useRef(0)
+  const thoughtGesture = useRef(null), thoughtDragAt = useRef(0)
+  const finishThoughtDrag = y => {
+    const g=thoughtGesture.current
+    if(!g)return
+    const dy=y-g.y
+    if(dy < -45 && !g.full){setThoughtFull(true);thoughtDragAt.current=Date.now()}
+    else if(dy > 55 && (g.handle || (g.full && g.scrollTop<=1))){
+      if(g.full)setThoughtFull(false)
+      else if(g.handle)setThought(null)
+      thoughtDragAt.current=Date.now()
+    }
+    thoughtGesture.current=null
+  }
   const [memView, setMemView] = useState(null)     // 记忆活动面板
   const [recording, setRecording] = useState(false)
   const [playingKey, setPlayingKey] = useState(null)
@@ -2492,6 +2506,7 @@ export default function Chat({ back }) {
       {lookSession && <ChatLookEditor session={lookSession} mode={appearance.profiles[appearance.theme].mode} close={()=>setLookSession(null)}/>}
       {callView && (() => {
         const cv = callView.call; const bad = ['missed', 'declined'].includes(cv.endedBy)
+        if(lavender)return <CallHistory call={cv} duration={callView.dur} name={chatName} onClose={()=>setCallView(null)} onThought={t=>{setThought(t);setThoughtFull(false)}}/>
         const when = new Date(cv.startedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         const how = cv.endedBy === 'her' ? '你挂的' : cv.endedBy === 'him' ? '他挂的' : cv.endedBy === 'missed' ? (cv.by === 'him' ? '未接来电' : '没接通') : (cv.by === 'him' ? '你没接' : '他没接')
         return (
@@ -2671,10 +2686,13 @@ export default function Chat({ back }) {
             className={`sheet thought ${thoughtFull ? 'full' : ''}`}
             role={lavender ? 'dialog' : undefined} aria-modal={lavender ? true : undefined} aria-label={lavender ? (ctxEngine === 'codex' ? '心声' : 'Thinking') : undefined}
             onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => { touchYRef.current = lavender && !e.target.closest('[data-thought-drag]') ? null : e.touches[0].clientY }}
+            onTouchStart={(e) => {
+              touchYRef.current=e.touches[0].clientY
+              if(lavender){thoughtDragAt.current=0;thoughtGesture.current={y:touchYRef.current,handle:!!e.target.closest('[data-thought-drag]'),full:thoughtFull,scrollTop:e.target.closest('.thought-body')?.scrollTop||0}}
+            }}
             onTouchEnd={(e) => {
               if ((warm && !lavender) || touchYRef.current == null) return
-              // Only the handle moves the lavender drawer; reading scrolls internally.
+              if(lavender){finishThoughtDrag(e.changedTouches[0].clientY);return}
               const dy = e.changedTouches[0].clientY - touchYRef.current
               if (lavender && Math.abs(dy) > 50) e.preventDefault()
               if (dy < -50) setThoughtFull(true)
@@ -2684,7 +2702,7 @@ export default function Chat({ back }) {
               }
             }}
           >
-            {lavender ? <button className="lavender-thought-handle" data-thought-drag aria-label={thoughtFull ? '收回半屏思考链' : '展开思考链'} aria-expanded={thoughtFull} onClick={() => setThoughtFull(f => !f)}><span /></button> : <div className="sheet-handle" onClick={() => setThoughtFull((f) => !f)} />}
+            {lavender ? <button className="lavender-thought-handle" data-thought-drag aria-label={thoughtFull ? '收回半屏思考链' : '展开思考链'} aria-expanded={thoughtFull} onPointerDown={e=>{if(e.pointerType!=='mouse')return;e.currentTarget.setPointerCapture(e.pointerId);thoughtDragAt.current=0;thoughtGesture.current={y:e.clientY,handle:true,full:thoughtFull,scrollTop:0}}} onPointerUp={e=>{if(e.pointerType==='mouse')finishThoughtDrag(e.clientY)}} onClick={e=>{if(e.detail>0&&Date.now()-thoughtDragAt.current<350)return;setThoughtFull(f=>!f)}}><span /></button> : <div className="sheet-handle" onClick={() => setThoughtFull((f) => !f)} />}
             <div className="thought-head">
               <button className="thought-x" aria-label="关闭思考链" onClick={() => { setThought(null); setThoughtFull(false) }}>×</button>
               <div className="thought-title">{ctxEngine === 'codex' ? '心声' : 'Thinking'}</div>

@@ -177,7 +177,7 @@ export default function Moments({ back, go }) {
                 ))}
               </div>
             )}
-            {(commentFor === m.id || (lavender && m.comments?.length > 0)) && (
+            {commentFor === m.id && (
               <div className="mo-cinput">
                 <input
                   autoFocus={!lavender}

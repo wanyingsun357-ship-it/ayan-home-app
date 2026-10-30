@@ -24,3 +24,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App />)
 
 import './ins-call.css'
 import './mobile-layout.css'
+import './moments-call.css'

@@ -1,3 +1,14 @@
+## 2026-10-30 Moments与通话展示修复（已验证，待网页发布）
+
+- 用户反馈Moments已有评论时总出现写评论、头像裁断/顶线；通话完整台词+播放中气泡重复、播放态大字、英文折叠样式突兀、历史仍旧纸页、思考正文上滑不能全屏。
+- Moments评论输入只在commentFor匹配时挂载，发表评论成功即隐藏，已有评论保持显示；头像滚动区顶部预留18px白区，86px头像上移12px跨纹理边界、保留6px空圈，移除顶边框及profile伪横线，避免从scrollport边缘硬裁切。
+- 紫色CallOverlay只显示已完成entry的普通气泡；原生snapshot按who+t身份去重，speaking只更新播放/闭麦状态不再生成额外气泡；网页onFinal立即加入消息，playback done不再第二次追加。不同t即使同一句话仍保留。SSE/轮询himDone去重、英文TTS参数、原生麦克风接管和打字ack保持，原版大字播放态保持。
+- CallCaption新增compact模式：主行末尾15px线描下/上箭头，aria-expanded与英文展开正文，无英文文字按钮/原生details表情或单独卡片。紫色真实/演示/历史共用；原版保留原details。
+- 紫色通话历史改独立CallHistory，共用.call实际背景和双边气泡配色，无旧call-paper与整页backdrop blur，无大头像/大名字；保留时长/时间/挂断方/条数、逐句备注/You/打字/挂断后标记与逐句云朵。历史云打开同Thinking抽屉。
+- 思考链半屏正文上滑也展开，近全屏高度为实际可视高度扣顶部安全区；全屏正常滚动，向下手势仅在内容顶端或把手收回，鼠标拖把手不会再被随后click反向切回。夜间/小屏/桌面一致。
+- 构建通过；day393/night320/desktop1280模拟接口验证条件评论/成功后关闭/头像位置和边线、真实历史路由/新背景/无旧纸卡/末尾15px箭头、正文与把手展开/全文滚动/收回；模拟原生speaking+snapshot不重复、重复entry身份去重、0网页mic/TTS及typed ack；网页整段和seg+final播放完成不再次插入、SSE重放只处理一次、English TTS原文不变；原版日夜回归通过。无生产聊天/通话/模型请求，真实手机最终手感待用户反馈。
+- 独立work/moments-call-20261030/app，基线dc806c2c5bf4624036f76a3b29b07bf3246617fb；不覆盖旧home/src或上轮手机布局。仅网页层，不改Swift/后端/提示词或历史数据，使用现有TestFlight43远程加载即可。
+
 ## 2026-10-30 手机布局修复已线上生效（无需新原生包）
 
 - 本轮源码6e4d13517e8a068f2142459c477b9df25642b8cb，从e6c0e1c干净基线快进并推送。网页于2026-10-30 16:48:22 UTC上线；入口index-Dz6tflDc.js / index-C_uQCyd7.css，index SHA0a02d88839389a497f788d9755b68a6dc565c5532b7cbb1d728b98cdce195b23。私有回滚备份/root/ayan/backups/mobile-layout-20261030-164820，含旧入口/相关源码/manifest/receipt。
