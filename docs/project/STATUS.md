@@ -1,3 +1,10 @@
+## 2026-10-30 Moments/通话展示修复已上线
+
+- 功能源码d048cbbae258a361d073e2da542ef39c9147cf10，从dc806c2干净基线快进并推送；2026-10-30 17:25:45 UTC静态上线。入口index-dt4v2ggJ.js/index-6PCRFTFN.css，index SHA30bf1b2b683e1d46068874d50dec5d57d4824cedd82af05f689a9d0a00a37f8e。私有回滚备份/root/ayan/backups/moments-call-20261030-172544。
+- 公网根入口/版本入口及新JS/CSS的SHA一致；Chrome真实公网day393/night320复验评论框按需出现/发布后隐藏、头像跨纹理边界/完整空圈/无顶线、CallHistory新背景与无旧纸卡、15px末尾箭头开合、Thinking正文及把手展开/完整阅读/收回，pageerror0。业务请求全部重定向本地假接口，没有向生产发评论、聊天、TTS或通话。记录在work/moments-call-20261030/live-verification.json、live-hashes.json和截图。
+- 同目录离线检查包含desktop1280、原版日夜、native speaking+snapshot与重复同t时仅一个气泡、原生麦克风/TTS不被网页抢占与typed ack、网页播放结束/seg-final不二次插入且English TTS原文保持。设备上的真实通话展示与iOS滚动手感仍待用户反馈，不声称真机已经验收。
+- bridge在线且未重启；无ios/server变化，提示词与历史数据不变，TestFlight仍1.0(43)，不用安装新包。旧4178预览仍为早期目录，不作本轮上线依据。下一轮请以当前源仓库及本条功能提交为基线，不拿旧UI快照回盖。
+
 ## 2026-10-30 Moments与通话展示修复（已验证，待网页发布）
 
 - 用户反馈Moments已有评论时总出现写评论、头像裁断/顶线；通话完整台词+播放中气泡重复、播放态大字、英文折叠样式突兀、历史仍旧纸页、思考正文上滑不能全屏。
