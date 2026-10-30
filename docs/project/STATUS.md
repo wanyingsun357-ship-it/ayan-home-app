@@ -1,3 +1,14 @@
+## 2026-10-30 紫色整套网页及提示词已上线；TestFlight 43 等待重跑结果
+
+- 用户确认开屏：紫灰云雾＋短句淡入约1.5秒，可点击/Escape跳过；来电中断开屏，减少动态设置缩短。紫色替换暖橘，保留原版；App初始Chat；保留旧orange外观存储标识兼容，不重置本设备背景/配色/头像/自言自语。
+- 发布源码 cfd96068791b9726f9f2f160bb51386ee779bc69，主分支快进并推送；原生无签名编译 run41079859287 成功。2026-10-30 15:30 UTC真实静态及后端/提示词上线，bridge已空闲重载且online，未覆盖旧home/src并发修改，也未删除历史资源/上传/运行数据。
+- 线上入口为index-DXWHcl4P.js / index-BM7oAGfZ.css；index SHA ab4660af7d50743698f8dc586a1b1c26c6e8ca6a1e2affcba4cad87d9b3d5d5f。源站逐资源验证200且SHA一致；Windows公网7项入口/脚本/CSS/图片SHA一致。服务器出口被CDN403拦截，但本机公网200；Chrome公网检查重试中，不据此声称完整真机验收。
+- 私有回滚备份 /root/ayan/backups/lavender-release-20261030-153003，含旧index、原native-calls/project-context模块及CLAUDE.md、候选清单、receipt.json。提示词只改触碰一段并删除Clawd装饰动作一段，保留其余身份/约定/导入；新SHA626a7a2f4d34fd2e9acd5d88cb070ef5054d67d14f20c9e658686aae3394db0c。新全局APP_UI_PROTOCOL.md参与旧Claude/Codex会话版本更新，真实新一轮生效，无需重建聊天。
+- 运行native-calls SHA3f198786f80d24509931432e66055c96200eed4919a20271015e7271437c0919，project-context SHA804ae05a70f2314b2af3e03ce8b9a0ce8e2a3417aa32bae5b659184eae9f7cfd。主动拨出凭据与隔离已上线；手机Build42按能力检测保留兼容路径，原生修复必须安装新包。
+- 已通过：本地/服务器构建；服务器13项模块与上下文测试；真实CLI配合隔离home/loopback假模型的Claude及Codex两项测试；原版日夜回归；新开屏跳过/时长/来电打断、旧设置迁移、h后缀解码、夜间双边气泡区分、生产域名隐藏演示；此前模拟原生接管/打字闭麦/中文主字幕英文折叠及各页交互回归通过。没有向生产发测试聊天/电话/模型请求。
+- 正式TestFlight run41079955142/Build43第一次在Fastlane获取BundleId时被苹果拒绝：PLA Update available，要求Account Holder同意新版Program License Agreement。未签名上传，不能说Build43已可安装。用户去处理后问现在是否好了，已通过GitHub工具重跑失败任务（attempt2）；等待实际结果，不擅自替用户接受法律协议。
+- 后续：核对attempt2的签名上传/Apple处理结果、更新交接。原生PushKit后台来电及主动拨出系统UI、真机静音仍须安装新包后实测；本地浏览器演示不算真机验证。不要再次重新部署同一网页或回退旧暖橘。
+
 ## 2026-10-30 紫色整套发布候选（正在验证，尚未上线）
 
 - 用户最终授权：夜间通话双边气泡区分、清理Clawd旧提示词/明确拍一拍后缀、替换暖橘为紫色并保留原版；开屏已选择紫灰云雾+短句淡入约1.5秒可跳过，完成后整套UI/提示词/原生修复一起发布。
