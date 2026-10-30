@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import UIKit
 import AVFoundation
 import PushKit
@@ -11,6 +12,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "NativeCalls"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "configure", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "startOutgoing", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "present", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "answer", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
@@ -38,6 +40,13 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         Task { @MainActor in
             do { try await NativeCallService.shared.present(info); call.resolve(NativeCallService.shared.state()) }
             catch { call.reject("无法显示系统来电") }
+        }
+    }
+    @objc func startOutgoing(_ call: CAPPluginCall) {
+        guard #available(iOS 17.4, *), let info = call.getObject("native"), let current = call.getObject("call") else { call.reject("Native outgoing call unavailable"); return }
+        Task { @MainActor in
+            do { try await NativeCallService.shared.startOutgoing(info, call: current); call.resolve(NativeCallService.shared.state()) }
+            catch { call.reject("系统拨出失败") }
         }
     }
     @objc func answer(_ call: CAPPluginCall) {
@@ -80,6 +89,8 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     private var voipToken = ""
     private var info: [String: Any]?
     private var currentCall: [String: Any]?
+    private var outgoing = false
+    private let log = Logger(subsystem: "com.entangledforever.home", category: "NativeCalls")
     private var joined = false
     private var audioActive = false
     var muted = false
@@ -117,7 +128,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
         let push = PKPushRegistry(queue: .main); push.delegate = self; push.desiredPushTypes = [.voIP]; registry = push
     }
     func state() -> [String: Any] {
-        var result: [String: Any] = ["supported": true, "deviceId": registrationID, "token": voipToken, "mediaOwned": joined, "muted": muted]
+        var result: [String: Any] = ["supported": true, "deviceId": registrationID, "token": voipToken, "mediaOwned": joined || outgoing, "supportsOutgoing": true, "muted": muted]
         #if DEBUG
         result["environment"] = "sandbox"
         #else
@@ -139,31 +150,69 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushTokenFor type: PKPushType) {
         voipToken = ""; emit("tokenInvalidated")
     }
-    func pushRegistry(_ registry: PKPushRegistry, didReceiveIncomingPushWith payload: PKPushPayload, for type: PKPushType, completion: @escaping () -> Void) {
-        guard type == .voIP else { completion(); return }
+    // Use PushKit's async delegate directly. No detached Task and no completion
+    // signalled before the awaited system report has completed.
+    @MainActor func pushRegistry(_ registry: PKPushRegistry, didReceiveIncomingPushWith payload: PKPushPayload, for type: PKPushType) async {
+        guard type == .voIP else { return }
         let value = payload.dictionaryPayload.reduce(into: [String: Any]()) { if let key = $1.key as? String { $0[key] = $1.value } }
-        Task { @MainActor in
-            // Report immediately; don't wait for a server fetch before showing the system call UI.
-            do { try await self.present(value) } catch { self.emit("error", ["message": "系统来电无法显示"]) }
-            completion()
-        }
+        await reportRequiredPush(value)
     }
-    func present(_ value: [String: Any]) async throws {
+    private func validInfo(_ value: [String: Any]) -> Bool {
+        guard let id = value["callId"] as? String, id.hasPrefix("call-"), let raw = value["uuid"] as? String, UUID(uuidString: raw) != nil, let token = value["token"] as? String else { return false }
+        return token.count == 64
+    }
+    private func reportRequiredPush(_ value: [String: Any]) async {
         start()
-        guard let id = value["callId"] as? String, id.hasPrefix("call-"), let rawUUID = value["uuid"] as? String, let newUUID = UUID(uuidString: rawUUID), let token = value["token"] as? String, token.count == 64 else { throw URLError(.badServerResponse) }
-        if callID == id { return }
-        guard info == nil else { throw URLError(.cannotConnectToHost) }
-        info = value; joined = false; muted = false; played.removeAll(); playQueue.removeAll()
+        let reportedUUID = (value["uuid"] as? String).flatMap(UUID.init(uuidString:)) ?? UUID()
+        let handle = Handle(type: .generic, value: "ayan", displayName: "晏白邀请你语音通话")
+        log.notice("VoIP push: beginning required system report")
+        // Never reuse the UI/SSE dedup return here: every required push must reach
+        // the system reporter, including duplicates, conflicts and invalid data.
+        do { try await manager.reportNewIncomingConversation(uuid: reportedUUID, update: .init(members: [handle], capabilities: [])) }
+        catch { log.error("VoIP report rejected: \(String(describing: error), privacy: .public)"); return }
+        log.notice("VoIP push: system report completed")
+        guard validInfo(value) else { endReported(reportedUUID); return }
+        if info != nil {
+            if callID != value["callId"] as? String { endReported(reportedUUID) }
+            return
+        }
+        adoptIncoming(value)
+    }
+    private func endReported(_ id: UUID) {
+        if let c = manager.conversations.first(where: { $0.uuid == id }) { manager.reportConversationEvent(.conversationEnded(Date(), .failed), for: c) }
+        log.notice("VoIP push: rejected invalid or conflicting conversation")
+    }
+    private func adoptIncoming(_ value: [String: Any]) {
+        info = value; outgoing = false; joined = false; muted = false; played.removeAll(); playQueue.removeAll()
         systemTitle = "晏白邀请你语音通话"
-        let handle = Handle(type: .generic, value: "ayan", displayName: systemTitle)
-        do { try await manager.reportNewIncomingConversation(uuid: newUUID, update: .init(members: [handle], capabilities: [])) }
-        catch { info = nil; throw error }
         emit("ringing"); poll()
+        let id = callID
+        ringTimeout?.cancel()
         ringTimeout = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 46_000_000_000)
             guard !Task.isCancelled, self.callID == id, !self.joined else { return }
             self.finish(reason: .unanswered)
         }
+    }
+    func present(_ value: [String: Any]) async throws {
+        start()
+        guard validInfo(value), let raw = value["uuid"] as? String, let newUUID = UUID(uuidString: raw) else { throw URLError(.badServerResponse) }
+        if callID == value["callId"] as? String { return }
+        guard info == nil else { throw URLError(.cannotConnectToHost) }
+        let handle = Handle(type: .generic, value: "ayan", displayName: "晏白邀请你语音通话")
+        try await manager.reportNewIncomingConversation(uuid: newUUID, update: .init(members: [handle], capabilities: []))
+        if info == nil { adoptIncoming(value) }
+    }
+    func startOutgoing(_ value: [String: Any], call: [String: Any]) async throws {
+        start()
+        guard validInfo(value), let raw = value["uuid"] as? String, let id = UUID(uuidString: raw), call["by"] as? String == "her" else { throw URLError(.badServerResponse) }
+        if callID == value["callId"] as? String, outgoing { return }
+        guard info == nil else { throw URLError(.cannotConnectToHost) }
+        info = value; currentCall = call; outgoing = true; joined = false; muted = false; played.removeAll(); playQueue.removeAll()
+        let handle = Handle(type: .generic, value: "ayan", displayName: "晏白：呼叫中")
+        do { try await manager.perform([StartConversationAction(conversationUUID: id, handles: [handle], isVideo: false)]) }
+        catch { info = nil; currentCall = nil; outgoing = false; throw error }
+        emit("state"); poll()
     }
     func answer() async throws {
         guard let uuid = uuid else { throw URLError(.resourceUnavailable) }
@@ -182,8 +231,8 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
         systemTitle = title
     }
     private func showSystemSpeech(text: String, zh: String) {
-        let translated = transcript(zh), spoken = transcript(text)
-        let line = (translated.isEmpty ? spoken : translated).replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+        let translated = transcript(zh)
+        let line = (translated.isEmpty ? "正在说话…" : translated).replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
         let snippet = String(line.prefix(96)) + (line.count > 96 ? "…" : "")
         updateSystemTitle(snippet.isEmpty ? "晏白" : "晏白：" + snippet)
     }
@@ -218,7 +267,19 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     func conversationManager(_ manager: ConversationManager, didDeactivate audioSession: AVAudioSession) { audioActive = false; stopMic() }
     func conversationManager(_ manager: ConversationManager, perform action: ConversationAction) {
         guard action.conversationUUID == uuid else { action.fail(); return }
-        if let join = action as? JoinConversationAction {
+        if let starting = action as? StartConversationAction {
+            guard outgoing else { starting.fail(); return }
+            Task { @MainActor in
+                do {
+                    let id = self.callID
+                    let granted = await withCheckedContinuation { continuation in AVAudioSession.sharedInstance().requestRecordPermission { continuation.resume(returning: $0) } }
+                    guard granted, id == self.callID else { throw URLError(.noPermissionsToReadFile) }
+                    try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth, .allowBluetoothA2DP])
+                    if let c = self.conversation { manager.reportConversationEvent(.conversationStartedConnecting(Date()), for: c) }
+                    starting.fulfill(); self.emit("state"); self.poll()
+                } catch { starting.fail(); self.finish(reason: .failed) }
+            }
+        } else if let join = action as? JoinConversationAction {
             Task { @MainActor in
                 do {
                     let id = self.callID
@@ -231,7 +292,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
                     if let result = try JSONSerialization.jsonObject(with: data) as? [String: Any] { self.currentCall = result["call"] as? [String: Any] }
                     self.joined = true; self.ringTimeout?.cancel()
                     if let c = self.conversation { manager.reportConversationEvent(.conversationConnected(Date()), for: c) }
-                    self.updateSystemTitle("晏白")
+                    self.updateSystemTitle("晏白：通话中")
                     join.fulfill(dateConnected: Date()); self.emit("answered")
                     if self.audioActive { try self.beginMic() }; self.poll()
                 } catch { join.fail(); self.finish(reason: .failed) }
@@ -239,7 +300,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
         } else if let mute = action as? MuteConversationAction {
             muted = mute.isMuted; partialFinals = ""; flushTask?.cancel(); mute.fulfill(); emit("state")
         } else if let ending = action as? EndConversationAction {
-            let decline = !joined
+            let decline = !joined && !outgoing
             Task { @MainActor in
                 do {
                     _ = try await self.request("action", body: ["action": decline ? "decline" : "end"])
@@ -258,9 +319,15 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
                     if let result = try JSONSerialization.jsonObject(with: data) as? [String: Any], let call = result["call"] as? [String: Any] {
                         self.currentCall = call; self.emit("state")
                         if call["status"] as? String == "ended" { self.finish(reason: .remoteEnded); return }
+                        if self.outgoing && !self.joined && call["status"] as? String == "active" {
+                            self.joined = true
+                            if let c = self.conversation { self.manager.reportConversationEvent(.conversationConnected(Date()), for: c) }
+                            self.updateSystemTitle("晏白：通话中")
+                            if self.audioActive { try self.beginMic() }
+                        }
                         if self.joined {
-                            for entry in call["speech"] as? [[String: Any]] ?? [] {
-                                if let stamp = entry["id"] as? String, !self.played.contains(stamp) { self.played.insert(stamp); self.playQueue.append(entry); self.waitingReply = false; self.replyTimeout?.cancel() }
+                            for entry in (call["entries"] as? [[String: Any]] ?? []).filter({ $0["who"] as? String == "him" }) {
+                                if let stamp = entry["t"] as? String, !self.played.contains(stamp) { self.played.insert(stamp); self.playQueue.append(entry); self.waitingReply = false; self.replyTimeout?.cancel() }
                             }
                             self.pendingHangup = call["hangupPending"] as? Bool ?? false
                             self.pumpAudio(); self.sendNext()
@@ -284,12 +351,12 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
             return
         }
         let entry = playQueue.removeFirst(), id = callID
-        guard let stamp = entry["id"] as? String else { return }
+        guard let stamp = entry["t"] as? String else { return }
         loadingAudio = true; flushTask?.cancel(); partialFinals = ""
         Task { @MainActor in
             defer { self.loadingAudio = false }
             do {
-                let data = try await self.request("audio", body: ["speechId": stamp])
+                let data = try await self.request("audio", body: ["entryTime": stamp])
                 guard self.callID == id, self.joined else { return }
                 let player = try AVAudioPlayer(data: data); self.player = player; player.delegate = self
                 if !player.play() { throw URLError(.cannotDecodeContentData) }
@@ -297,7 +364,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
                 self.showSystemSpeech(text: text, zh: zh)
                 self.emit("speaking", ["text": self.transcript(text), "zh": self.transcript(zh)])
             } catch {
-                self.player = nil; self.updateSystemTitle("晏白"); self.emit("error", ["message": "这句语音未能播放，文字仍在通话记录里"])
+                self.player = nil; self.updateSystemTitle("晏白：通话中"); self.emit("error", ["message": "这句语音未能播放，文字仍在通话记录里"])
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.pumpAudio() }
             }
         }
@@ -390,9 +457,10 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     private func finish(reason: Conversation.EndedReason) {
         guard info != nil else { return }
         let c = conversation
-        joined = false; audioActive = false; polling?.cancel(); polling = nil; ringTimeout?.cancel(); ringTimeout = nil
+        joined = false; outgoing = false; audioActive = false; polling?.cancel(); polling = nil; ringTimeout?.cancel(); ringTimeout = nil
         stopMic(); player?.stop(); player = nil; playQueue.removeAll(); sayQueue.removeAll(); loadingAudio = false; waitingReply = false; replyTimeout?.cancel(); pendingHangup = false; endingRemotely = false
         if let c = c { manager.reportConversationEvent(.conversationEnded(Date(), reason), for: c) }
         emit("ended"); info = nil; currentCall = nil; systemTitle = ""
     }
 }
+
