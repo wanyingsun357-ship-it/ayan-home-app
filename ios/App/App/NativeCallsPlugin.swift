@@ -80,7 +80,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
 }
 
 @available(iOS 17.4, *)
-final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationManagerDelegate, AVAudioPlayerDelegate {
+@MainActor final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationManagerDelegate, AVAudioPlayerDelegate {
     static let shared = NativeCallService()
     weak var plugin: NativeCallsPlugin?
     private let origin = "https://entangledforever.com"
@@ -164,7 +164,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     private func reportRequiredPush(_ value: [String: Any]) async {
         start()
         let reportedUUID = (value["uuid"] as? String).flatMap(UUID.init(uuidString:)) ?? UUID()
-        let handle = Handle(type: .generic, value: "ayan", displayName: "晏白邀请你语音通话")
+        let handle = Handle(type: .generic, value: "晏白", displayName: "晏白邀请你语音通话")
         log.notice("VoIP push: beginning required system report")
         // Never reuse the UI/SSE dedup return here: every required push must reach
         // the system reporter, including duplicates, conflicts and invalid data.
@@ -199,7 +199,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
         guard validInfo(value), let raw = value["uuid"] as? String, let newUUID = UUID(uuidString: raw) else { throw URLError(.badServerResponse) }
         if callID == value["callId"] as? String { return }
         guard info == nil else { throw URLError(.cannotConnectToHost) }
-        let handle = Handle(type: .generic, value: "ayan", displayName: "晏白邀请你语音通话")
+        let handle = Handle(type: .generic, value: "晏白", displayName: "晏白邀请你语音通话")
         try await manager.reportNewIncomingConversation(uuid: newUUID, update: .init(members: [handle], capabilities: []))
         if info == nil { adoptIncoming(value) }
     }
@@ -209,7 +209,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
         if callID == value["callId"] as? String, outgoing { return }
         guard info == nil else { throw URLError(.cannotConnectToHost) }
         info = value; currentCall = call; outgoing = true; joined = false; muted = false; played.removeAll(); playQueue.removeAll()
-        let handle = Handle(type: .generic, value: "ayan", displayName: "晏白：呼叫中")
+        let handle = Handle(type: .generic, value: "晏白", displayName: "晏白：呼叫中")
         do { try await manager.perform([StartConversationAction(conversationUUID: id, handles: [handle], isVideo: false)]) }
         catch { info = nil; currentCall = nil; outgoing = false; throw error }
         emit("state"); poll()
@@ -226,7 +226,7 @@ final class NativeCallService: NSObject, PKPushRegistryDelegate, ConversationMan
     }
     private func updateSystemTitle(_ title: String) {
         guard joined, let conversation = conversation, systemTitle != title else { return }
-        let handle = Handle(type: .generic, value: "ayan", displayName: title)
+        let handle = Handle(type: .generic, value: title, displayName: title)
         manager.reportConversationEvent(.conversationUpdated(.init(members: [handle], activeRemoteMembers: [handle])), for: conversation)
         systemTitle = title
     }
