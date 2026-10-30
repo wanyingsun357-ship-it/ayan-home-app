@@ -817,7 +817,7 @@ export default function Chat({ back }) {
   // 键盘弹起/收起(App 里是容器缩放)时,消息列表贴住最后一条
   useEffect(() => {
     const onResize = () => { if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') scrollBottom() }
-    const onKb = () => { scrollBottom(); setTimeout(scrollBottom, 260) }
+    const onKb = () => { scrollBottom(); setTimeout(scrollBottom, 320) }
     window.addEventListener('resize', onResize)
     window.visualViewport?.addEventListener('resize', onResize)
     window.addEventListener('kb', onKb)
@@ -2279,6 +2279,7 @@ export default function Chat({ back }) {
             <button className="doc-save" onClick={saveDoc}>保存</button>
           </div>
           <textarea
+            aria-label="文档内容"
             value={docEdit.content}
             onChange={(e) => setDocEdit({ ...docEdit, content: e.target.value })}
             spellCheck={false}
@@ -2593,7 +2594,7 @@ export default function Chat({ back }) {
       <aside className={`sdrawer ${drawerOpen ? 'open' : ''}`}>
         <div className="sdrawer-head">
           <span className="serif sdrawer-title">☾ 我们说过的话</span>
-          <button className="sdrawer-new" onClick={openProjects}>📁</button>
+          <button className="sdrawer-new" aria-label="项目文件" onClick={openProjects}>📁</button>
           <button className="sdrawer-new" onClick={newSession}>+ 新对话</button>
         </div>
         <div className="sdrawer-list">

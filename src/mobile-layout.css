@@ -1,0 +1,60 @@
+:root{--app-safe-top:env(safe-area-inset-top,0px);--app-safe-bottom:env(safe-area-inset-bottom,0px)}
+/* The safe area belongs to the sky, not a second padding above the whole chat. */
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-chat{padding-top:0;height:var(--app-viewport-height,calc(100dvh - var(--kb,0px)));min-height:0;--lavender-sky-height:calc(var(--app-safe-top) + clamp(104px,15dvh,145px))}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-sky{transition:height .28s ease}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-sky span{top:calc(var(--app-safe-top) + 28px);left:22%;font-size:13px;white-space:nowrap;transition:opacity .2s ease}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-chat::before{transition:top .28s ease}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-profile{padding:26px 14px 7px;transition:padding .28s ease}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-avatars{top:-28px;transition:opacity .18s ease,transform .28s ease}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-avatars .paper-avatar{width:48px;height:48px}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-profile p{margin:8px 0 10px;max-height:36px;overflow:hidden;transition:max-height .28s ease,margin .28s ease,opacity .2s ease}
+:root[data-visual='orange'][data-theme][data-view='chat'] .lavender-tags{max-height:32px;overflow:hidden;transition:max-height .28s ease,opacity .18s ease}
+:root[data-visual='orange'][data-theme][data-view='chat'][data-keyboard='open'] .lavender-chat{--lavender-sky-height:calc(var(--app-safe-top) + 18px)}
+:root[data-visual='orange'][data-theme][data-view='chat'][data-keyboard='open'] .lavender-sky span{opacity:0;pointer-events:none}
+:root[data-visual='orange'][data-theme][data-view='chat'][data-keyboard='open'] .lavender-profile{padding-top:12px;padding-bottom:12px;min-height:44px}
+:root[data-visual='orange'][data-theme][data-view='chat'][data-keyboard='open'] .lavender-avatars{opacity:0;pointer-events:none;transform:translate(-50%,-16px)}
+:root[data-visual='orange'][data-theme][data-view='chat'][data-keyboard='open'] .lavender-profile :is(p,.lavender-tags){max-height:0;margin-top:0;margin-bottom:0;opacity:0;pointer-events:none}
+:root[data-visual='orange'][data-theme][data-view='chat'][data-keyboard='open'] .chat-input-wrap{padding-bottom:8px}
+/* File editing has the same restrained reading palette as the rest of Chat. */
+:root[data-visual='orange'][data-theme][data-view='chat'] :is(.doc-editor,.fileview){background:var(--lavender-surface);color:var(--lavender-text);height:var(--app-viewport-height,calc(100dvh - var(--kb,0px)));bottom:auto}
+:root[data-visual='orange'][data-theme][data-view='chat'] :is(.doc-editor-head,.fileview-bar){padding-top:calc(10px + var(--app-safe-top));color:var(--lavender-text);background:var(--lavender-surface)}
+:root[data-visual='orange'][data-theme][data-view='chat'] .doc-editor-head .serif{font:14px/1.6 var(--sans);font-style:normal}
+:root[data-visual='orange'][data-theme][data-view='chat'] :is(.doc-editor-head button,.proj-files button,.proj-move){background:var(--lavender-received);border-color:var(--lavender-border);color:var(--lavender-text);box-shadow:none}
+:root[data-visual='orange'][data-theme][data-view='chat'] .doc-editor textarea{background:var(--lavender-card);color:var(--lavender-text);-webkit-text-fill-color:var(--lavender-text);border-color:var(--lavender-border);caret-color:var(--lavender-accent);box-shadow:none;font-size:15px;line-height:1.8}
+:root[data-visual='orange'][data-theme][data-view='chat'][data-keyboard='open'] .doc-editor textarea{margin-bottom:8px}
+/* Self chat: both the back button and keyboard dismissal stay below the notch. */
+.ins-self{height:var(--app-viewport-height,calc(100dvh - var(--kb,0px)));padding-top:calc(10px + var(--app-safe-top));padding-bottom:max(12px,var(--app-safe-bottom))}
+.ins-self>header{min-height:42px;gap:10px}
+.ins-self>header>button{display:grid;place-items:center;width:34px;height:34px;padding:0;flex:none;font-size:24px}
+.ins-self>header h1{margin:0;font-size:24px}
+.ins-self .self-dismiss-keyboard{margin-left:auto;border:1px solid var(--ih-line);border-radius:50%;color:var(--ih-accent)}
+.ins-self .self-dismiss-keyboard svg{width:21px;height:21px}
+:root[data-keyboard='open'] .ins-self{padding-bottom:8px}
+.ins-self>form{flex:none}
+/* A fixed preview, with a soft uneven edge; expanded galleries show every card. */
+.ins-photo-wall{position:relative;overflow:hidden;max-height:calc(var(--photo-col,165px)/1.05 + 70px);margin-bottom:18px;isolation:isolate}
+.ins-photo-wall.expanded{max-height:none;overflow:visible}
+.ins-photo-wall .ins-photo-grid{padding-bottom:24px;margin-bottom:0}
+.ins-photo-wall .ins-photo-grid:before,.ins-photo-wall .ins-photo-grid:after{display:none}
+.ins-photo-image{display:block;position:relative;width:100%;padding:0!important;aspect-ratio:1.8;overflow:hidden;background:var(--ih-soft)!important}
+.ins-photo-image.portrait{aspect-ratio:1.05}
+.ins-photo-column article.wide .ins-photo-image{aspect-ratio:1}
+.ins-photo-image img{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ins-photo-image img.cropped{inset:auto;max-width:none;object-fit:fill}
+.ins-photo-wall:not(.expanded):after{content:'';position:absolute;z-index:3;left:-8px;right:-8px;bottom:-10px;height:90px;pointer-events:none;background:radial-gradient(ellipse 74% 80% at 7% 100%,var(--ih-bg) 35%,transparent 100%),radial-gradient(ellipse 50% 55% at 90% 115%,var(--ih-bg) 35%,transparent 100%),linear-gradient(transparent 55%,var(--ih-bg) 96%);filter:blur(6px)}
+.ins-photo-wall:not(.expanded):before{content:'';position:absolute;z-index:2;left:0;right:0;bottom:0;height:80px;pointer-events:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);mask-image:radial-gradient(ellipse 85% 85% at 0 100%,#000 10%,transparent 90%),linear-gradient(transparent 65%,#000);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.1'/%3E%3C/svg%3E")}
+.ins-photo-wall .ins-photo-controls{position:static;flex-wrap:wrap;border-radius:0;background:var(--ih-soft);padding:2px}
+.ins-photo-wall .ins-photo-controls button{color:var(--ih-text)}
+.photo-crop-mask{position:fixed;inset:0;z-index:420;display:grid;place-items:center;padding:calc(12px + var(--app-safe-top)) 12px max(12px,var(--app-safe-bottom));background:#30233866;backdrop-filter:blur(6px)}
+.photo-crop-dialog{width:300px;max-width:100%;max-height:100%;overflow:auto;padding:18px;border:1px solid var(--ih-line);border-radius:24px;background:var(--ih-card);color:var(--ih-text);text-align:center;box-sizing:border-box}
+.photo-crop-dialog h2{font:italic 23px/1.4 Georgia,serif;margin:0 0 6px}
+.photo-crop-dialog p{font-size:11px;color:var(--ih-muted);line-height:1.7;margin:0 0 14px}
+.photo-crop-stage{position:relative;max-width:100%;overflow:hidden;background:var(--ih-soft);margin:auto;touch-action:none;border-radius:7px;user-select:none}
+.photo-crop-stage img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none}
+.photo-crop-stage>span{position:absolute;inset:0;border:1px solid #fff9;background:linear-gradient(90deg,transparent 33%,#ffffff50 33%,#ffffff50 calc(33% + 1px),transparent calc(33% + 1px),transparent 66%,#ffffff50 66%,#ffffff50 calc(66% + 1px),transparent calc(66% + 1px)),linear-gradient(transparent 33%,#ffffff50 33%,#ffffff50 calc(33% + 1px),transparent calc(33% + 1px),transparent 66%,#ffffff50 66%,#ffffff50 calc(66% + 1px),transparent calc(66% + 1px));pointer-events:none}
+.photo-crop-dialog>label{display:flex;align-items:center;gap:8px;font-size:11px;margin:16px 0;color:var(--ih-muted)}
+.photo-crop-dialog input{min-width:0;flex:1;accent-color:var(--ih-accent)}
+.photo-crop-dialog footer{display:flex;justify-content:center;gap:8px}
+.photo-crop-dialog button{padding:7px 11px;border:1px solid var(--ih-line);border-radius:18px;background:var(--ih-soft);color:var(--ih-text);font-size:12px}
+.photo-crop-dialog footer button:last-child{background:var(--ih-accent);color:var(--ih-bg)}
+@media(prefers-reduced-motion:reduce){:root[data-visual='orange'][data-theme][data-view='chat'] :is(.lavender-sky,.lavender-chat::before,.lavender-profile,.lavender-avatars,.lavender-profile p,.lavender-tags){transition:none}}

@@ -23,3 +23,4 @@ applyAppearance()
 ReactDOM.createRoot(document.getElementById('root')).render(<App />)
 
 import './ins-call.css'
+import './mobile-layout.css'
