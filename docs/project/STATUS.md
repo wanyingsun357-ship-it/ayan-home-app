@@ -1,3 +1,10 @@
+## 2026-10-30 手机布局修复已线上生效（无需新原生包）
+
+- 本轮源码6e4d13517e8a068f2142459c477b9df25642b8cb，从e6c0e1c干净基线快进并推送。网页于2026-10-30 16:48:22 UTC上线；入口index-Dz6tflDc.js / index-C_uQCyd7.css，index SHA0a02d88839389a497f788d9755b68a6dc565c5532b7cbb1d728b98cdce195b23。私有回滚备份/root/ayan/backups/mobile-layout-20261030-164820，含旧入口/相关源码/manifest/receipt。
+- 公网根入口及版本入口、新JS/CSS逐项SHA核验一致；实际公网Chrome day393/night320复验韩语/头像/抽屉键盘、固定图库/展开/裁剪、me安全区与收键盘、文档灰紫配色，业务API全为本地模拟，pageerror0。日夜截图及live-verification.json、live-hashes.json在work/mobile-layout-20261030。
+- bridge保持online且本轮未重启；Swift/后端/提示词/用户上传历史未修改。只提交十个相关前端与交接文件；本次提交skip ci以免为远程网页修复再打包，TestFlight仍1.0(43)，更新网页即可。原node_modules共享链接仅临时构建使用，已移除链接本身，依赖目录未删除。
+- 交互细节和离线/模拟原生检查见下一条。本轮验证为模拟键盘高度及安全区，真实iOS与第三方键盘的最终动画/位置仍需用户重开App实测，不声称真机已验收。旧4178预览仍指向上轮目录，判断线上以当前域名或新work目录为准。
+
 ## 2026-10-30 手机布局修复（已验证，准备网页更新）
 
 - 用户手机截图暴露原orange-polish给Chat额外safe-area顶内边距，而背景伪层未计入，造成韩语被星星面板遮住、头像资料整体偏下。新mobile-layout.css将安全区计入sky，去掉重复外边距，头像48px/上移并跨分界；保持既有圆角/背景自定。键盘打开时天空和资料区以抽屉方式收成44px标题栏，收起后恢复，消息区和草稿保留。
