@@ -28,7 +28,7 @@ export default function Shopping({ back, openLedger, initial = {} }) {
   return <section className="footprints shopping">
     <header className="fp-head"><button className="fp-back" onClick={back} aria-label="返回 Footprints">‹</button><div><h1 className="serif">Shopping</h1><p>他挑过、惦记着和买下的东西。</p></div><button className="fp-refresh" onClick={load} disabled={loading} aria-label="刷新购物记录">↻</button></header>
     <div className="shop-content">
-      <div className="shop-overview glass1"><div><span className="shop-caption">晏白的账本余额</span><strong className="serif">{data ? money(data.balanceCents) : '—'}</strong></div><button className="tg-nav" onClick={openLedger}>打开账本 ↗</button></div>
+      <div className="shop-overview glass1"><div><span className="shop-caption">ℛ𝓊ℯ的账本余额</span><strong className="serif">{data ? money(data.balanceCents) : '—'}</strong></div><button className="tg-nav" onClick={openLedger}>打开账本 ↗</button></div>
       <p className="shop-stage-note">给他的额度，由他自主安排。过程截图留在这里，Footprints 保留工具足迹，聊天不逐步播报。</p>
       <div className="shop-toolbar"><nav className="shop-filters" aria-label="按购物状态筛选">{Object.entries(filters).map(([key, label]) => <button key={key} className={filter === key ? 'on' : ''} onClick={() => setFilter(key)}>{label}</button>)}</nav><button className="tg-btn ghost" disabled={!data || saving} onClick={() => edit()}>＋ 记下商品</button></div>
       <ShoppingBrowserPanel onChanged={load} selectedOrder={data?.orders.find(o => o.id === selection)} onSaved={id => {setSelection(id);setFilter('all')}} />
@@ -44,7 +44,7 @@ export default function Shopping({ back, openLedger, initial = {} }) {
         <label>备注<textarea aria-label="购物备注" maxLength={1000} rows={2} value={form.note || ''} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="为什么想买，想送给谁…" /></label>
         <label>这次的活动<input aria-label="购物活动" maxLength={1000} value={form.activity} onChange={e => setForm({ ...form, activity: e.target.value })} placeholder="比较了款式，还想再看看" /></label>
         <details className="shop-extra"><summary>订单与截图</summary><label>订单号<input aria-label="商家订单号" maxLength={200} value={form.merchantOrderId || ''} onChange={e => setForm({ ...form, merchantOrderId: e.target.value })} /></label><label>{uploading ? '截图上传中…' : form.screenshot ? '截图已附上，可重新选择' : '附上截图'}<input aria-label="购物截图" type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={attachScreenshot} /></label>{form.screenshot && <img className="shop-upload-preview" src={form.screenshot} alt="本次附上的购物截图" />}</details>
-        {form.status === 'paid' && <label>付款凭据说明<input aria-label="付款凭据说明" value={form.paymentNote} onChange={e => setForm({ ...form, paymentNote: e.target.value })} placeholder="核实付款的依据；填过订单号可留空" /><small>仅在实际付款后登记，会自动记入晏白的支出。</small></label>}
+        {form.status === 'paid' && <label>付款凭据说明<input aria-label="付款凭据说明" value={form.paymentNote} onChange={e => setForm({ ...form, paymentNote: e.target.value })} placeholder="核实付款的依据；填过订单号可留空" /><small>仅在实际付款后登记，会自动记入ℛ𝓊ℯ的支出。</small></label>}
         {form.status === 'refunded' && <p className="shop-stage-note">确认实际全额退款后保存，账本会自动增加退款收入。</p>}
         <div className="tg-actions"><button type="button" className="tg-btn ghost" disabled={saving || uploading} onClick={() => setForm(null)}>取消</button><button className="tg-btn" disabled={saving || uploading}>{uploading ? '截图上传中…' : saving ? '保存中…' : '保存记录'}</button></div>
       </form>}

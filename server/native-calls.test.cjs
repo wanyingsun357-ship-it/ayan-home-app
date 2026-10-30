@@ -1,0 +1,33 @@
+const assert=require('node:assert/strict'),fs=require('fs'),os=require('os'),path=require('path');
+const {create}=require('./native-calls.cjs');
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'native-call-'));
+const calls=[{id:'call-one',by:'him',session:'s-one',status:'ringing',startedAt:new Date().toISOString(),entries:[{who:'him',t:'first',text:'Hi',reasoning:'private'}]},{id:'call-two',by:'him',session:'s-two',status:'ringing',startedAt:new Date().toISOString(),entries:[]}];
+let accepted=0,audioTexts=[];const routes=new Map();
+const app={post:(p,f)=>routes.set('POST '+p,f),get:(p,f)=>routes.set('GET '+p,f)};
+const service=create({dir,authorized:r=>r.paired,getCalls:()=>calls,view:c=>({...c}),saveCalls:()=>{},answer:(id,res)=>{accepted++;calls.find(c=>c.id===id).status='active';res.json({ok:true})},say:()=>{},end:c=>c.status='ended',audio:async text=>{audioTexts.push(text);return '/none'},sendPush:async()=>({status:200})});service.register(app);
+function run(method,p,{body={},query={},paired=false,token=''}={}){let status=200,data;const res={status:n=>(status=n,res),json:x=>(data=x,res),set:()=>res};routes.get(method+' '+p)({body,query,paired,headers:{authorization:'Bearer '+token}},res);return{status,data};}
+(async()=>{try{
+ assert.equal(run('POST','/api/native-call/register',{body:{}}).status,401);
+ assert.equal(run('GET','/api/native-call/credentials',{query:{id:'call-one'}}).status,401);
+ calls.push({id:'call-out',by:'her',session:'s-three',status:'ringing',entries:[{who:'him',t:'english',text:'Still speaking English.',zh:'中文只作字幕。'}]});
+ assert.equal(run('GET','/api/native-call/credentials',{paired:true,query:{id:'call-out'}}).status,410,'incoming path must not adopt outgoing calls');
+ assert.equal(run('GET','/api/native-call/credentials',{query:{id:'call-out',direction:'outgoing'}}).status,401);
+ const out=run('GET','/api/native-call/credentials',{paired:true,query:{id:'call-out',direction:'outgoing'}});assert.equal(out.status,200);assert.equal(out.data.call.by,'her');
+ const outState=run('GET','/api/native-call/state',{query:{id:'call-out'},token:out.data.native.token});assert.equal(outState.status,200);assert.equal(outState.data.call.entries[0].text,'Still speaking English.');assert.equal(outState.data.call.entries[0].zh,'中文只作字幕。');
+ assert.equal(run('GET','/api/native-call/state',{query:{id:'call-one'},token:out.data.native.token}).status,401);
+ const key=service.credentials(calls[0]);assert.equal(key.uuid,service.credentials(calls[0]).uuid);
+ service.addSegment(calls[0],'First sentence.');service.completeSpeech(calls[0],'First sentence. Last sentence.',['First sentence.']);assert.deepEqual(calls[0].nativeSpeech.map(x=>x.text),['First sentence.','Last sentence.'],'Final reply must not queue streamed sentences twice');
+ assert.equal(run('GET','/api/native-call/state',{query:{id:'call-two'},token:key.token}).status,401);
+ assert.equal(run('GET','/api/native-call/state',{query:{id:'call-one'},token:'0'.repeat(64)}).status,401);
+ const state=run('GET','/api/native-call/state',{query:{id:'call-one'},token:key.token});assert.equal(state.status,200);assert.equal(state.data.call.entries[0].reasoning,undefined);
+ assert.equal(run('POST','/api/native-call/action',{body:{id:'call-one',action:'answer'},token:key.token}).status,200);
+ run('POST','/api/native-call/action',{body:{id:'call-one',action:'answer'},token:key.token});assert.equal(accepted,1,'duplicate acceptance must not start another model turn');
+ const body={deviceId:'12345678-1234-1234-1234-123456789abc',token:'b'.repeat(64),apnsToken:'a'.repeat(64)};
+ assert.equal(run('POST','/api/native-call/register',{body,paired:true}).status,200);
+ body.token='c'.repeat(64);run('POST','/api/native-call/register',{body,paired:true});assert.equal(JSON.parse(fs.readFileSync(path.join(dir,'native-push.json'))).devices.length,1,'token rotation must replace the old device');
+ calls[0].status='ended';calls[0].endedAt='2020-01-01T00:00:00Z';assert.equal(run('GET','/api/native-call/state',{query:{id:'call-one'},token:key.token}).status,401);
+ let sentFile='';const res={set(){return this},sendFile(f){sentFile=f},status(){return this},json(){}};
+ await routes.get('POST /api/native-call/audio')({body:{id:'call-out',entryTime:'english'},query:{},headers:{authorization:'Bearer '+out.data.native.token}},res);
+ assert.deepEqual(audioTexts,['Still speaking English.'],'Chinese captions must never replace the TTS text');assert.equal(sentFile,'/none');
+ console.log('Native call authorization, call isolation, idempotent answer and token rotation checks passed.');
+}finally{fs.rmSync(dir,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1});

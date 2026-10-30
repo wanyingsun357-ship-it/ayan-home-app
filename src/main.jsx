@@ -7,6 +7,9 @@ import './orange-theme.css'
 import './orange-polish.css'
 import './orange-details.css'
 import './orange-chat-finish.css'
+import './lavender-day.css'
+import './lavender-moments.css'
+import './ins-pages.css'
 import {applyAppearance} from './utils/appearance.js'
 
 applyAppearance()
@@ -18,3 +21,5 @@ const sysNight = window.matchMedia('(prefers-color-scheme: dark)').matches
 applyAppearance()
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+
+import './ins-call.css'

@@ -1,9 +1,13 @@
+import LavenderSplash from './components/LavenderSplash.jsx'
+import {isPreviewHost} from './utils/previewHost.js'
+import CallDemo from './components/CallDemo.jsx'
 import artwork from './components/homeArtwork.json'
 import { useEffect, useState } from 'react'
 import Splash from './components/Splash.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Home from './pages/Home.jsx'
 import WarmHome from './pages/WarmHome.jsx'
+import InsHome, {SelfChat,InsDock} from './pages/InsHome.jsx'
 import WarmSplash from './components/WarmSplash.jsx'
 import {useAppearance,applyAppearance} from './utils/appearance.js'
 import Chat from './pages/Chat.jsx'
@@ -57,7 +61,7 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false)
   const [splashReveal, setSplashReveal] = useState(false)
   useEffect(()=>{const done=()=>setSplashDone(true);window.addEventListener('call:visible',done);return()=>window.removeEventListener('call:visible',done)},[])
-  const [view, setView] = useState('home')
+  const [view, setView] = useState('chat')
   const [shoppingTarget, setShoppingTarget] = useState({})
   const [togetherInitial, setTogetherInitial] = useState(null)
   const openShopping = (target = {}) => { setShoppingTarget(target); go('shopping') }
@@ -183,9 +187,10 @@ export default function App() {
         </button>
       )}
 
-      {view === 'home' && (warm ? <WarmHome diaryDot={diaryDot} go={go} openSidebar={() => setSidebarOpen(true)} /> : <Home go={go} openSidebar={() => setSidebarOpen(true)} />)}
+      {view === 'home' && (warm ? <InsHome go={go} openTogether={key=>{setTogetherInitial(key);go('together')}} /> : <Home go={go} openSidebar={() => setSidebarOpen(true)} />)}
+      {view === 'self' && <SelfChat back={()=>go('home')} />}
       {view === 'chat' && <Chat back={() => go('home')} />}
-      {view === 'moments' && <Moments back={() => go('home')} />}
+      {view === 'moments' && <Moments back={() => go('home')} go={go} />}
       {view === 'diary' && <Diary back={() => go('home')} />}
       {view === 'memory' && <Memory back={() => go('home')} goSettings={() => go('settings')} />}
       {view === 'mind' && <Mind back={() => go('home')} />}
@@ -198,7 +203,8 @@ export default function App() {
       {PAGES[view] && <Stub page={PAGES[view]} back={() => go('home')} />}
 
       {/* 底部 Tab */}
-      {showTabs && !(warm && view==='home') && (
+      {warm && view === 'diary' && <InsDock go={go} current="diary"/>}
+      {showTabs && !(warm && ['home','moments','diary'].includes(view)) && (
         <nav className={`tabbar glass3 ${warm ? 'warm-page-dock' : ''}`} aria-label="页面导航">
           {TABS.map((t) => (
             <button
@@ -233,7 +239,7 @@ export default function App() {
 
       {splashDone && <CommandWidget />}
       <EngineAccess />
-      <CallOverlay />
+      <CallOverlay />{isPreviewHost&&<CallDemo />}
       <Sidebar
         open={sidebarOpen}
         close={() => setSidebarOpen(false)}
@@ -241,7 +247,7 @@ export default function App() {
         current={view}
       />
       </div>
-      {!splashDone && (warm ? <WarmSplash onReveal={() => setSplashReveal(true)} onDone={() => setSplashDone(true)} /> : <Splash onReveal={() => setSplashReveal(true)} onDone={() => setSplashDone(true)} />)}
+      {!splashDone && (warm ? <LavenderSplash onReveal={() => setSplashReveal(true)} onDone={() => setSplashDone(true)} /> : <Splash onReveal={() => setSplashReveal(true)} onDone={() => setSplashDone(true)} />)}
     </>
   )
 }

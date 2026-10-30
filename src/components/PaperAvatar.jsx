@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { NAMES } from '../config.js'
 import { createPortal } from 'react-dom'
 const SIZE = 260
 export default function PaperAvatar({ who = 'him', editable = false }) {
@@ -48,9 +49,9 @@ export default function PaperAvatar({ who = 'him', editable = false }) {
       window.dispatchEvent(new Event('paper-avatar')); close()
     } catch { alert('头像未能保存，请重试') }
   }
-  const content = src ? <img src={src} alt={who === 'him' ? '晏白头像' : '你的头像'} /> : <span>{who === 'him' ? '☾' : 'Y'}</span>
+  const content = src ? <img src={src} alt={who === 'him' ? `${NAMES.me}头像` : '你的头像'} /> : <span>{who === 'him' ? '☾' : 'Y'}</span>
   return editable ? <>
-    <button ref={trigger} className="paper-avatar" title="更换头像（保存在本设备）" aria-label={who === 'him' ? '更换晏白头像' : '更换你的头像'} onClick={() => input.current?.click()}>{content}</button>
+    <button ref={trigger} className="paper-avatar" title="更换头像（保存在本设备）" aria-label={who === 'him' ? `更换${NAMES.me}头像` : '更换你的头像'} onClick={() => input.current?.click()}>{content}</button>
     <input ref={input} hidden type="file" accept="image/*" onChange={choose} />
     {crop && createPortal(<div className="avatar-crop-mask" onClick={close}>
       <section className="avatar-crop-dialog" role="dialog" aria-modal="true" aria-labelledby={'crop-title-' + who} onClick={e => e.stopPropagation()}

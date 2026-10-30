@@ -1,3 +1,213 @@
+## 2026-10-30 紫色整套发布候选（正在验证，尚未上线）
+
+- 用户最终授权：夜间通话双边气泡区分、清理Clawd旧提示词/明确拍一拍后缀、替换暖橘为紫色并保留原版；开屏已选择紫灰云雾+短句淡入约1.5秒可跳过，完成后整套UI/提示词/原生修复一起发布。
+- 原生修复独立分支codex/native-call-repair-20261030，8b21a777862a514c1900e0ffce17d82ea9e42907；无签名iOS编译run41073718814成功。PushKit使用系统async delegate直接await独立required reporter，不经过UI dedup；重复/冲突/坏payload均到reporter，失败留脱敏日志。生命周期MainActor隔离。主动拨出新增StartConversationAction/system audio ownership；系统generic handle使用中文，优先晏白：中文台词；TTS仍英文，原生按完成台词读取中英字幕/音频。
+- 前端CallCaption中文主行、英文details默认折叠，真实/演示/历史共用；原生supportsOutgoing能力检测兼容Build42，接管期间阻止网页SSE/轮询开麦，typed发送原接口与幂等ack保稿保留。模拟原生测试确认一通电话/0网页麦克风/0网页TTS、双语展开、typed ack通过。
+- 服务端native-calls修复副本从真实运行模块取得，新增outgoing方向凭据且保持配对/逐通话token隔离，测试含跨通话拒绝/重复接听/过期/英语TTS原文通过；尚未覆盖运行文件。当前运行native-calls基线SHA e404a0c32dd677a4072ff8360349b09985dffdcc18259cb52315cb7c7e63efb7。
+- 夜间通话：对方烟灰紫，自己较亮雾紫。主题选择显示紫色/原版，保留原orange存储键作兼容，旧暖橘用户自动进入紫色，不重置上传/配色/头像。新LavenderSplash已实现；实际生产隐藏通话演示入口，仅localhost开发预览可见。
+- 根CLAUDE.md现有touch说明确实有h/m但旧首段不清；Clawd段仍在。准备发布时仅变更这两块，预期根文件hash77f9e02bb1c8b7ce66b34e6f6b74ae16ab3826a2e32208384f064de099251d2a，先私有备份再定点修改，不上传私人全提示词。
+- 新docs/project/APP_UI_PROTOCOL.md列明动作12字/h和m各10字、两方映射/URL编码、紫色当前功能边界/英文语音中文字幕。project-context同步模块加入根目录同名全局UI协议，参与版本hash，旧Claude/Codex会话下一轮得到新协议，避免恢复旧append-system时继续沿用旧动作；保留项目隔离。线上project-context基线SHA69802b34e6fe81030a32e3455d848be0d98a3c82b2c849230bf75d25c7a8f053。
+- 本地构建通过；backend native tests、11个上下文单元/模拟（1个Windows symlink跳过）、native-caption/browser支持页/五阅读页回归通过。CLI协议测试Codex模拟通过，Claude因Windows未安装CLI ENOENT，未将其计为通过；脚本用隔离home和loopback假模型，后续可在Linux候选目录复验，不触真实模型。
+- 生产仍bc0af21、干净，未部署或打新TestFlight。下一步：发布候选打包/全功能检查，空闲时哈希保护备份、定点后端/提示词/静态资源上线，再提交主分支触发签名TestFlight，核对上传结果；不得覆盖旧home/src并发改动或运行旧固定脚本。用户已授权这次整套一起发布，无需再问同一授权。
+
+## 2026-10-30 Build42只读深入调查：来电崩溃与主动拨出分离
+
+- 远端只读成功：仓库HEAD bc0af2119034b166cf9a4d4b685caf78c51fc433干净；原生NativeCallsPlugin.swift与Build42提交fd9cc5a无差异。读取准确Build42源码和当前运行bridge推送模块，未碰生产状态。
+- 服务器通话元数据：05:55:53.943Z他发起来电，05:55:54.6123Z崩溃，间隔0.6693秒；来电05:56:39.197Z记missed。用户主动拨出是另一次06:21:20.974Z创建、06:21:33.819Z接通、06:33:13.181Z他挂断。对应手机UTC+8为13:55来电崩溃/14:21–14:33主动拨出，14:25截图位于后者；不再混同。
+- 确认代码风险：同步PushKit回调将present放Task @MainActor后直接返回，实际reportNewIncomingConversation在后续异步任务；同callID提前return/已有info抛错也跳过新报告。与Apple必须回调返回前发起系统上报的要求冲突。可定位具体缺陷范围，但日志未记录手机分支，不能断言本次恰好走了哪一个。
+- 当前服务端ring无显式重发循环，APNs expiration=0；bridge日志只留dial/missed结构标记，没有APNs逐推送结果或原生分支事件。没有证据宣称这是重发/缓存/迟到推送。
+- 当前主动拨出前端仅getUserMedia + /api/call/start，无原生outgoing conversation创建，能解释桌面麦克风指示而无同款系统来电UI的路径差异。用户仍可听说，不据此当作当时掉线或原生崩溃后回退。
+- 细节和修复/验收方向保存work/lavender-day-20261029/BUILD42-PUSHKIT-INVESTIGATION.md；没有复制原始含设备信息.ips，没有输出聊天/来电理由/token。仅诊断/交接文件变化，未改Swift/后端/生产UI，未发电话/推送或新TestFlight。
+- 后续修复应保证PushKit上报在回调返回前启动，分开UI去重和报告义务并明确冲突/异常路径；增加脱敏诊断；须适配用户iOS26.1并重新原生编译/TestFlight真机验收。网页演示不能替代。若增加主动拨出原生UI，另作独立功能范围。
+
+## 2026-10-30 Build42崩溃报告已定位PushKit终止类型（具体触发待核对）
+
+- 用户提供App-2026-10-30-135555.ips，确认那通电话由用户主动拨出。报告App 1.0(42)/com.entangledforever.home，iOS26.1(23B85)，captureTime为2026-10-30 13:55:54.6123 +0800。仅保存去标识摘要build42-crash-summary.json，未复制或公开原报告/设备标识。
+- exception EXC_CRASH/SIGABRT；lastExceptionBacktrace与主线程触发栈均含PKPushRegistry _terminateAppIfThereAreUnhandledVoIPPushes、voipPayloadReceived:mustPostCall:withCompletionHandler:。可确认本次为PushKit未完成要求的VoIP来电上报而被终止，不是据此归因为网页样式/普通JS或内存耗尽。具体哪条推送/何种分支尚未确定。
+- 现有快照NativeCallsPlugin回调Task异步present；present在同callID提前return、info非空throw、payload校验失败等分支不执行新上报，仅catch emit后completion，均是需要对照Build42源码与推送日志检查的候选。不能直接宣称其中某个分支就是本次原因，也不能未经真机及Apple规则验证盲改后发布。
+- 用户主动拨出走网页音频，能说明后来桌面麦克风指示与系统邀请不一定对应同一条路径；不凭崩溃报告把14:25那次仍可听说认作本次崩溃的结果。系统收到来电推送并不等于用户主动拨出的这通一定改走原生。
+- Apple官方PushKit文档明确需上报的VoIP推送未向CallKit/LiveCommunicationKit上报会被终止；下一步若实施修复需核对线上/Build42准确源码、重复/冲突/迟到推送和异步报告分支，并单独原生编译/TestFlight与真机验证，纯网页UI上线不能替代。此次仅诊断与交接，无生产/原生代码修改或上传。
+
+## 2026-10-30 用户报告Build42崩溃/后台麦克风指示（待日志定位）
+
+- 用户截图确认TestFlight 1.0(42)，报告当天中午约两点提示Entangled Home崩溃；另一张14:25桌面截图仅橙色麦克风图标，用户补充仍可正常听说。不可将橙色指示或系统邀请消失直接认作崩溃/掉线，不确定两件事是否同因；时区和iOS版本尚未确认。
+- 只读检查现有独立快照：原生LiveCommunicationKit接听接管与网页音频两条路径都存在，网页主动拨出仍getUserMedia；原生状态丢失有回前台重新确认/需点击继续分支。这些仅为排查方向，未据截图确定走了哪个分支，不能声称已修复或判定iOS问题。
+- 本轮紫色UI和三态细化仍仅本地预览，未部署到Build42；演示发送故意禁用，真实sendTyped沿用/api/call/say，不能说因没装新UI包所以真实通话文字未接入。
+- 未找到本机对应崩溃.ips，也没有可用App Store Connect崩溃读取工具；需要用户提供当时App/Entangled Home的.ips或对应JetsamEvent及iOS版本，并确认那通是主动拨出还是来电接听。无生产/原生代码修改或打包。
+
+## 2026-10-30 通话字幕渐隐与三键细化（本地完成）
+
+- 用户确认通话中只需气泡，历史才显示You/备注；以活动通话作用域隐藏标签，演示按data-call-view隔离，历史和云入口保持。头像/名字统一水平中线，清除旧text-indent，头像下声音感知待接入文案移除，换真实通话时长（演示固定示例01:23），浅灰紫小字；顶部状态不重复计时。
+- 通话滚动区域向上延伸170px进入头像后方，头像/名字在上层，字幕顶端非零渐隐+连续0–2.5px模糊、0.4–1透明度，淡颗粒蒙层柔化，继续上滚逐渐离开视口；回滚可重读。新utils/callTranscript.js供真实与演示共用，自动滚动/手动滚动均更新，不影响通话历史。
+- Ic新增横放向下听筒用于挂断/拒接，接听仍正常电话；三键改透明渐变/细亮边/背景模糊与轻内高光，夜间调深。原版通话视觉未加灰紫覆盖。
+- 进入打字将typing和muted都设true并同步ref，立即静音；清掉待发语音buffer及计时。startMic重连初始mute同时检查typingRef；onFinal在typing/muted时不加入语音发送buffer。播放结束原逻辑也检查typingRef，不会自动开麦。下一次主动点输入键回开麦。原生仍nativeCalls.muted(true)，失败提示状态未确认；真实iOS需真机验收。
+- 构建通过；verify-chat-call.cjs与verify-colors-demo.cjs日夜回归通过。新增verify-call-refinement.cjs日390/夜320/桌面1280验证无可见通话署名、头像/名字中线偏差0px、滚动层确实在头像后、时长、打字持续状态、顶部模糊与非零透明度、pageerror0。结果call-refinement-verification.json与call-soft-fade日夜/桌面截图。均模拟通话，不调用真实麦克风/ASR或生产数据。
+- 修改独立app/components/CallOverlay.jsx、CallDemo.jsx、ins-call.css，新增utils/callTranscript.js；manifest revision19。原4178可刷新。未部署/提交/推送/原生打包，未碰home/src并发修改。发布前重新核对远端源码，原生静音/触摸真机验收待做。
+
+## 2026-10-30 聊天配色方案与可操作通话演示（本地完成）
+
+- 用户反馈背景按钮图标过大/未对齐：补全编辑面板两按钮并排、17px线描图标与间距；此为样式遗漏，非电脑兼容问题。日夜通话返回键换居中左箭头，保留原收起回聊天行为。来电/呼叫玻璃卡边缘加入同背景低透明模糊纹理，文字区域清楚。
+- Chat同一小笔编辑新增23项颜色：双方气泡与文字、三标签填充/字、日期时间、名字/正文、短句、天空文字、工具图标、输入底/提示、底色、辅助/提示、引用底/线、边框、语音/波形、爱心/强调。局部即时预览（吸顶保留），保存才应用聊天页；每项恢复与全配色恢复。日夜/每对话各自两个配色方案，存入和预览方案，底部保存修改后持久；方案只含配色，不复制大图片。沿用ins-chat-look-v1，兼容旧仅背景备注数据，本设备保存，保存失败保原数据。
+- 新CallDemo独立演示层，Chat工具＋和呼叫卡底部均可进；明显标记界面演示、不连接麦克风，手动切通话中/来电/挂断卡片/历史与思考演示；不调用真实call/say或音频/ASR。真实CallOverlay接听/挂断/发送逻辑保持，演示不伪造服务器通话记录。
+- 聊天里的真实通话卡沿用通话分钟秒数/挂断方/句数和原历史入口，改灰紫轻卡、线描电话与小号说明，未接/拒接保留原语义。点击仍原全屏历史。演示挂断卡可点击展示对应示例历史。
+- 构建通过；verify-colors-demo.cjs日390/夜320验证17px图标、23色面板、两方案保存/刷新/恢复取消、实际气泡/标签computed颜色、通过真实工具菜单进入演示、模拟来电/接听/三态/挂断/历史云，麦克风调用0、pageerror0/无横溢出；verify-chat-call.cjs既有背景裁剪/实际通话模拟回归通过。color-demo-verification.json、colors-editor/call-texture/call-demo日夜截图保存。最后仅默认预览名字Rue与吸顶遮边小修，构建复验通过。
+- 只修改work/lavender-day-20261029/app任务文件；旧home/src仍有他处修改，未碰。原4178静态预览可刷新，无需服务重启。manifest revision18。未部署/推送/提交/原生打包；线上最后只读核对超时，不据本地状态判断线上，发布须重新核对远端。
+- 下一步：用户检查演示/自定义配色；真实iOS与麦克风静音仍待设备验收；声音感知后续接入。
+
+## 2026-10-30 Diary图标、Mind横线、Chat背景与通话UI（本地完成）
+
+- Diary复用InsDock时SVG缺少显式尺寸导致浏览器默认300x150，已在Diary作用域固定普通24px/独立加号29px；Mind念头内页按新参考恢复32px账本横线、左竖线和日期节奏，其他章节留白不变。
+- Chat侧边栏各对话小笔打开备注与背景编辑。日/夜各自顶部横图和下面竖图，可选图/拖动缩放/裁剪/组合预览/取消/恢复默认/保存；保留现有30px圆角与结构。备注、图保存在本设备ins-chat-look-v1，按session分开；不改后端会话标题或历史正文。上传裁剪失败/保存失败保留原背景；备注联动当前Chat及通话/历史显示名。未增加云同步。
+- 使用用户ui紫色背景/通话界面.png复制为public/themes/lavender/call-background.png。App通话改同图浅紫/夜深紫，双层方圆头像框、玻璃字幕泡、顶部滚动渐淡模糊、三控件（开麦/闭麦/打字循环，挂断，声音）。沿用现有nativeCalls与ASR/文字发送链路，typing与muted共同控制真正静音；原版仍保留旧四键。声音感知仅待接入UI，不造听到的声音。
+- App内来电为背景上悬浮玻璃卡：头像/备注/理由/绿接听红拒接；iOS原生来电逻辑未改。通话结束/接听状态逻辑保持。历史改同图全屏、无头像名字大标题，逐条备注/You，保留有reasoning时云朵，思考层提升到历史上方。未调用真实通话/麦克风/付费ASR。
+- 构建通过；verify-chat-call.cjs模拟日夜验证备注保存/裁剪后实际CSS背景、全屏历史/云、三态按钮、来电头像理由，pageerror0。verify-personal-pages.cjs日390/夜320/日1280回归通过。截图chat-custom/call-active/call-incoming/call-history-thought各日夜，chat-call-verification.json留存。
+- 仅独立work/lavender-day-20261029/app修改，未碰旧home/src。本轮线上只读SSH核对超时，最近一次已核实bc0af21干净；未部署/提交/推送/重启生产服务。发布前必须重新核对远端。manifest revision17。
+- 下一步：用户检查预览；真机原生接听/三态静音、背景本地存储上限仍需设备验收；声音感知后续接入。
+
+## 2026-10-30 Read/Mind/Memory/Diary/Settings Ins风统一（本地完成）
+
+- 用户授权五页继续沿用新简约灰紫Ins风。扩展src/ins-pages.css作用域，日间奶白/夜间深灰紫、细边线、清楚无衬线正文，共用28px轻斜体英文标题；不改变原版主题。
+- Read书架轻书脊与细进度、正文/目录/批注统一；Mind保留月亮与红色轨道/四章节/锁定，内页去密横线用留白；Memory索引/标签/详情/编辑表单统一；Diary纸页/便签/编辑/日期层次统一且保留月亮锁和红线锁；Settings分组/细线/紫色选项与16px表单统一。小屏设置行可折行，输入框不挤出。
+- Diary底栏复用InsDock，与Home/Moments同图标与顺序；App仅此导航渲染调整。AppearanceSettings选项展示名暖橘玻璃改灰紫Ins，内部orange键保留，预览改对应日夜紫色天空及灰紫玻璃色。修复旧夜间棕色遮罩、弹层局部变量残留；未重写业务API或数据。
+- 只读线上HEAD仍bc0af2119034b166cf9a4d4b685caf78c51fc433且干净；home/src/App.jsx仍有其他旧未提交修改，未碰。只修改独立work/lavender-day-20261029/app副本。构建通过（既有大包提示），verify-personal-pages.cjs在日390/夜320/日1280验证五页、Read章节目录、Mind四章及内页、Memory详情、Diary锁定/便签/编辑、Settings连接器表单，无横向溢出/pageerror0；verify-support-pages.cjs回归通过。测试只用本地模拟数据，未发日记/修改设置或生产记录。
+- 新personal-pages-fixture.cjs仅供预览和自动验证，模拟数据明确标记；preview加载此fixture。截图ins-read/mind/memory/diary/settings各日夜及详情PNG，personal-pages-verification.json保存检查。manifest revision16。原4178预览继续，未部署/提交/推送/原生打包。
+- 后续：用户检查视觉；真机键盘/安全区仍需验收。发布前重新对齐最新远端与相关文件哈希，仅合入任务文件。
+
+## 2026-10-30 Home标题与辅助页面Ins风统一（本地完成）
+
+- 用户要求Etangled改Home、四入口间距整齐，并将More/Together/Shopping/Footprints配色样式统一为Ins极简。Home标题已改，四格等宽且文字全居中，选中细紫线居中；修复旧首尾左/右对齐样式优先级冲突。
+- 新src/ins-pages.css定义辅助页面奶白/灰紫阅读色与夜间深灰紫色，统一无衬线标题、细分隔线、轻18px圆角卡片、低饱和胶囊筛选/按钮、16px可读表单，去掉这些页旧暖橘墙纸/玻璃底与棕色局部表单覆盖。More独立带自身配色，可从任何页面打开，采用简洁24px标题、17px正常体条目与11px说明，七入口保持。
+- Together原八模块/宠物/日历/数据交互、Shopping表单/登录/浏览保护、Footprints会话筛选/足迹状态均未重写；实际状态色保留，原版主题不启用此覆盖。辅助账本及记录者旧硬编码晏白展示文案补为ℛ𝓊ℯ，后台author/会话数据未改。
+- 构建通过；日390、夜320、日1280模拟浏览器验证Home标题/四等宽居中、More七路由、Together八模块与睡眠切换、Shopping记录表单可输入且16px、Footprints筛选、页面无横向溢出，pageerror0。截图ins-more/ins-together/ins-sleep/ins-shopping/ins-shopping-form/ins-footprints各日夜PNG；verify-support-pages.cjs与support-pages-verification.json保存。未提交购物/支付/京东动作或访问生产数据。
+- preview增加support-pages-fixture.cjs，足迹显式模拟文本/Shopping空记录；仅预览为保持页面可检查提供符合schema的假数据，正式组件逻辑未改。精确核对4178对应本任务Node进程后重启，当前进程33984，首页200、足迹1条示例；本地原链接刷新可见。
+- 修改InsHome.jsx/main.jsx，新增ins-pages.css；Together.jsx/Shopping.jsx/ShoppingLedger.jsx仅改显示名。manifest更新。未部署/提交/推送/打包，生产服务未重启。发布须重新核对远端HEAD和相关文件，不能整体覆盖线上。
+
+## 2026-10-29 Home纪念天数、缎带蝴蝶结与双色角标（本地完成）
+
+- 用户询问旧146天数放哪里、要求参考缎带蝴蝶结更大且同紫色、两个折叠标签不同颜色，并询问主页与Chat统一方向。将真实daysSince(TOGETHER_SINCE)放Etangled标题下，数字为小号斜体23px、旁days together细字，沿用2026-06-06起点，当前截图146，未写死。
+- 使用imagegen技能/内置工具生成透明浅紫缎带蝴蝶结，复制至public/decor/ins-satin-bow-v2.png，不改原参考图、不覆盖旧SVG；以64x57展示，保持To do原位置。第一图片位角标奶白、第二浅紫，夜间分别调整明度，折角与固定图片槽行为不变。
+- 仅上述UI落实；主页/Chat风格统一建议为共享奶白/雾紫/圆角/月亮、Home保留简洁图片墙，未据讨论另铺天空星星或重做整页。
+- 构建及既有Home日夜/桌面/附件流程回归通过；另验证真实天数为正、蝴蝶结64宽/PNG边角alpha透明、两标签颜色不同、无溢出，日夜截图home-days-bow-{day,night}.png。原4178返回200，未部署/提交/推送。
+
+## 2026-10-29 Home 图文卡片细化与me附件（本地完成）
+
+- 按用户明确拼写将Message标题改Etangled，同款无衬线粗体，带轻灰紫；首页快捷行固定左到右Home/Eat/Sleep/Shopping，分别留当前页/进入原三餐/原睡眠/原Shopping。Together原八模块仍保留在原页面，其他入口可经More访问。
+- Private works前改灰色填充小图框内白锁，编辑文字改线描铅笔。图库改两列错落，三图默认左两短卡/右一长卡；每张照片下白框可写标签，显示上传日期，编辑态可改日期，右下线描爱心可收藏。不造播放次数。原增删/前后移/尺寸调整和本设备存储保持。底部用白/夜间深色渐变与SVG噪声仅在过渡段，主体照片不加模糊或颗粒滤镜。
+- To do/仍在成为你的句子加粗至Mates风字号；新public/decor/ins-lavender-bow.svg为本地矢量多层丝带渐变，做浅紫缎带立体感，约42x35，与原右侧符号相近。固定两个待办图位加立体折角To do标签；没有改固定图片与任务补位逻辑。
+- SelfChat拆为独立组件，支持文本/多图/文件/真实MediaRecorder语音（结束后预览待发、可移除）；附件Blob存在本设备IndexedDB ins-self-media-v1/files，消息摘要localStorage，避免大文件塞localStorage。单附件上限20MB，录音最长2分钟自动停止；离页停止麦克风/清计时/撤销URL，不向后端或AI发送。失败保留草稿附件并清理新写入的Blob；删除本地消息带确认及清对应媒体。回Home末条摘要可显示图片/文件/语音。旧纯文本记录继续读取。
+- 构建通过；日390/1280、夜320截图/无溢出、四快捷顺序/Eat真实模块/三图两列分布/标签日期收藏持久化/蝴蝶结加载/两折角标签检查通过。me用本地合成振荡器模拟麦克风，录制/音频元数据可读/图片及文本文件保存与重新进入读取均通过，pageerror0；没有真实录音、模型/ASR调用或生产上传。证据verify-home-polish.cjs/home-polish-verification.json、home-polish-{day-390,night-320}.png与self-media.png。
+- 新src/pages/SelfChat.jsx、src/utils/selfMedia.js、public/decor/ins-lavender-bow.svg，修改InsHome.jsx/ins-home.css；manifest更新。原4178首页200，静态预览可直接刷新，无需更换端口。
+- 未部署/提交/推送或原生打包。上传照片仍使用现有压缩/本设备图库限制，不承诺原始大图云备份；文件与自言自语仅当前浏览器设备。真实麦克风权限/长音频/原生下载及安全区待真机验收。
+
+## 2026-10-29 新Ins Home、图片墙、固定To do与自言自语（本地完成）
+
+- 用户明确参考Message图是新Home，并授权开始；启动直接Chat，不是Home。App默认view改chat、初始splashDone=true，冷启动不再先播放旧猫咪Home开场。暖橘Home换InsHome，原版Home源码/布局保持；Chat紫灰日夜布局未重做。
+- 新Home按参考Message标题/右上太阳月亮、Together横向入口、Private works数量/收放、双列图片墙/底部淡出、sᴛɪʟʟ ʙᴇᴄᴏᴍɪɴɢ ʏᴏᴜʀs、Rue与me两行会话、To do与蝴蝶结、Moments同款Tab实现。Together八个模块直接传initial进入，原Together仍保留八模块；Home上没有移除原模块。
+- 图片墙本设备存ins-home-photos-v1，支持选多图/最多12张/压缩/删除/前后移动/大小跨列、收放与数量；拒绝过大/非图片，存储失败保留原数据。没有假冒上传到云端。
+- Rue行真实读取当前/api/history最后一条普通消息和时间；头像沿用him圆形；me行her方头像+叠影、填充me，进入SelfChat本设备独立消息，不调用AI或/api/message，自发自收/持久保存/删除确认，最后一句与时间回Home显示。两行月亮可备注整段名字/emoji，本设备ins-home-names-v1，不改原对方身份/会话归属。
+- 待办沿用/api/plans新增及/:id/toggle，过滤未完成、日期排序，默认只显示两条；两个固定上传图片槽独立存ins-todo-slots-v1，完成首条后下一条顶上但图片不换，空时仍保留两图片位。展开列全部未完成并在最下方提供添加；收起无添加。黑色主事项单行省略，灰色备注最长约16em单行省略。点击浮动玻璃卡查看/新增/完成/编辑备注；备注本设备ins-todo-notes-v1，现有后端未加备注字段或既有事项编辑接口，旧事项标题只读；新增可写标题/日期。创建成功后先退出new状态，避免备注存储失败重试重复新建。
+- Moments相机emoji换同风格线描相机，和背景按钮统一32px高度及中心对齐；背景选图/裁剪仍在相机旁。Moments导出MomentIcon供Home Tab共用，其他功能不改。
+- 线上只读核实仍bc0af21干净，App/Together/WarmTodo哈希与已知基线一致，仅改本地独立副本；未覆盖home/src或其他窗口修改。新文件pages/InsHome.jsx、pages/ins-home.css，修改App.jsx、Moments.jsx和lavender-moments.css，已纳manifest。
+- 构建通过（保留既有大包提示）；本地模拟API验证日间390/1280、夜间320、启动Chat→Home、备注保存、图片墙上传/重排/大图/删除、To do固定图片与完成补位/展开新增/备注持久化/空两图、SelfChat无网络发送/最后一句、日夜切换、睡眠直达且Together仍8栏目、More导航、相机背景中心对齐。pageerror0。ins-home-verification.json与verify-ins-home.cjs记录，ins-home-{day-390,night-320,edited}.png截图。没有调用生产计划/聊天或付费模型。
+- 本地preview新增home-fixture.cjs提供示例待办/模拟新增完成和Together数据。原隐藏Node34308经端口和命令行核对后重启为34848；4178首页200、plans返回3条示例。原链接刷新现在直接Chat，左上返回进新Home。图片/备注/自言自语需同一设备/浏览器保存，未做服务端同步。
+- 未部署/提交/推送/原生打包；真机键盘/安全区/触摸/图片存储上限待设备确认。实际其他会话last message未新增聚合接口，Home Rue当前是正在使用的会话，不伪造每个会话摘要。未来发布必须对齐最新源码和哈希，仅合入本次相关文件。
+
+## 2026-10-29 Moments 点赞署名、头像边界、底栏与背景入口（本地完成）
+
+- 按用户圈图，将动作行右侧重复时间移除并恢复可见♡ liked by实际点赞人；使用当前ℛ𝓊ℯ/𝒱ℯ𝓇𝒶显示名，未点赞不伪造署名，顶部原动态时间保留。头像跨面板顶部分界线约9px，保留白色外圈留边；移除右下浮动Vera身份条。
+- 用户明确四图标从右到左Home/Chat/Moments/Diary，因此实际左到右Diary/Moments/Chat/Home，当前Moments选中；最右独立加号调用现有App go(more)，复用当前主页More目录。首页仍现有版本，待用户后续提供新样式；没有提前改首页。App传go给Moments，其余页面导航保持。
+- 后续指令要求背景按钮移进发布弹层相机旁，已将完整MomentsBackgroundPicker移动到mo-sheet-bar，背景面板不再有更换/恢复按钮；同一裁剪、保存和恢复逻辑保留，未自动发布动态。
+- 构建通过；日夜浏览器模拟接口验证底栏顺序、Home/Chat/Diary导航、More旧目录、liked by显示、背景面板无入口/发布弹层有入口且裁剪保存可用，pageerror0。截图moments-final-{day,night}.png与moments-compose-background.png。原4178返回200可刷新，未部署/提交/推送。
+
+## 2026-10-29 本地预览连接拒绝恢复
+
+- 用户截图4178 ERR_CONNECTION_REFUSED，本机HTTP也确认拒绝连接，预览进程已停止。以隐藏后台Node进程重新启动原preview.cjs，日志preview.stdout.log/preview.stderr.log；未改页面源码或生产服务。
+- 首页和/api/moments均HTTP200，独立浏览器真实打开首页→Moments，背景上传裁剪入口出现、无页面错误。原链接可刷新；本地进程仍需运行，未配置开机服务或部署线上。
+
+## 2026-10-29 Moments 自定义背景裁剪与Rue显示名（本地完成）
+
+- 用户明确选择头像后面整块斜纹背景可自选图裁剪，并要求他从晏白显示为ℛ𝓊ℯ，Chat一致。新增面板右上背景按钮、选图/拖动/1–3倍缩放/九宫格预览/取消/重置/使用背景；恢复斜纹可还原默认效果。
+- 新MomentsBackgroundPicker输出900x1275 JPEG，保存在本设备localStorage vera-moments-background-v1，和头像一样没有新增服务端同步。日夜共用本人背景，夜间加轻暗层；动态卡片保持独立不透字。未选图/取消/格式失败/存储满均不覆盖已有背景，切页面后重新读取；不保存或改写用户原图文件。
+- 全局前端NAMES.me改为ℛ𝓊ℯ，Moments作者/评论、Chat标题/拍一拍/搜索等使用该展示名；头像alt/上传无障碍标签同步。Chat引用按assistant角色显示新名字，包括旧引用name为晏白的显示，不改原消息正文、后台author键、会话标题或聊天模型身份。Vera名字与Yanbai only副标题保持用户上一轮要求。
+- 构建通过；日间390/夜间320背景拖动缩放/输出尺寸/保存与跨页面保留/取消保留/模拟QuotaExceededError保留/恢复斜纹通过；验证Moments Rue作者与Chat Rue标题及旧引用新显示。新增组件无页面错误。Moments日夜320/390/1280原发布点赞评论失败保稿/删除/头像回归，以及Chat日夜既有功能回归均通过。所有请求为本地模拟数据，未上传生产图片或调用真实模型。
+- 证据background-{crop,applied}-{day,night}.png、background-verification.json、verify-background.cjs，Moments原截图已刷新。src/config.js、components/PaperAvatar.jsx、pages/Chat.jsx、pages/Moments.jsx、lavender-moments.css及新components/MomentsBackgroundPicker.jsx纳入manifest。本地4178预览刷新即可；未部署/提交/推送或打包。
+
+## 2026-10-29 Moments 灰阶分层与副标题（本地完成）
+
+- 用户澄清参考图为顶部黑灰渐变/白色标题分割区/下方独立纹理面板，询问灰紫选择。采用灰阶为主、边缘少量紫光：顶部中灰到白，标题区与下方带细边的灰色斜纹面板分开；夜间采用同结构深灰。移除整页通铺紫纹理。
+- Moments及副标题统一Arial/Helvetica正常体，Friends only改Yanbai only。Vera头像与已有动态交互不变，底栏继续待用户指定功能。
+- 构建及既有Moments日间320/390/1280、夜间390/发布/点赞/评论失败保稿/删除确认/头像裁剪/末卡滚动回归通过。截图moments-day-390.png等更新；原4178预览刷新生效。未上线/提交/推送。
+
+## 2026-10-29 Vera Moments 新排版（本地实现，未部署）
+
+- 用户要求按新截图做Moments：大标题/Friends only、右返回与发布、居中可上传头像和𝒱ℯ𝓇𝒶、独立圆角动态卡片/点赞评论数/时间、浅色评论容器/输入，以及浮动身份纸签和底部图标。背景用CSS很淡斜纹、灰紫边缘柔光与顶部淡渐变重建，不使用整张截图铺底或添加截图私有文字；用户头像仍自己选图/裁剪。提供同布局灰紫夜间。
+- 再次只读核实VPS HEAD bc0af21干净；Moments.jsx SHA256 5bc3d2af01ed228c7c0b74cae4ca8f87d42960cf37804a8c71c1806588202e2f、moments.css 45e40d6cf0372caef17c52048383cb140e8fc990b6b9d321b06ac1f934226346、App.jsx 931410ebb2e1457a1ca100fb080524fd13ff15eb0fa89276660345c4b364ed4e，均与本次独立副本改前一致。没有覆盖home/src/其他窗口交接或线上文件。原文件备份moments-baseline。
+- 复用当前Moments的发布/图片压缩上传/点赞/评论/删除处理器；Vera为本页wanying展示名，其他作者继续真实配置；头像使用Chat相同her本设备头像键，多处同步显示。原版继续旧页面。仅暖橘Moments隐藏旧Tab并使用新底栏；其他页面导航未改。
+- 用户明确底部图标功能后续指定，因此双对话/好友/笑脸/太阳/独立加号均只展示为disabled预览，不猜用途或发送请求。浮动Vera身份条为静态身份显示，不做账号切换。顶部原返回与发布正常可用。后续必须等用户逐项说明再接底部导航，不将这些图标写成已完成业务。
+- 评论区可见时提供评论框；非当前卡片发送按钮禁用，避免跨卡片误发共享草稿。评论/发布失败保留原稿，点赞失败原回滚逻辑及删除确认保留。现有评论为平铺列表，本轮未新增按评论对象嵌套回复接口。
+- npm构建通过（沿用既有大包提示）；全本地模拟API验证日间320/390/1280及夜间390，无溢出、底栏安全区、最后卡片可滚到底栏上方；点赞保存/评论失败保稿并重试/发布失败保稿并重试/删除确认/头像裁剪和卡片头像同步均通过，pageerror0。Chat日夜圆角与夜间引用回归通过。没有操作真实动态或访问生产API。
+- 新源码src/lavender-moments.css、修改Moments.jsx/App.jsx/main.jsx；本地preview补充独立moments-fixture.cjs，服务已重启。原http://127.0.0.1:4178/?mode=day首页点Moments可看，night同理；内容为示例。截图moments-day-390.png、moments-day-320.png、moments-night-390.png、moments-bottom.png；verify-moments.cjs/moments-verification.json记录。
+- 未上线/提交/推送或打原生包。下一步用户确认视觉并说明各底栏图标用途；后续发布重新核对远端HEAD/改动/相关哈希，不能将独立预览整目录覆盖线上。原生键盘、触摸及实际上传仍待设备实测。
+
+## 2026-10-29 日夜顶部圆角与夜间引用区分（本地完成）
+
+- 用户要求日夜顶部交界恢复干净圆角、消除外侧多出的色块。根因是天空层结束在圆角开始后12px，但圆角高度30px，余下区域露出页面底色；将同一张天空背景延伸到圆角后方32px，面板圆角和主体排版保持。日夜均修复。
+- 夜间引用/输入引用由近背景色改为#4b4258紫灰小纸签，7px轻圆角、极淡内边与更亮细紫线，正文保持浅银紫。保留引用原内容与操作。夜间壁纸中心显示比例由155.5556%微调160%，避开原PNG中心区边缘接缝。
+- 构建及本地模拟API日夜浏览器核验通过，确认天空延伸/透明占位层/引用底色；截图work/lavender-day-20261029/v7-{day,night}.png与v7-{day,night}-header.png。原4178日夜预览刷新可见；只改独立副本CSS，未上线/提交/推送或改其他窗口代码。
+
+## 2026-10-29 紫灰夜间 Chat（本地实现，未部署）
+
+- 用户明确要求继续夜间，沿用已确认日间排版/花体/每组最后段日期时间/小尾巴/底部图标/拍一拍与发送动效/语音RMS/引用/底部思考抽屉。Chat的lavender状态扩展为暖橘主题的日夜两种模式；原版不启用。其他页面主题布局未改。
+- 使用原ZIP内night_lavender_cloud_header.png与night_lavender_star_chat_wallpaper.png，不用拼版参考图。夜间壁纸上下附加的星星带与中心图有拼接边，CSS按中间1728/2688区域居中显示（background-size auto 155.5556%），避免接缝；没有重绘/修改原PNG。
+- 同一CSS布局改成日夜独立颜色与图片变量，日间原数值保留。夜间34313f底、514c5c接收气泡、f2edf5正文、银紫图标；发送色较参考略加深为7e708c，白字对比度约4.58:1；接收正文约7.17:1、时间与底色约6.12:1。标题/标签/输入/引用/语音附文/录音状态与取消/分段/头像裁剪/目录/水位/思考抽屉同步深色。绿灰点及已有处理器不改，保留最新底栏32x40与正圆发送。
+- 构建通过；夜间320/390/430完整原功能检查与320/390/430/1280空/短/多行底栏尺寸检查通过；夜间合成音频RMS测试静音0、发声约0.87、取消无上传，通过头像裁剪/分段/云朵/水位/侧栏/更多目录/模拟发送。pageerror0。
+- 从真实Settings入口切夜间再切日间，核实头像标题区/底栏/输入框几何尺寸一致、正确背景切换、模式写入原appearance配置；日间原功能回归与原版日夜隔离验证通过。全部本地模拟API，没有访问真实模型/ASR或麦克风。补齐预览Settings所需空示例数据，避免通用空对象造成设置页渲染异常；没有修改正式Settings。
+- 原预览http://127.0.0.1:4178/?mode=night直接进入夜间模式首页，点猫进Chat；?mode=day用于日间对照。仅本地预览支持该query，不新增正式产品模式按钮；真实切换仍用Settings原日夜配置。预览服务已重新启动并保留模式，全部示例数据。
+- 最新证据work/lavender-day-20261029/night-chat-390.png、night-thinking-{half,full}.png、night-{details,recording,recording-cancel}.png、night-toolbar-{width}.png及verify-night*.cjs/night-verification.json/night-effects验证JSON。v5-source保留扩展前Chat与CSS；manifest加入两张夜间PNG。
+- 仅本地独立副本，未改home/src/线上源码/后端，未部署/提交/推送或打原生包；发布前仍需重新核对远端HEAD/改动/相关哈希，只合入相关文件。真机安全区/麦克风/后台音频和触摸手感待设备验收。
+
+## 2026-10-29 发送出现时底栏对齐（本地完成）
+
+- 用户截图的发送椭圆/底栏拥挤是预览CSS尺寸冲突：列宽由30变28，而按钮仍30宽，旧发送min-height34叠加新height28导致椭圆。统一所有图标列32px，按钮32x40、底部对齐；发送用32px圆形背景和居中SVG箭头，不依赖字体箭头基线。输入框保留多行滚动，隐藏桌面滚动条箭头。
+- 构建通过；320/390/430/1280视口的空/短/长多行输入验证通过，按钮等尺寸/同y/无溢出，发送背景严格32x32。截图v5-toolbar-{width}.png与v5-typing-{width}.png，验证v5-verification.json。原预览刷新生效，未上线/提交/推送；未改原版/夜间或发送处理器。
+
+## 2026-10-29 紫灰气泡小尾巴与Ins细节（本地实现，未部署）
+
+- 用户同意上一轮四项建议并要求清晰可读、参考图带小尾巴。仅在紫灰日间实现：左右气泡全圆角20px，用CSS内联SVG遮罩绘制朝头像方向的小弯尾；不改文字/分段/引用/长按语义。
+- 拍一拍提示及时间从旧棕/浅黄改深灰紫，无底色；被拍头像轻晃、空心爱心短浮出。发送按钮按下轻缩、这次本地追加的消息轻浮入，装饰从橘花瓣改两颗短暂紫灰星点；只是视觉反馈，不将本地追加当送达回执。减少动态下去掉装饰动效。
+- 录音提示改窄奶白紫灰胶囊、深紫灰提示与转写，取消有独立文字/颜色；语音条改浅紫底/深紫控件、附文深灰紫。新增LavenderMicMeter，复用当前麦克风stream、独立只读AnalyserNode，不另开麦、不接音频输出、不拥有或停止轨道；约80ms采样，隐藏暂停、卸载断开。声波跟实际RMS，不使用循环假音量；原录音发送/上滑取消流程保留。
+- 引用与输入引用改为淡奶白衬底、细紫竖线和紧凑名字/摘录，取消厚圆角棕色卡片；引用数据及处理器不改。
+- 构建及320/390/430原功能验证通过；原版日夜/暖橘夜间及目录去重检查通过。新增隔离模拟API+浏览器合成振荡器音频检查：静音level=0，增加合成音量后level约0.84；真实音频管线量变、转写模拟文本、取消无上传通过，未申请真实麦克风或发往模型/ASR服务。气泡SVG尾/引用颜色与无边框/语音附文/头像与爱心/发送两星点均通过，pageerror0。
+- 截图work/lavender-day-20261029/v4-{day-390,details,touch,sent,recording,recording-cancel}.png；verify-v4-effects.cjs及v4-verification.json保存验证；manifest更新新增组件哈希。v3-source保存本轮前Chat.jsx和CSS。原预览http://127.0.0.1:4178刷新可见，仍为示例与模拟API。
+- 未修改home/src/线上源码/后端，未部署/提交/推送或打包。真机麦克风权限、蓝牙/原生音频和触摸手感待设备验收；发布前重新核对远端并只部署相关文件，不整目录覆盖。
+
+## 2026-10-29 日间更多目录移除重复碰一碰（本地完成）
+
+- 按用户要求只隐藏紫灰日间更多目录内的碰一碰，底部星形拍一拍按钮及轻点/长按原处理器保留；暖橘夜间及原版入口不改。
+- 构建通过，模拟API浏览器核实目录无碰一碰、底部按钮仍在，截图work/lavender-day-20261029/v3-more.png。本地预览刷新生效；未部署/提交/推送。
+- 用户同时征询拍一拍/发送/录音/引用的Ins风方向，本轮仅提出紫灰细线、轻动效和简洁引用建议，尚未实施动效或录音/引用重设计，不将建议记为已完成。
+
+## 2026-10-29 紫灰日间 Chat 第二版（本地预览更新，未部署）
+
+- 本轮用户澄清覆盖上一条时间解释：每一方每次发出的一组分段消息，只在该组最后气泡下显示一次日期+时间；不是全聊天仅最后一条。每个逻辑消息已有独立msg-meta，已恢复每组时间、保持在分段之后。没有增加已读。
+- 顶部按新截图缩小头像52px、名字14px及信息区留白；去掉纯色标题矩形，星星背景延伸至圆角面板标题区。副标题替换为用户指定You are my truth. You are my faith.的数学花体字形；Entangled/Limerence/Continuous使用相同字形体系，提供普通英文aria-label。没有修改真实名字。
+- 除原羽毛分段图标保留外，三个底部按钮改为参考图星形内勾、U形话筒带小加号、图钉形轮廓内加号；仍接原拍一拍、录音与完整更多目录，取消图片图标。
+- 日间Thinking/心声改底部滑入抽屉，初始约56%可用高度；点击/上滑把手展开到接近全屏、可收回半屏/关闭，正文内部滚动不触发折叠。原暖橘夜间居中云卡及原版保持。仅展示原有reasoning。
+- 再次只读核实线上HEAD bc0af21干净，Chat.jsx与src/main.jsx仍与原基线相同；独立预览Chat.jsx/main.jsx/lavender-day.css修改前哈希与第一版清单一致。保护home/src未提交改动及其他窗口新写的购物交接；未更改线上。
+- 构建通过，320/390/430检查通过；验证四个逻辑消息五个气泡各自时间在最后段下，模拟两段用户发送也只有一个时间；顶部紧凑高度/花体无溢出；真实SSE状态映射、头像裁剪、分段、水位/侧栏/目录原验证通过。半屏贴底/全屏尺寸、触摸上滑、阅读不折叠、点击收回及关闭通过；页面错误0。另复验原版日夜与暖橘夜间时间和布局保持。均使用本地模拟API。
+- 最新截图work/lavender-day-20261029/v2-{day-390,day-320,day-430,thinking-half,thinking-full,day-more,day-draft,day-keyboard,avatar-crop}.png；verification.json与manifest.json已更新，v1-source保存上一版相关源码。原本地地址http://127.0.0.1:4178刷新可看新构建。
+- 未提交/推送/上线或打原生包；手机录音权限、真实键盘安全区与真实触摸手感待真机核对。发布前仍须重新对齐源码与部署基线，不能把这份预览整目录覆盖线上。
+
+## 2026-10-29 紫灰日间 Chat（本地实现及预览，未部署）
+
+- 用户新指令优先：先做日间；使用 ui紫色背景/紫灰聊天UI_Codex完整交付包.zip 中两张日间PNG。附件的夜间、述述名字及已读说明没有照搬。真实名字沿用配置。
+- 只读核实VPS源码HEAD bc0af2119034b166cf9a4d4b685caf78c51fc433、工作区干净；记录Chat.jsx/chat.css/App.jsx哈希，从该HEAD导出独立副本 work/lavender-day-20261029/app。home/src有大量既有未提交修改，未覆盖。未修改VPS源码或线上静态目录。
+- 替换当前暖橘主题的日间Chat视觉：天空流星、星星爱心、双头像和紫灰气泡；原版及暖橘夜间沿用原布局。左返回主页，右爱心接真实水位/压缩弹层，省略号接原聊天会话侧栏；绿/灰点沿用真实SSE在线状态。底部拍一拍、按住语音、Message...、原羽毛分段、图片图标打开原完整工具菜单；有可发送内容时显示发送。
+- 当前最后一条非system消息的最后气泡下显示原消息日期+时间；其他消息隐藏时间，助手已有思考云朵仍可打开实际返回内容。保留长按操作、分段、引用、附件、语音等原处理器，没有添加已读。双头像和消息头像复用PaperAvatar，点击选图后支持圆形预览、拖动、缩放和保存；仍仅存本设备，未增加服务器同步。
+- npm构建通过（沿用现有大包提示）；本地全模拟API验证320/390/430宽、SSE连断、输入栏边界、模拟键盘高度、单时间/多分段、侧栏、水位、实际reasoning入口、头像缩放保存及多处同步、分段编辑输入、完整工具菜单和模拟/message发送。另核验暖橘夜间/原版日夜均未启用新布局，原时间显示保持。浏览器pageerror为0；没有访问真实聊天/付费模型。
+- 证据：work/lavender-day-20261029/{verification.json,verify-legacy.cjs,manifest.json,day-390.png,day-320.png,day-430.png,avatar-crop.png,day-draft.png,day-more.png,day-keyboard.png}。独立预览node work/lavender-day-20261029/preview.cjs，地址http://127.0.0.1:4178，全部使用示例消息和模拟API。
+- 未提交/推送/上线、未打TestFlight、未重启后端。下一步请用户看日间比例；真机录音权限、实际键盘/安全区及原生包行为仍需设备确认。若发布，必须重新核对远端HEAD/工作区/相关文件哈希并备份，只部署本次明确文件与构建，不能运行旧固定基线脚本。
+
 # 项目状态与待办
 
 ## 2026-10-28 登录检查成功却显示待核对（已部署）

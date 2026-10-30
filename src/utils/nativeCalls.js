@@ -11,6 +11,14 @@ export const nativeCalls={
     const result=await plugin.present({native:data.native})
     return result.supported===true
   },
+  async startOutgoing(id){
+    if(!this.supported())return false
+    const response=await fetch('/api/native-call/credentials?id='+encodeURIComponent(id)+'&direction=outgoing')
+    if(!response.ok)return false
+    const data=await response.json()
+    const result=await plugin.startOutgoing({native:data.native,call:data.call})
+    return result.supported===true&&result.mediaOwned===true
+  },
   answer:()=>plugin.answer(),
   end:()=>plugin.end(),
   muted:(muted)=>plugin.setMuted({muted}),

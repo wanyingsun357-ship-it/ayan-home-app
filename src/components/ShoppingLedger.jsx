@@ -14,7 +14,7 @@ export default function ShoppingLedger({ openShopping }) {
   const begin = (type, item) => { setSettings(null); setForm(item ? { ...item, amount: (item.amountCents / 100).toFixed(2) } : { clientId: crypto.randomUUID(), type, amount: '', category: type === 'income' ? '零花钱' : type === 'refund' ? '退款' : '购物', note: '', date: shoppingDay() }) }
   return <div className="shopping-ledger">
     <div className="tg-card glass2 shop-wallet">
-      <div className="tg-card-head"><span className="serif">晏白的账本</span><button className="tg-nav" onClick={() => { if (!data) return; setForm(null); setSettings({ categories: data.categories.join('、'), monthlyPlan: String((data.monthlyPlanCents || 0) / 100) }) }} disabled={!data || saving}>自定义</button></div>
+      <div className="tg-card-head"><span className="serif">ℛ𝓊ℯ的账本</span><button className="tg-nav" onClick={() => { if (!data) return; setForm(null); setSettings({ categories: data.categories.join('、'), monthlyPlan: String((data.monthlyPlanCents || 0) / 100) }) }} disabled={!data || saving}>自定义</button></div>
       <span className="shop-caption">账本余额</span><div className="tg-total serif" data-testid="wallet-balance">{data ? money(data.balanceCents) : '—'}</div>
       <div className="shop-actions"><button className="tg-btn" disabled={!data || saving} onClick={() => begin('income')}>＋ 给他汇款</button><button className="tg-btn ghost" disabled={!data || saving} onClick={() => begin('expense')}>＋ 记一笔</button></div>
       <p className="tg-sum-note">汇款在这里记为收入，实际充值由你完成。余额按全部已记收支计算。</p>
@@ -47,7 +47,7 @@ export default function ShoppingLedger({ openShopping }) {
       <div className="tg-card-head"><span className="serif">{Number(day.slice(5, 7))}/{Number(day.slice(8))}</span><span className="tg-card-meta">{entries.length} 笔</span></div>
       {entries.map(item => <div key={item.id}>
         <button className="shop-ledger-row" aria-expanded={selected === item.id} onClick={() => setSelected(selected === item.id ? '' : item.id)}><span className="shop-ledger-category">{item.category}</span><span className="shop-ledger-note">{item.note || types[item.type]}</span><span className={`shop-ledger-amount ${item.type}`}>{item.type === 'expense' ? '−' : '+'}{money(item.amountCents)}</span></button>
-        {selected === item.id && <div className="shop-ledger-detail"><p>{item.note || '没有备注'}</p><small>{types[item.type]} · {item.date} · {item.by === 'ayan' ? '晏白' : '婉莹'}记下的</small>
+        {selected === item.id && <div className="shop-ledger-detail"><p>{item.note || '没有备注'}</p><small>{types[item.type]} · {item.date} · {item.by === 'ayan' ? 'ℛ𝓊ℯ' : '婉莹'}记下的</small>
           <div className="tg-actions">{item.orderId ? <button className="tg-btn ghost" onClick={() => openShopping?.({ orderId: item.orderId })}>查看关联购物</button> : <><button className="tg-btn ghost" disabled={saving} onClick={() => begin(item.type, item)}>编辑</button><button className="tg-btn danger" disabled={saving} onClick={async () => { if (confirm('删掉这笔记录？余额也会相应更新。') && await post('ledger', { op: 'remove', id: item.id })) setSelected('') }}>删除</button></>}</div>
         </div>}
       </div>)}

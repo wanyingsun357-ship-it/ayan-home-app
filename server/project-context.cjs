@@ -14,6 +14,12 @@ function snapshot(cwd, { root = DEFAULT_ROOT } = {}) {
     ? path.basename(cwd) : null;
   if (cwd !== root && !project) return { managed: false };
   const files = [];
+  const ui = path.join(root, 'APP_UI_PROTOCOL.md');
+  if (fs.existsSync(ui)) {
+    const stat = fs.statSync(ui);
+    if (!stat.isFile() || stat.size > 65536 || path.dirname(fs.realpathSync(ui)) !== fs.realpathSync(root)) throw new Error('界面协议必须是根目录内的普通小文档');
+    files.push({ name: '全局界面协议 APP_UI_PROTOCOL.md', content: fs.readFileSync(ui, 'utf8') });
+  }
   if (project) {
     const realDir = fs.realpathSync(cwd);
     if (path.dirname(realDir) !== fs.realpathSync(projects)) throw new Error('项目目录不可指向其他位置');
@@ -35,7 +41,7 @@ function snapshot(cwd, { root = DEFAULT_ROOT } = {}) {
   const version = crypto.createHash('sha256').update(JSON.stringify({ project, files })).digest('hex');
   const scope = project
     ? `当前会话属于 Project ${project}。以下是该项目当前全部 ${files.length} 份 Markdown 文档的现行版本，按原文件用途使用；不需要再逐个读取才能了解这些资料。`
-    : '当前会话没有归属 Project。停止加载和沿用旧项目的文档设定；只有全局资料继续适用。没有用户的新要求时，不主动读取旧项目目录。';
+    : '当前会话没有归属 Project。停止加载和沿用旧项目的文档设定；只有全局资料和本段附带的现行界面协议继续适用。没有用户的新要求时，不主动读取旧项目目录。';
   const text = [
     '<当前项目资料>',
     scope,

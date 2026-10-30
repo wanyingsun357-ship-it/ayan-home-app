@@ -1,3 +1,7 @@
+import {isPreviewHost} from '../utils/previewHost.js'
+import CallCaption from './CallCaption.jsx'
+import {fadeCallTranscript} from '../utils/callTranscript.js'
+import {useCallName} from '../utils/chatLook.js'
 import {useAppearance} from '../utils/appearance.js'
 import PaperAvatar from './PaperAvatar.jsx'
 import { useEffect, useRef, useState } from 'react'
@@ -23,8 +27,10 @@ const Ic = {
   pen: <svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3zM13.5 7.5l3 3" /></svg>,
   spk: <svg viewBox="0 0 24 24"><path d="M4 10v4h3l4 3V7l-4 3H4zM15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10" /></svg>,
   spkOff: <svg viewBox="0 0 24 24"><path d="M4 10v4h3l4 3V7l-4 3H4zM16 10l4 4M20 10l-4 4" /></svg>,
+  hang: <svg viewBox="0 0 24 24"><path d="M3 13c5-5 13-5 18 0v4h-5v-3c-2.6-1.1-5.4-1.1-8 0v3H3z"/></svg>,
   phone: <svg viewBox="0 0 24 24"><path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" /></svg>,
 }
+export {Ic}
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
 const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
 
@@ -32,6 +38,7 @@ export default function CallOverlay() {
   const visible = usePageVisible()
   const warm=useAppearance().theme==='orange'
   const [call, setCall] = useState(null)          // 服务器视角的通话
+  const callName=useCallName(call?.session)
   const [phase, setPhase] = useState('idle')      // idle | ringing | active | ended
   const [min, setMin] = useState(false)
   const [pillPosition,setPillPosition]=useState(null)
@@ -72,11 +79,11 @@ export default function CallOverlay() {
   const listRef = useRef(null)
   const ringTimer = useRef(null)
   const reconnRef = useRef(0)      // 通话里识别通道自动重连次数
-  const nativeOwned=useRef(false),nativeAvailable=useRef(false)
+  const nativeOwned=useRef(false),nativeAvailable=useRef(false),nativeOutgoingAvailable=useRef(false),nativeStarting=useRef(false)
   useEffect(()=>{
     let stopped=false,dispose
     setupNativeCalls(event=>{
-      nativeAvailable.current=event.supported===true
+      nativeAvailable.current=event.supported===true;nativeOutgoingAvailable.current=event.supportsOutgoing===true
       if(event.type==='error'){flash(event.message||'通话连接异常');return}
       if(event.type==='partial'){setLive(event.text||'');return}
       if(event.type==='speaking'){setSpeaking({text:event.text||'',zh:event.zh||''});return}
@@ -114,7 +121,7 @@ export default function CallOverlay() {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [phase, visible])
-  useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight }, [history, live, speaking])
+  useEffect(() => { const el = listRef.current; if (el) {el.scrollTop = el.scrollHeight;if(warm)fadeCallTranscript(el)} }, [history, live, speaking])
 
   // ---- 事件:Chat 顶栏的电话键 ----
   useEffect(() => {
@@ -164,7 +171,7 @@ export default function CallOverlay() {
     if (phase === 'idle' || phase === 'ended') return
     const t = setInterval(async () => {
       try {
-        if(nativeOwned.current)return
+        if(nativeOwned.current||nativeStarting.current)return
         const d = await (await fetch('/api/call/active')).json()
         if(nativeOwned.current)return
         const c = callRef.current; if (!c) return
@@ -183,13 +190,14 @@ export default function CallOverlay() {
 
   const onCallEvent = (m) => {
     if(nativeOwned.current){if(m.ev==='end')finish(m.call);return}
+    if(nativeStarting.current){if(m.ev==='end'&&callRef.current&&(m.call?.id===callRef.current.id||m.id===callRef.current.id))finish(m.call);return}
     const c = callRef.current
     // 只认自己这台手机发起的通话(维修间/别的家的测试通话不会在这里响);他主动打来是三期
     if (m.ev === 'ring') { if (!c && m.call && m.call.by === 'him') incoming(m.call); return }
     if (!c) return
     if ((m.call && m.call.id !== c.id) || (m.id && m.id !== c.id)) return
-    if (m.ev === 'answer') { if (c.by === 'him' && phaseRef.current === 'ringing') return; stopRing(); clearTimeout(ringTimer.current); setCall(m.call); setPhase('active'); startMic() }
-    else if (m.ev === 'seg') { busyRef.current = false; if (phaseRef.current === 'ringing') { if (c.by === 'him') return; stopRing(); setPhase('active'); startMic() } onSeg(m.text) }
+    if (m.ev === 'answer') { if(nativeStarting.current)return; if (c.by === 'him' && phaseRef.current === 'ringing') return; stopRing(); clearTimeout(ringTimer.current); setCall(m.call); setPhase('active'); startMic() }
+    else if (m.ev === 'seg') { if(nativeStarting.current)return; busyRef.current = false; if (phaseRef.current === 'ringing') { if (c.by === 'him') return; stopRing(); setPhase('active'); startMic() } onSeg(m.text) }
     // Audio already queued is committed; the server suppresses repeated segments after a stream reset.
     else if (m.ev === 'reset') { return }
     else if (m.ev === 'entry') { busyRef.current = false; if (m.entry.who === 'him' && !himDoneRef.current.has(m.entry.t)) { himDoneRef.current.add(m.entry.t); onFinal(m.entry, m.hangup) } }
@@ -233,6 +241,7 @@ export default function CallOverlay() {
   // ---- 发起 ----
   const start = async ({ session, model }) => {
     if (phaseRef.current !== 'idle') { setMin(false); return }
+    nativeStarting.current=nativeOutgoingAvailable.current
     try {
       // 手势里同步建音频上下文(iOS)
       if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)()
@@ -243,14 +252,20 @@ export default function CallOverlay() {
       setPhase('ringing'); setMin(false); setHistory([]); setEndInfo(''); setSpeaking(null); setLive(''); himDoneRef.current = new Set(); turnRef.current = null; reconnRef.current = 0
       const r = await post('/api/call/start', { session, model })
       const d = await r.json().catch(() => ({}))
-      if (!r.ok) { setPhase('idle'); flash(d.error === 'busy' ? '已经在通话里了' : '没打出去'); cleanupMedia(); diag({ step: 'start-fail', status: r.status }); return }
+      if (!r.ok) { nativeStarting.current=false; setPhase('idle'); flash(d.error === 'busy' ? '已经在通话里了' : '没打出去'); cleanupMedia(); diag({ step: 'start-fail', status: r.status }); return }
       offsetRef.current = Date.now() - (d.serverNow || Date.now())
       setCall(d.call)
+      if(nativeOutgoingAvailable.current){
+        nativeStarting.current=true
+        try{if(await nativeCalls.startOutgoing(d.call.id)){nativeOwned.current=true;return}}
+        catch{flash('系统通话暂未接管，使用当前通话界面')}
+        finally{nativeStarting.current=false}
+      }
       // 麦克风接通才用,但提前要好,免得他一接就卡在权限弹窗
       try { streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); await ctxRef.current.resume() } catch (e) { diag({ step: 'mic-fail', err: String(e && e.message || e) }) }
       clearTimeout(ringTimer.current)
       ringTimer.current = setTimeout(() => { if (phaseRef.current === 'ringing') { hangUp('her'); finish({ ...(callRef.current || {}), endedBy: 'missed' }) } }, 55000)
-    } catch (e) { setPhase('idle'); flash('没打出去'); cleanupMedia(); diag({ step: 'start-err', err: String(e && e.message || e) }) }
+    } catch (e) { nativeStarting.current=false; setPhase('idle'); flash('没打出去'); cleanupMedia(); diag({ step: 'start-err', err: String(e && e.message || e) }) }
   }
   // 在用户手势里 play 一个静音片段,这个 <audio> 之后换 src 就能自由播放(iOS 规矩:非手势 new Audio().play() 会被拦)
   const unlockAudio = () => {
@@ -262,7 +277,7 @@ export default function CallOverlay() {
 
   // ---- 麦克风:整通电话开着一条流式识别 ----
   const startMic = async () => {
-    if(nativeOwned.current)return
+    if(nativeOwned.current||nativeStarting.current)return
     if (asrRef.current) return
     if (!reconnRef.current) await callAudio.start(speakerRef.current) // App:语音通话模式、允许蓝牙、屏幕不锁(重连时不重设)
     finalLenRef.current = 0
@@ -274,10 +289,10 @@ export default function CallOverlay() {
       asrRef.current = createAsrStream({
         ctx: ctxRef.current, stream: streamRef.current.clone(), ws: getWarmSocket(),
         onPartial: (all) => { if (!mutedRef.current && !typingRef.current) setLive(all.slice(finalLenRef.current)) },
-        onFinal: (all, sentence) => { finalLenRef.current += sentence.length; if (!sentence.trim()) return; bufRef.current.push(sentence); setLive(''); scheduleFlush() },
+        onFinal: (all, sentence) => { finalLenRef.current += sentence.length; if (typingRef.current || mutedRef.current || !sentence.trim()) return; bufRef.current.push(sentence); setLive(''); scheduleFlush() },
         onError: () => { if (phaseRef.current !== 'active') return; const n = (reconnRef.current = (reconnRef.current || 0) + 1); try { asrRef.current?.cancel() } catch {} asrRef.current = null; if (n <= 20) setTimeout(() => { if (phaseRef.current === 'active' && !asrRef.current) startMic() }, 600); else flash('识别通道断了') },
       })
-      asrRef.current.mute(mutedRef.current || playingRef.current)
+      asrRef.current.mute(mutedRef.current || typingRef.current || playingRef.current)
       setNeedTap(false)
     } catch { flash('拿不到麦克风') }
   }
@@ -404,6 +419,7 @@ export default function CallOverlay() {
   const finish = (c) => {
     if (phaseRef.current === 'idle') return
     stopRing()
+    nativeStarting.current=false
     window.__inCall = false
     clearTimeout(ringTimer.current)
     cleanupMedia()
@@ -424,6 +440,15 @@ export default function CallOverlay() {
     try { if (audioRef.current) { audioRef.current.pause(); audioRef.current.removeAttribute('src'); audioRef.current.load() } } catch {} audioRef.current = null
   }
   const dur = (c) => c?.answeredAt ? Math.max(0, Math.floor((now - (Date.parse(c.answeredAt) + offsetRef.current)) / 1000)) : 0
+  const cycleInput = () => {
+    const nextTyping=!typing&&muted,nextMuted=!typing;
+    typingRef.current=nextTyping;mutedRef.current=nextMuted;
+    setTyping(nextTyping);setMuted(nextMuted);
+    if(nativeOwned.current)nativeCalls.muted(nextMuted||nextTyping).catch(()=>flash('静音状态未确认，请重试'));
+    else asrRef.current?.mute(nextMuted||nextTyping||playingRef.current);
+    if(nextTyping){setLive('');bufRef.current=[];clearTimeout(bufTimer.current)}
+    if(typing&&needTap)startMic();
+  }
   const toggleMute = () => { if(typing)return;const v = !muted; setMuted(v); if(nativeOwned.current)nativeCalls.muted(v).catch(()=>{});else asrRef.current?.mute(v || typing || playingRef.current) }
   const micOff = () => muted || typing || playingRef.current || (nativeOwned.current&&!!speaking)
   const toggleTyping = () => { const v = !typing; setTyping(v); if(nativeOwned.current)nativeCalls.muted(muted||v).catch(()=>{});else asrRef.current?.mute(muted || v || playingRef.current); if (v) { setLive(''); bufRef.current = [] } }
@@ -454,7 +479,7 @@ export default function CallOverlay() {
 
   if (phase === 'idle') return toast ? <div className="call-toast glass3">{toast}</div> : null
 
-  const status = phase === 'ringing' ? (call?.by === 'him' ? `${NAMES.me} 来电` : '呼叫中…') : phase === 'ended' ? endInfo : speaking ? `${NAMES.me} 在说…` : live ? '你在说…' : `通话中 ${fmt(dur(call))}`
+  const status = phase === 'ringing' ? (call?.by === 'him' ? `${callName} 来电` : '呼叫中…') : phase === 'ended' ? endInfo : speaking ? `${callName} 在说…` : live ? '你在说…' : `通话中 ${fmt(dur(call))}`
   const anim = phase === 'active' && (speaking || live)
   const spokenText = voiceTranscript(speaking?.text || ''), spokenCur = voiceTranscript(speaking?.cur || '')
   const spokenPast = spokenCur && spokenText.endsWith(spokenCur) ? spokenText.slice(0, -spokenCur.length) : ''
@@ -466,25 +491,25 @@ export default function CallOverlay() {
   if (warm && phase === 'ringing') {
     const inbound = call?.by === 'him'
     return <div className="call ringing warm-call-ringing">
-      <div className="call-top"><button className="call-min" aria-label="收起通话" onClick={()=>setMin(true)}>⌄</button></div>
+      <div className="call-top"><button className="call-min" aria-label="收起通话" onClick={()=>setMin(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button></div>
       <section className="warm-call-invite" aria-label={inbound?'来电':'呼叫中'}>
-        <div className="call-name serif">{NAMES.me}</div>
-        <span className="warm-call-mark" aria-hidden="true">☏</span>
+        <div className="ins-call-avatar"><PaperAvatar who="him"/></div><div className="call-name serif">{callName}</div>
         <p>{inbound ? call.reason || '他想和你说说话' : '等他接…'}</p>
         <div className="call-ctl call-ctl-in">
           {inbound && <button className="call-btn answer" onClick={answerIncoming}><span>{Ic.phone}</span>接听</button>}
-          <button className="call-btn hang" onClick={inbound ? declineIncoming : ()=>hangUp('her')}><span>{Ic.phone}</span>{inbound?'拒接':'取消呼叫'}</button>
+          <button className="call-btn hang" onClick={inbound ? declineIncoming : ()=>hangUp('her')}><span>{Ic.hang}</span>{inbound?'拒接':'取消呼叫'}</button>
         </div>
       </section>
+      {isPreviewHost&&<button className="call-demo-launch" onClick={()=>window.dispatchEvent(new Event('call:demo'))}>查看通话界面演示</button>}
       {toast && <div className="call-toast glass3">{toast}</div>}
     </div>
   }
 
   return (
-    <div className={`call ${phase} ${phase === 'ringing' && call?.by === 'him' ? 'incoming-paper' : ''}`}>
+    <div data-input-state={typing?'typing':muted?'muted':'mic'} className={`call ${phase} ${phase === 'ringing' && call?.by === 'him' ? 'incoming-paper' : ''}`}>
       <div className="call-top">
-        <button className="call-min" aria-label={phase==='ended'?'返回聊天':'收起通话'} onClick={() => phase==='ended' ? setPhase('idle') : setMin(true)}>⌄</button>
-        <span className="call-status serif">{status}</span>
+        <button className="call-min" aria-label={phase==='ended'?'返回聊天':'收起通话'} onClick={() => phase==='ended' ? setPhase('idle') : setMin(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button>
+        <span className="call-status serif">{warm&&phase==='active'?(speaking?'正在说话':live?'正在聆听':'通话中'):status}</span>
         <span className="call-top-sp" />
       </div>
       {!warm && <div className="call-hero">
@@ -496,22 +521,22 @@ export default function CallOverlay() {
         </div>
       </div>
       }
-      <div className="call-name serif">{NAMES.me}</div>
+      {warm && <div className="ins-call-avatar"><PaperAvatar who="him"/></div>}
+      <div className="call-name serif">{callName}</div>
 
       {warm && phase==='ringing' && <div className="warm-call-invite"><span className="warm-call-mark">☏</span><p>{call?.by==='him' ? call.reason || '他想和你说说话' : '等他接…'}</p></div>}
+      {warm && phase==='active' && <div className="ins-call-duration" aria-label="通话时长">{fmt(dur(call))}</div>}
       {warm && phase==='ended' && <button className="warm-call-return" onClick={()=>setPhase('idle')}>回到聊天</button>}
-      <div className="call-list" ref={listRef}>
+      <div className="call-list" ref={listRef} onScroll={warm?e=>fadeCallTranscript(e.currentTarget):undefined}>
         {history.map((h, i) => (
           <div key={i} className={`call-line ${h.who}`}>
-            <span className="call-who">{h.who === 'him' ? NAMES.me : 'You'}</span>
-            <span className="call-line-t">{h.who === 'him' ? voiceTranscript(h.text) : h.text}</span>
-            {h.zh && <span className="call-line-zh">{h.who === 'him' ? voiceTranscript(h.zh) : h.zh}</span>}
+            <span className="call-who">{h.who === 'him' ? callName : 'You'}</span>
+            {h.who==='him'?<CallCaption text={h.text} zh={h.zh}/>:<span className="call-line-t">{h.text}</span>}
           </div>
         ))}
         {speaking && (
           <div className="call-cur him">
-            <div className="call-cur-en serif">{spokenPast ? <><span className="call-cur-done">{spokenPast}</span>{spokenCur}</> : spokenText}</div>
-            {speaking.zh && <div className="call-cur-zh">{voiceTranscript(speaking.zh)}</div>}
+            <CallCaption text={spokenText} zh={speaking.zh} live/>
           </div>
         )}
         {!speaking && live && <div className="call-cur her"><div className="call-cur-en">{bufJoined()}{live}</div></div>}
@@ -530,17 +555,17 @@ export default function CallOverlay() {
       )}
       {phase === 'ringing' && call?.by === 'him' ? (
         <div className="call-ctl call-ctl-in">
-          <button className="call-btn hang" onClick={declineIncoming}><span>{Ic.phone}</span>拒接</button>
+          <button className="call-btn hang" onClick={declineIncoming}><span>{Ic.hang}</span>拒接</button>
           <button className="call-btn answer" onClick={answerIncoming}><span>{Ic.phone}</span>接听</button>
         </div>
       ) : (
       <div className="call-ctl">
-        <button className={`call-btn ${muted || typing ? 'on' : ''}`} onClick={toggleMute} disabled={phase !== 'active'||typing}><span>{muted || typing ? Ic.micOff : Ic.mic}</span>{muted || typing ? '闭麦' : '开麦'}</button>
-        <button className={`call-btn ${typing ? 'on' : ''}`} onClick={toggleTyping} disabled={phase !== 'active'}><span>{Ic.pen}</span>打字</button>
+        <button className={`call-btn ${muted || typing ? 'on' : ''}`} onClick={warm?cycleInput:toggleMute} disabled={phase !== 'active'||(!warm&&typing)} aria-label={warm?(typing?'打字，点击开麦':muted?'闭麦，点击打字':'开麦，点击闭麦'):undefined}><span>{typing&&warm?Ic.pen:muted?Ic.micOff:Ic.mic}</span>{typing?'打字':muted?'闭麦':'开麦'}</button>
+        {!warm && <button className={`call-btn ${typing ? 'on' : ''}`} onClick={toggleTyping} disabled={phase !== 'active'}><span>{Ic.pen}</span>打字</button>}
         {isApp()
           ? <button className={`call-btn ${speaker ? 'on' : ''}`} onClick={async () => { const v = !speaker; setSpeaker(v); if(nativeOwned.current)await nativeCalls.speaker(v).catch(()=>{});else await callAudio.speaker(v) }} disabled={phase !== 'active'}><span>{Ic.spk}</span>{speaker ? '免提' : '听筒'}</button>
           : <button className={`call-btn ${quiet ? 'on' : ''}`} onClick={() => setQuiet((v) => !v)} disabled={phase !== 'active'}><span>{quiet ? Ic.spkOff : Ic.spk}</span>{quiet ? '只看字' : '放声音'}</button>}
-        <button className="call-btn hang" onClick={() => hangUp('her')} disabled={phase === 'ended'}><span>{Ic.phone}</span>挂断</button>
+        <button className="call-btn hang" onClick={() => hangUp('her')} disabled={phase === 'ended'}><span>{Ic.hang}</span>挂断</button>
       </div>
       )}
       {toast && <div className="call-toast glass3">{toast}</div>}

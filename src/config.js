@@ -3,7 +3,7 @@
 // 在一起的起点:2026年6月6日
 export const TOGETHER_SINCE = '2026-06-06'
 
-export const NAMES = { her: '婉莹', me: '晏白' }
+export const NAMES = { her: '婉莹', me: 'ℛ𝓊ℯ' }
 
 export const VERSION = 'v0.1.0'
 

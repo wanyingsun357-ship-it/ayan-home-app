@@ -1,3 +1,7 @@
+import {isPreviewHost} from '../utils/previewHost.js'
+import CallCaption from '../components/CallCaption.jsx'
+import ChatLookEditor from '../components/ChatLookEditor.jsx'
+import {useLooks,colorStyle} from '../utils/chatLook.js'
 import { useAppearance } from '../utils/appearance.js'
 import {displayMessage} from '../utils/companionMessage.js'
 import {voiceTranscript} from '../utils/voiceText.js'
@@ -18,6 +22,8 @@ import { compressImage, postUpload } from '../utils/compressImage.js'
 import { buzz, isApp } from '../utils/native.js'
 import { FALLBACK_MODELS, cachedModels, selectedModel, modelPrice } from '../utils/models.js'
 import './chat.css'
+import PaperAvatar from '../components/PaperAvatar.jsx'
+import LavenderMicMeter from '../components/LavenderMicMeter.jsx'
 
 // Chat:和阿晏说话
 // SSE 统一事件(事件名 u):text / reasoning / error / done
@@ -36,6 +42,8 @@ const newMsg = (role, content, extra = {}) => {
     ...extra,
   }
 }
+
+const displayReplyName = reply => reply.role === 'assistant' ? NAMES.me : (reply.name || NAMES.her)
 
 const TIME_DIVIDER_GAP = 30 * 60 * 1000
 const TOUCH_ICONS = ['orbit', 'star', 'petal', 'bow', 'paw']
@@ -114,6 +122,8 @@ const TouchGlyph = ({ kind = 'orbit' }) => {
   }
   return <svg className="touch-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[kind] || paths.orbit}</svg>
 }
+
+const LavenderToolbarIcon = ({ kind }) => <svg viewBox="0 0 28 28" aria-hidden="true">{kind === 'touch' ? <><path d="m14 3 3.5 6.5 7.2 1.1-5.2 5.1 1.2 7.3-6.7-3.5L7.3 23l1.2-7.3-5.2-5.1 7.2-1.1Z"/><path d="m10.5 13.8 2.4 2.5 4.5-4.8"/></> : kind === 'mic' ? <><path d="M16 4c-4-1-6 1-6 5v5a4 4 0 0 0 8 0v-3M5 12v3a9 9 0 0 0 18 0M20 3v6m-3-3h6"/></> : <><path d="M14 25s9-7.6 9-14a9 9 0 0 0-18 0c0 6.4 9 14 9 14Z"/><path d="M14 7v9m-4.5-4.5h9"/></>}</svg>
 
 const PaperQuillIcon = () => (<svg viewBox="0 0 44 62" aria-hidden="true"><path d="M8 58 34 5C21 9 10 21 11 35c0 6 3 9 5 10C31 38 37 23 34 5M16 45l-4 8-4 5 1-6M16 43l-3-12m6 6-3-14m7 6-2-12m5 5-1-9m-8 28 12-6m-8-1 13-8m-9 1 11-8m-6 0 7-7"/><path d="M9 55 5 61"/></svg>)
 const FeatherIcon = () => (
@@ -234,7 +244,9 @@ function renderMd(text) {
 }
 
 export default function Chat({ back }) {
-  const warm = useAppearance().theme === 'orange'
+  const appearance = useAppearance()
+  const warm = appearance.theme === 'orange'
+  const lavender = warm
   const edgePress = useRef(null)
   const voicePress = useRef(null)
   const cancelVoicePress = () => { clearTimeout(voicePress.current?.timer); voicePress.current = null }
@@ -272,12 +284,17 @@ export default function Chat({ back }) {
   const [companionFault,setCompanionFault] = useState(0)
   const companionMessage=[...messages].reverse().find(m=>m.role==='assistant')
   const [activeId, setActiveId] = useState(null)
+  const looks=useLooks(),[lookSession,setLookSession]=useState(null)
+  const chatName=looks[activeId]?.name||NAMES.me
+  const look=looks[activeId]?.[appearance.profiles[appearance.theme].mode]||{}
+  useEffect(()=>{if(activeId)localStorage.setItem('ins-active-chat',activeId)},[activeId])
   const [input, setInput] = useHouseDraft(activeId)
   const [draftSegments, setDraftSegments] = useState([])
   const [editingDraftId, setEditingDraftId] = useState(null)
   const [featherSweep, setFeatherSweep] = useState(false)
   const [fallingFeather,setFallingFeather] = useState(0)
   const [sendBloom,setSendBloom] = useState(0)
+  const [sentVisualId, setSentVisualId] = useState(null)
   const [selectedMessage,setSelectedMessage] = useState(null)
   useEffect(()=>{if(!selectedMessage)return;const key=e=>{if(e.key==='Escape')setSelectedMessage(null)};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[selectedMessage])
   const [draggingDraftId, setDraggingDraftId] = useState(null)
@@ -570,7 +587,7 @@ export default function Chat({ back }) {
     setReplying({
       index: Number.isInteger(m.absIdx) ? m.absIdx : undefined,
       role: m.role,
-      name: m.role === 'assistant' ? NAMES.me : NAMES.her,
+      name: m.role === 'assistant' ? chatName : NAMES.her,
       content: pressed.voiceText || pressed.segmentText || displayMessage(m),
     })
     setPressed(null)
@@ -1174,8 +1191,10 @@ export default function Chat({ back }) {
 
     const attachments = atts.map(({ name, url, path, type }) => ({ name, url, path, type }))
     setPending([])
-    setMessages((ms) => [...ms, newMsg('user', outgoingText || atts.map((a) => a.name).join(', '),
-      { ...(attachments.length ? { attachments } : {}), ...(segmented ? { segments: outgoingSegments, composition } : reply ? { reply } : {}) })])
+    const sentMessage = newMsg('user', outgoingText || atts.map((a) => a.name).join(', '),
+      { ...(attachments.length ? { attachments } : {}), ...(segmented ? { segments: outgoingSegments, composition } : reply ? { reply } : {}) })
+    if (lavender) setSentVisualId(sentMessage.id)
+    setMessages((ms) => [...ms, sentMessage])
     setWaiting(true)
     streamedRef.current = false
     // 新一轮开始时清流式指针;结束交给SSE的done事件——
@@ -1390,6 +1409,7 @@ export default function Chat({ back }) {
   const asrRef = useRef(null)
   const preWsRef = useRef(null)      // 按下那一刻就先把 WebSocket 拨出去,和拿麦克风并行
   const [liveText, setLiveText] = useState('')  // 流式识别边说边出的字
+  const [recordingStream, setRecordingStream] = useState(null)
   const [micReady, setMicReady] = useState(false) // 采样真的跑起来了才算"在听"(App 里麦克风启动要一秒多,之前开头的话会丢)
   const micKeepRef = useRef({ stream: null, timer: null }) // App:松手后麦克风保温 15 秒,下一次按下不用重新启动
   const diag = (o) => { try { fetch('/api/clientlog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag: 'voice', ua: navigator.userAgent.slice(0, 40), ...o }) }).catch(() => {}) } catch {} }
@@ -1401,6 +1421,8 @@ export default function Chat({ back }) {
     // 跟踪手指:上滑超过70px进入取消区
     recTouchRef.current = { y: e?.clientY ?? 0, cancel: false }
     setCanceling(false)
+    setMicReady(false)
+    setRecordingStream(null)
     const onMove = (ev) => {
       const c = recTouchRef.current.y - ev.clientY > 70
       recTouchRef.current.cancel = c
@@ -1449,6 +1471,7 @@ export default function Chat({ back }) {
       recorder.ondataavailable = (e) => { if (e.data.size) mr.chunks.push(e.data) }
       recorder.start()
       mr.recorder = recorder
+      if (lavender) setRecordingStream(stream)
       // 真流式:同一路麦克风送桥 /ws/asr,边说边出字
       // iOS 坑:getUserMedia 会把已建好的 AudioContext 打成 interrupted/suspended,拿到麦克风后必须再 resume 一次
       try { await audioCtxRef.current.resume() } catch {}
@@ -1479,6 +1502,7 @@ export default function Chat({ back }) {
     if (!recActiveRef.current) return
     recActiveRef.current = false
     setRecording(false)
+    setRecordingStream(null)
     setCanceling(false)
     recogRef.current?.stop()
     const mr = mediaRef.current
@@ -1789,13 +1813,24 @@ export default function Chat({ back }) {
   }
 
   return (
-    <div className="chat">
+    <div className={`chat ${lavender ? 'lavender-chat' : ''}`} style={lavender?{...colorStyle(look.colors),'--lavender-header':look.header?'url('+look.header+')':undefined,'--lavender-wallpaper':look.wallpaper?'url('+look.wallpaper+')':undefined}:undefined}>
+      {lavender && <>
+        <div className="lavender-sky"><span>너에게 가는 중 ♡</span></div>
+        <header className="lavender-profile">
+          <div className="lavender-avatars"><PaperAvatar who="him" editable /><PaperAvatar who="her" editable /></div>
+          <nav><button aria-label="返回主页" onClick={back}><svg viewBox="0 0 24 24"><path d="m14 5-7 7 7 7"/></svg></button>
+            <div><button aria-label="查看对话水位和压缩" onClick={() => {loadCtx();setCtxOpen(true)}}><svg viewBox="0 0 28 28"><path d="M22 15c3-4 2-9-2-10-3-1-5 1-6 3-2-4-7-4-9-1-4 5 1 10 9 16M22 18v8m-4-4h8"/></svg></button><button aria-label="打开聊天侧边栏" onClick={openDrawer}><svg viewBox="0 0 28 28"><circle cx="5" cy="14" r="1.5"/><circle cx="14" cy="14" r="1.5"/><circle cx="23" cy="14" r="1.5"/></svg></button></div></nav>
+          <h1>{chatName}<span className={`lavender-online ${online ? 'on' : ''}`} role="status" aria-label={online ? '在线' : '离线'} /></h1>
+          <p className="lavender-script" aria-label="You are my truth. You are my faith.">𝓨𝓸𝓾 𝓪𝓻𝓮 𝓶𝔂 𝓽𝓻𝓾𝓽𝓱. 𝓨𝓸𝓾 𝓪𝓻𝓮 𝓶𝔂 𝓯𝓪𝓲𝓽𝓱.</p>
+          <div className="lavender-tags"><span className="lavender-script" aria-label="Entangled">𝓔𝓷𝓽𝓪𝓷𝓰𝓵𝓮𝓭</span><span className="lavender-script" aria-label="Limerence">𝓛𝓲𝓶𝓮𝓻𝓮𝓷𝓬𝓮</span><span className="lavender-script" aria-label="Continuous">𝓒𝓸𝓷𝓽𝓲𝓷𝓾𝓸𝓾𝓼</span></div>
+        </header>
+      </>}
       {/* 顶栏 */}
       {!warm && <header className="chat-head">
         <button className="chat-back" onClick={back}>‹</button>
         <div className="chat-title">
           <span className="chat-moon">☾</span>
-          <span className="serif">{NAMES.me}</span>
+          <span className="serif">{chatName}</span>
           <span className={`chat-dot ${online ? 'on' : ''}`} />
         </div>
         <div className="chat-head-r">
@@ -1838,8 +1873,8 @@ export default function Chat({ back }) {
           const visibleContent=displayMessage(m)
           const touch = parseTouchMessage({...m,content:visibleContent})
           const touchFromMe = m.role === 'assistant'
-          const touchSender = touchFromMe ? NAMES.me : NAMES.her
-          const touchTarget = touchFromMe ? NAMES.her : NAMES.me
+          const touchSender = touchFromMe ? chatName : NAMES.her
+          const touchTarget = touchFromMe ? NAMES.her : chatName
           const makeTouchNotice = (item, { showTime = false, inline = false } = {}) => {
             if (!item) return null
             const senderSuffix = touchFromMe ? item.meSuffix : item.herSuffix
@@ -1889,7 +1924,8 @@ export default function Chat({ back }) {
             </div>
           )}
           {touch && !touch.before && touchNotice}
-          <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${m.pending ? 'pending' : ''} ${touchedMessageKey === String(m.absIdx ?? m.id) ? 'being-touched' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
+          <div data-message-index={m.absIdx} className={`msg-row ${m.role} ${lavender && m.id === sentVisualId ? 'lavender-just-sent' : ''} ${m.pending ? 'pending' : ''} ${touchedMessageKey === String(m.absIdx ?? m.id) ? 'being-touched' : ''} ${historyView && historyView.center===m.absIdx?'history-highlight':''}`}>
+            {lavender && <div className="lavender-message-avatar"><PaperAvatar who={m.role === 'user' ? 'her' : 'him'} editable />{touchedMessageKey === String(m.absIdx ?? m.id) && <span className="lavender-touch-heart" aria-hidden="true">♡</span>}</div>}
             <div className="msg-meta">
               {(!touch || touch.before || touch.rest) && <span>{m.time}</span>}
               {m.role === 'assistant' && (m.reasoning || m.hasReasoning) && (
@@ -1916,7 +1952,7 @@ export default function Chat({ back }) {
               {/* 婉莹的语音条 */}
               {m.call && (
                 <button className={`call-card ${['missed', 'declined'].includes(m.call.endedBy) ? 'bad' : ''}`} onClick={() => openCall(m.call.id)}>
-                  <i>☏</i>
+                  <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></i>
                   <span>{m.call.endedBy === 'missed' ? (m.call.by === 'him' ? '未接来电' : '未接通') : m.call.endedBy === 'declined' ? (m.call.by === 'him' ? '你没接' : '他没接') : `通话 ${Math.floor(m.call.dur / 60)}:${String(m.call.dur % 60).padStart(2, '0')}`}<br /><small>{m.call.endedBy === 'him' ? '他挂的' : m.call.endedBy === 'her' ? '你挂的' : ''}{m.call.n ? ` · ${m.call.n} 句` : ''}</small></span>
                 </button>
               )}
@@ -1926,7 +1962,7 @@ export default function Chat({ back }) {
                   <button className="gal-card glass2" onClick={() => setImgView(m.gallery.url)}>
                     <img src={m.gallery.url} alt="" />
                     <span className="gal-card-body">
-                      <small>{NAMES.me} 收藏了</small>
+                      <small>{chatName} 收藏了</small>
                       <b>存进了「{m.gallery.album}」</b>
                       {(m.gallery.title || m.gallery.impression) && <i>{m.gallery.title}{m.gallery.title && m.gallery.impression ? ' · ' : ''}{m.gallery.impression}</i>}
                     </span>
@@ -2013,7 +2049,7 @@ export default function Chat({ back }) {
                     {seg.reply?.content && (
                       <div className="reply-quote segment-reply">
                         <i />
-                        <span><b>{seg.reply.name || (seg.reply.role === 'assistant' ? NAMES.me : NAMES.her)}</b><em>{seg.reply.content}</em></span>
+                        <span><b>{displayReplyName(seg.reply)}</b><em>{seg.reply.content}</em></span>
                       </div>
                     )}
                   </div>
@@ -2022,7 +2058,7 @@ export default function Chat({ back }) {
               {m.reply?.content && !(m.role === 'user' && Array.isArray(m.segments) && m.segments.length) && (
                 <div className="reply-quote">
                   <i />
-                  <span><b>{m.reply.name || (m.reply.role === 'assistant' ? NAMES.me : NAMES.her)}</b><em>{m.reply.content}</em></span>
+                  <span><b>{displayReplyName(m.reply)}</b><em>{m.reply.content}</em></span>
                 </div>
               )}
             </div>
@@ -2044,7 +2080,7 @@ export default function Chat({ back }) {
       {historyView && <div className="paper-latest-wrap"><button className="paper-latest" aria-label="回到最新聊天" onClick={returnLatest}>↓</button></div>}
       {/* 输入区 */}
       <div className={`chat-input-wrap ${draftSegments.length ? 'has-segments' : ''}`} data-history={historyView ? 'true' : undefined}>
-        {warm && <button className="warm-chat-pet" aria-label="查看对话水位" onClick={() => {loadCtx();setCtxOpen(true)}}><WarmCompanion live online={online} busy={waiting||messages.some(m=>m.streaming)} message={companionMessage} sessionId={activeId} fault={companionFault}/>{(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 160000) && <b className="warm-water-warning">!</b>}</button>}
+        {warm && !lavender && <button className="warm-chat-pet" aria-label="查看对话水位" onClick={() => {loadCtx();setCtxOpen(true)}}><WarmCompanion live online={online} busy={waiting||messages.some(m=>m.streaming)} message={companionMessage} sessionId={activeId} fault={companionFault}/>{(ctxEngine === 'codex' ? ctx >= 175000 : ctx >= 160000) && <b className="warm-water-warning">!</b>}</button>}
         {draftSegments.length > 0 && editing == null && (
           <div className="segment-dock" aria-label="待发送的分段">
             {draftSegments.map((segment, index) => {
@@ -2062,7 +2098,7 @@ export default function Chat({ back }) {
                   <small>{index + 1}</small>
                   {shownReply?.content && <i className="segment-chip-reply">↩ {shownReply.content}</i>}
                   {draftTouch ? (
-                    <span className="segment-chip-touch"><TouchGlyph kind={draftTouch.icon} />{NAMES.her}{draftTouch.herSuffix}{draftTouch.action}{NAMES.me}{draftTouch.meSuffix}</span>
+                    <span className="segment-chip-touch"><TouchGlyph kind={draftTouch.icon} />{NAMES.her}{draftTouch.herSuffix}{draftTouch.action}{chatName}{draftTouch.meSuffix}</span>
                   ) : <span>{shown || '正在编辑…'}</span>}
                   <button aria-label="删除这一段" onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => removeDraftSegment(segment.id)}>×</button>
@@ -2078,7 +2114,8 @@ export default function Chat({ back }) {
           <span className="original-feather-icon"><FeatherIcon /></span><span className="paper-quill-icon"><PaperQuillIcon /></span><i />
         </button>
         </>}
-        {warm && sendBloom > 0 && <div key={'send-'+sendBloom} className="warm-send-petals" aria-hidden="true">{[0,1,2,3,4,5,6].map(i=><i key={i} style={{'--drift':[-5,7,-8,4,6,-4,5][i]+'px','--drop':[65,87,78,97,72,91,83][i]+'px','--turn':[25,-34,42,-28,36,-40,29][i]+'deg',left:[-14,6,-5,15,-18,3,10][i]+'px',top:[2,-12,-4,-16,8,-10,0][i]+'px',animationDelay:i*110+'ms'}}/>)}</div>}
+        {warm && !lavender && sendBloom > 0 && <div key={'send-'+sendBloom} className="warm-send-petals" aria-hidden="true">{[0,1,2,3,4,5,6].map(i=><i key={i} style={{'--drift':[-5,7,-8,4,6,-4,5][i]+'px','--drop':[65,87,78,97,72,91,83][i]+'px','--turn':[25,-34,42,-28,36,-40,29][i]+'deg',left:[-14,6,-5,15,-18,3,10][i]+'px',top:[2,-12,-4,-16,8,-10,0][i]+'px',animationDelay:i*110+'ms'}}/>)}</div>}
+        {lavender && sendBloom > 0 && <div key={'spark-'+sendBloom} className="lavender-send-sparkles" aria-hidden="true"><i>✧</i><i>✧</i></div>}
         {fallingFeather > 0 && <span key={'feather-'+fallingFeather} className="paper-falling-feather" aria-hidden="true"><PaperQuillIcon /></span>}
         {editing != null && (
           <div className="edit-tip">
@@ -2088,7 +2125,7 @@ export default function Chat({ back }) {
         {replying && (
           <div className="reply-compose">
             <i />
-            <span><b>{warm?replying.name:`回复 ${replying.name}`}</b><em>{replying.content}</em></span>
+            <span><b>{warm?displayReplyName(replying):`回复 ${displayReplyName(replying)}`}</b><em>{replying.content}</em></span>
             <button aria-label="取消回复" onClick={() => setReplying(null)}>×</button>
           </div>
         )}
@@ -2126,7 +2163,11 @@ export default function Chat({ back }) {
           }}
         />
         <div className="chat-bar">
-          <button className="cbtn" aria-label="打开聊天工具" onClick={() => setMenuOpen(true)}>+</button>
+          {lavender && <>
+            <button className="cbtn lavender-touch" aria-label="轻点拍一拍，长按修改" onPointerDown={startTouchButtonPress} onPointerMove={moveTouchButtonPress} onPointerUp={endTouchButtonPress} onPointerCancel={cancelTouchButtonPress} onContextMenu={e=>e.preventDefault()} style={{touchAction:'none'}}><LavenderToolbarIcon kind="touch" /></button>
+            <button className={`cbtn lavender-mic ${recording ? 'rec' : ''}`} aria-label="按住输入语音" onPointerDown={e=>{if(!historyView)startRec(e)}} onContextMenu={e=>e.preventDefault()} style={{touchAction:'none'}}><LavenderToolbarIcon kind="mic" /></button>
+          </>}
+          <button className="cbtn" aria-label="打开聊天工具" onClick={() => setMenuOpen(true)}>{lavender ? <LavenderToolbarIcon kind="more" /> : '+'}</button>
           {!warm && <button className="model-chip" onClick={openModels}>
             {model}{effort !== 'Medium' ? ` · ${effort}` : ''}{extended ? ' ✦' : ''}
           </button>}
@@ -2158,7 +2199,7 @@ export default function Chat({ back }) {
             aria-label="发送消息"
             onClick={send}
             disabled={!sendReady}
-          >{warm ? <TouchGlyph kind="paw" /> : '↑'}</button>
+          >{lavender ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg> : warm ? <TouchGlyph kind="paw" /> : '↑'}</button>
         </div>
       </div>
 
@@ -2170,17 +2211,17 @@ export default function Chat({ back }) {
             <div className="touch-sheet-title">碰一碰</div>
             <div className="touch-preview">
               <span className="touch-mark"><TouchGlyph kind={touchIcon} /></span>
-              <span><b>{NAMES.her}</b>{cleanTouchSuffix(touchHerSuffix)}{cleanTouchAction(touchAction)}<b>{NAMES.me}</b>{cleanTouchSuffix(touchMeSuffix)}</span>
+              <span><b>{NAMES.her}</b>{cleanTouchSuffix(touchHerSuffix)}{cleanTouchAction(touchAction)}<b>{chatName}</b>{cleanTouchSuffix(touchMeSuffix)}</span>
             </div>
             <div className="touch-label">动作</div>
             <div className="touch-presets">
               {TOUCH_PRESETS.map((action) => <button key={action} className={touchAction === action ? 'on' : ''} onClick={() => setTouchAction(action)}>{action}</button>)}
             </div>
-            <label className="touch-custom"><span>{NAMES.her}</span><input value={touchAction} maxLength={12} onChange={(e) => setTouchAction(e.target.value)} aria-label="自定义触碰动作"/><span>{NAMES.me}</span></label>
+            <label className="touch-custom"><span>{NAMES.her}</span><input value={touchAction} maxLength={12} onChange={(e) => setTouchAction(e.target.value)} aria-label="自定义触碰动作"/><span>{chatName}</span></label>
             <div className="touch-label">名字后面</div>
             <div className="touch-suffixes">
               <label><span>{NAMES.her}</span><input value={touchHerSuffix} maxLength={10} placeholder="不添加" onChange={(e) => setTouchHerSuffix(e.target.value)} aria-label={`${NAMES.her}名字后的文字`}/></label>
-              <label><span>{NAMES.me}</span><input value={touchMeSuffix} maxLength={10} placeholder="不添加" onChange={(e) => setTouchMeSuffix(e.target.value)} aria-label={`${NAMES.me}名字后的文字`}/></label>
+              <label><span>{chatName}</span><input value={touchMeSuffix} maxLength={10} placeholder="不添加" onChange={(e) => setTouchMeSuffix(e.target.value)} aria-label={`${chatName}名字后的文字`}/></label>
             </div>
             <div className="touch-label">小标志</div>
             <div className="touch-icons">
@@ -2291,9 +2332,10 @@ export default function Chat({ back }) {
             <div className="sheet-handle" /><div className="paper-attachment-heading"><button aria-label="关闭附件菜单" onClick={() => setMenuOpen(false)}>×</button><span>随信附上</span></div>
             {warm && <>
               <button className="sheet-item" onClick={() => {setMenuOpen(false);window.dispatchEvent(new CustomEvent('call:start',{detail:{session:sessionRef.current,model:modelId()}}))}}><span aria-hidden="true">☏</span><span>Calling</span></button>
+              {lavender&&isPreviewHost&&<button className="sheet-item" onClick={()=>{setMenuOpen(false);window.dispatchEvent(new Event('call:demo'))}}>通话界面演示</button>}
               <button className="sheet-item" onClick={() => {setMenuOpen(false);setSearchOpen(true);setSearchCtx(null)}}><span aria-hidden="true">⌕</span><span>搜索聊天</span></button>
               <button className="sheet-item" onClick={() => {setMenuOpen(false);openModels()}}><span aria-hidden="true">✧</span><span>Model · {model}</span></button>
-              <button className="sheet-item" onClick={() => {setMenuOpen(false);setTouchDraftId(null);setTouchOpen(true)}}><TouchGlyph kind={touchIcon}/><span>碰一碰</span></button>
+              {!lavender && <button className="sheet-item" onClick={() => {setMenuOpen(false);setTouchDraftId(null);setTouchOpen(true)}}><TouchGlyph kind={touchIcon}/><span>碰一碰</span></button>}
               <button className="sheet-item" onClick={() => {setMenuOpen(false);openDrawer()}}><span aria-hidden="true">☾</span><span>我们说过的话</span></button>
               <button className="sheet-item" onClick={() => {setMenuOpen(false);back()}}><span aria-hidden="true">⌂</span><span>Home</span></button>
             </>}
@@ -2446,6 +2488,7 @@ export default function Chat({ back }) {
           </div>
         )
       })()}
+      {lookSession && <ChatLookEditor session={lookSession} mode={appearance.profiles[appearance.theme].mode} close={()=>setLookSession(null)}/>}
       {callView && (() => {
         const cv = callView.call; const bad = ['missed', 'declined'].includes(cv.endedBy)
         const when = new Date(cv.startedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -2464,8 +2507,8 @@ export default function Chat({ back }) {
               <div className="call-paper-body">
                 {cv.entries.map((e, i) => (
                   <div key={i} className={`call-msg ${e.who} ${e.late ? 'late' : ''}`}>
-                    <span className="call-who">{e.who === 'him' ? NAMES.me : 'You'}{e.via === 'text' ? ' · 打字' : ''}{e.late ? ' · 挂断后' : ''}{e.reasoning && <button className="cloud-btn call-cloud" onClick={() => setThought(e.reasoning)}><CloudIcon /></button>}</span>
-                    <div className="call-msg-b">{e.who === 'him' ? voiceTranscript(e.text) : e.text}{e.zh && <span className="call-msg-zh">{e.who === 'him' ? voiceTranscript(e.zh) : e.zh}</span>}</div>
+                    <span className="call-who">{e.who === 'him' ? chatName : 'You'}{e.via === 'text' ? ' · 打字' : ''}{e.late ? ' · 挂断后' : ''}{e.reasoning && <button className="cloud-btn call-cloud" onClick={() => setThought(e.reasoning)}><CloudIcon /></button>}</span>
+                    <div className="call-msg-b">{e.who==='him'?<CallCaption text={e.text} zh={e.zh}/>:e.text}</div>
                   </div>
                 ))}
                 {!cv.entries.length && <div className="call-paper-empty">没说上话</div>}
@@ -2525,7 +2568,7 @@ export default function Chat({ back }) {
               {searchHits.length === 0 && <div className="csearch-empty">没有找到,换个词试试?</div>}
               {searchHits.map((h) => (
                 <button key={h.i} className="csearch-hit" onClick={() => openHit(h.i)}>
-                  <span className="csearch-ts">{fmtSearchTs(h.timestamp)} · {h.role === 'user' ? '我' : NAMES.me}</span>
+                  <span className="csearch-ts">{fmtSearchTs(h.timestamp)} · {h.role === 'user' ? '我' : chatName}</span>
                   <span className="csearch-snip">{String(h.snippet).replace(/\[VOICE\]|\[\/VOICE\]/g, '')}</span>
                 </button>
               ))}
@@ -2537,7 +2580,7 @@ export default function Chat({ back }) {
               <button className="csearch-more" onClick={() => openHit(searchCtx.center, (searchCtx.radius || 15) + 15)}>↑↓ 前后再多看15条</button>
               {searchCtx.msgs.map((m) => (
                 <div key={m.i} className={`csearch-msg ${m.role} ${m.i === searchCtx.center ? 'hit' : ''}`}>
-                  <span className="csearch-ts">{fmtSearchTs(m.timestamp)} · {m.role === 'user' ? '我' : NAMES.me}</span>
+                  <span className="csearch-ts">{fmtSearchTs(m.timestamp)} · {m.role === 'user' ? '我' : chatName}</span>
                   <div>{displayMessage(m).replace(/\[VOICE\]|\[\/VOICE\]/g, '')}</div>
                 </div>
               ))}
@@ -2562,14 +2605,15 @@ export default function Chat({ back }) {
                   <div key={s.id} className={`sdrawer-item ${s.id === activeId ? 'active' : ''}`}>
                     <button className="sdrawer-main" onClick={() => switchSession(s.id)}>
                       <div className="sdrawer-name">
-                        {s.title}
+                        {looks[s.id]?.name||s.title}
                         {s.project && <span className="sdrawer-proj">📁{s.project}</span>}
                       </div>
                       <div className="sdrawer-preview">{s.preview || '(还没说话)'}</div>
                     </button>
                     <button
-                      className="sdrawer-del rename"
+                      className="sdrawer-del rename" aria-label={`编辑${s.title}备注与背景`}
                       onClick={() => {
+                        if(lavender){setLookSession(s);return}
                         const t = prompt('给这个对话起个名字:', s.title)
                         if (t && t.trim() && t.trim() !== s.title) renameSession(s.id, t.trim())
                       }}
@@ -2586,7 +2630,7 @@ export default function Chat({ back }) {
             ) : null
           )}
         </div>
-        <div className="sdrawer-foot serif">{NAMES.her} &amp; {NAMES.me} ♡</div>
+        <div className="sdrawer-foot serif">{NAMES.her} &amp; {chatName} ♡</div>
       </aside>
 
       {/* 记忆活动弹层 */}
@@ -2621,14 +2665,17 @@ export default function Chat({ back }) {
 
       {/* Thinking / 心声弹层:默认半屏,上滑/点把手全屏,下滑收起 */}
       {thought && (
-        <div className={`sheet-mask ${warm ? 'warm-thought-mask' : ''}`} onClick={() => { setThought(null); setThoughtFull(false) }}>
+        <div className={`sheet-mask ${lavender ? 'lavender-thought-mask' : warm ? 'warm-thought-mask' : ''}`} onClick={() => { setThought(null); setThoughtFull(false) }}>
           <div
             className={`sheet thought ${thoughtFull ? 'full' : ''}`}
+            role={lavender ? 'dialog' : undefined} aria-modal={lavender ? true : undefined} aria-label={lavender ? (ctxEngine === 'codex' ? '心声' : 'Thinking') : undefined}
             onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => { touchYRef.current = e.touches[0].clientY }}
+            onTouchStart={(e) => { touchYRef.current = lavender && !e.target.closest('[data-thought-drag]') ? null : e.touches[0].clientY }}
             onTouchEnd={(e) => {
-              if (warm) return // Cloud card scrolls internally; reading must not dismiss it.
+              if ((warm && !lavender) || touchYRef.current == null) return
+              // Only the handle moves the lavender drawer; reading scrolls internally.
               const dy = e.changedTouches[0].clientY - touchYRef.current
+              if (lavender && Math.abs(dy) > 50) e.preventDefault()
               if (dy < -50) setThoughtFull(true)
               else if (dy > 50) {
                 if (thoughtFull) setThoughtFull(false)
@@ -2636,9 +2683,9 @@ export default function Chat({ back }) {
               }
             }}
           >
-            <div className="sheet-handle" onClick={() => setThoughtFull((f) => !f)} />
+            {lavender ? <button className="lavender-thought-handle" data-thought-drag aria-label={thoughtFull ? '收回半屏思考链' : '展开思考链'} aria-expanded={thoughtFull} onClick={() => setThoughtFull(f => !f)}><span /></button> : <div className="sheet-handle" onClick={() => setThoughtFull((f) => !f)} />}
             <div className="thought-head">
-              <button className="thought-x" onClick={() => { setThought(null); setThoughtFull(false) }}>×</button>
+              <button className="thought-x" aria-label="关闭思考链" onClick={() => { setThought(null); setThoughtFull(false) }}>×</button>
               <div className="thought-title">{ctxEngine === 'codex' ? '心声' : 'Thinking'}</div>
               <div style={{ width: 34 }} />
             </div>
@@ -2651,7 +2698,7 @@ export default function Chat({ back }) {
       {recording && (
         <div className={`rec-overlay ${canceling ? 'cancel' : ''}`}>
           <div className="rec-pill glass3">
-            <span className="rec-dot" />
+            {lavender ? <LavenderMicMeter stream={recordingStream} context={audioCtxRef.current} /> : <span className="rec-dot" />}
             {canceling ? '松开取消' : micReady ? '在听… 松开发送 · 上滑取消' : '准备中…'}
           </div>
           {liveText && <div className="rec-live glass2">{liveText}</div>}

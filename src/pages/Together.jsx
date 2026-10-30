@@ -9,7 +9,7 @@ const MODULES = [
   { key: 'meals', label: '三餐', icon: '🍚', slogan: '吃了什么不重要,吃了就好。' },
   { key: 'sleep', label: '睡眠', icon: '😴', slogan: '早点睡。你知道我会说这句话。' },
   { key: 'ledger', label: '我的账本', icon: '¥', slogan: '花了就花了,记一下就行。' },
-  { key: 'ayan-ledger', label: '晏白的账本', icon: '¥', slogan: '你给的零花钱，和他慢慢挑的东西。' },
+  { key: 'ayan-ledger', label: 'ℛ𝓊ℯ的账本', icon: '¥', slogan: '你给的零花钱，和他慢慢挑的东西。' },
   { key: 'milktea', label: '奶茶', icon: '🧋', slogan: '这个月的额度我说了算。但你撒娇的话另说。' },
   { key: 'words', label: '单词', icon: '📚', slogan: '一天三十个,我陪你考。' },
   { key: 'mistakes', label: '错词', icon: '✗', slogan: '错过的词,下次就是你的。' },
@@ -22,7 +22,7 @@ const dur = (mm) => mm ? `${Math.floor(mm / 60)}h${String(mm % 60).padStart(2, '
 const addDays = (d, n) => new Date(Date.parse(d + 'T12:00:00+08:00') + n * 86400000).toISOString().slice(0, 10)
 const Who = ({ by, at }) => (
   <span className={`tg-who ${by === 'ayan' ? 'him' : 'her'}`}>
-    <i />{by === 'ayan' ? '晏白' : '婉莹'}{at ? ` · ${new Date(at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+    <i />{by === 'ayan' ? 'ℛ𝓊ℯ' : '婉莹'}{at ? ` · ${new Date(at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
   </span>
 )
 
@@ -340,7 +340,7 @@ function Ledger({ data, post, slogan }) {
             <div className="tg-detail">
               <div>{it.date} {it.time} · {it.category}</div>
               <div>备注:{it.note || '—'}</div>
-              <Who by={it.by} at={it.at} />{it.editedBy && <span className="dim"> · {it.editedBy === 'ayan' ? '晏白' : '婉莹'}改过</span>}
+              <Who by={it.by} at={it.at} />{it.editedBy && <span className="dim"> · {it.editedBy === 'ayan' ? 'ℛ𝓊ℯ' : '婉莹'}改过</span>}
               <div className="tg-actions">
                 <button className="tg-btn ghost" onClick={async () => { const v = prompt('改金额', it.amount); if (v !== null) await post('ledger', { op: 'update', id: it.id, amount: v }) }}>改金额</button>
                 <button className="tg-btn ghost" onClick={async () => { const v = prompt('改备注', it.note); if (v !== null) await post('ledger', { op: 'update', id: it.id, note: v }) }}>改备注</button>
@@ -522,7 +522,7 @@ function Mistakes({ slogan }) {
             <div className="tg-mmain">
               <div className="tg-wword">{x.word}<i>{x.ipa}</i></div>
               <div className="tg-wmean">{x.meaning}</div>
-              <div className="tg-mmeta">错 {x.wrong || 0} 次{x.last ? ` · 最近 ${fmtD(x.last)}` : ''}{x.queuedBy ? ` · ${x.queuedBy === 'ayan' ? '晏白' : '婉莹'}加的${x.queueReason ? '(' + x.queueReason + ')' : ''}` : ''}</div>
+              <div className="tg-mmeta">错 {x.wrong || 0} 次{x.last ? ` · 最近 ${fmtD(x.last)}` : ''}{x.queuedBy ? ` · ${x.queuedBy === 'ayan' ? 'ℛ𝓊ℯ' : '婉莹'}加的${x.queueReason ? '(' + x.queueReason + ')' : ''}` : ''}</div>
             </div>
             <div className={`tg-mdue ${x.due && x.due <= today ? 'due' : ''}`}>{x.due && x.due <= today ? '今天' : x.due ? `复习 ${fmtD(x.due)}` : '—'}</div>
             {sel?.word === x.word && (
