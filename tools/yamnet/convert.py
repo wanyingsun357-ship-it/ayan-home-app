@@ -70,7 +70,8 @@ model.user_defined_metadata['weights_sha256'] = digest(weights)
 ops = model._mil_program.functions['main'].operations
 frontend = [op for op in ops if 'frontend_float32' in op.name and op.op_type in ['matmul', 'mul', 'sqrt', 'log']]
 assert frontend, 'Must identify the exported spectral frontend'
-assert all('fp32' in str(out.dtype) for op in frontend for out in op.outputs), 'Spectral frontend lost float32'
+print('FRONTEND_TYPES', [(op.name, str(out.dtype)) for op in frontend for out in op.outputs], flush=True)
+assert all(out.dtype == ct.converters.mil.mil.types.fp32 for op in frontend for out in op.outputs), 'Spectral frontend lost float32'
 
 labels = list(csv.DictReader((UPSTREAM/'yamnet_class_map.csv').open()))
 assert len(labels) == 521 and all(int(row['index']) == i for i,row in enumerate(labels))
