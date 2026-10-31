@@ -9,6 +9,7 @@ test('model descriptions are distinct from spoken bilingual text at every stream
  for(let i=0;i<=note.length;i++)assert.deepEqual(chunks(note.slice(0,i),true),[]);
  assert.equal(notes.strip('Hello.[ZH]你好。[/ZH]'+note),'Hello.[ZH]你好。[/ZH]');
  assert.equal(notes.strip(`[HEARD:${id}]unfinished`),'');
+ assert.equal(notes.strip('Hello.[/HEARD]'),'Hello.');
 });
 test('description attaches only to its pending call event, once, with no template or second message',()=>{
  let clock=100000,delivered=[],published=[],saves=0;const c={id:'call-a',status:'active',entries:[]},other={id:'call-b',status:'active',entries:[]};

@@ -1,6 +1,9 @@
 export function mergeCallSounds(current=[],incoming=[]){
  const byId=new Map()
- for(const event of [...current,...incoming])if(event&&typeof event.id==='string'&&Array.isArray(event.names)&&event.names.length)byId.set(event.id,event)
+ for(const event of [...current,...incoming])if(event&&typeof event.id==='string'&&Array.isArray(event.names)&&event.names.length){
+  const previous=byId.get(event.id)
+  byId.set(event.id,previous?.descriptionSource==='model'&&previous.description&&event.descriptionSource!=='model'?{...event,description:previous.description,descriptionSource:'model',descriptionPending:false}:event)
+ }
  return [...byId.values()].slice(-100)
 }
 export function callTimeline(entries=[],sounds=[]){

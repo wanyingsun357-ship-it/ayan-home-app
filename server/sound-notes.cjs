@@ -7,7 +7,7 @@ function extract(source){
  }return result;
 }
 function strip(source){
- let text=String(source||'').replace(/\[HEARD:[^\]\r\n]*\][\s\S]*?(?:\[\/HEARD\]|$)/gi,'');
+ let text=String(source||'').replace(/\[HEARD:[^\]\r\n]*\][\s\S]*?(?:\[\/HEARD\]|$)/gi,'').replace(/\[\/HEARD\]/gi,'');
  const at=text.lastIndexOf('[');if(at>=0){const tail=text.slice(at).toUpperCase();if('[HEARD:'.startsWith(tail)||tail.startsWith('[HEARD:'))text=text.slice(0,at);}
  return text;
 }

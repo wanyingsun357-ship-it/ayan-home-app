@@ -45,4 +45,5 @@ test('actual bridge integration: active outgoing/incoming, final metadata, late 
  c.status='ended';c.endedAt=new Date().toISOString();c=null;sess.messages.at(-1).inCall=undefined;ctx.callOnReply(sess,first+second);assert.equal(ctx.calls.calls[0].entries.length,4);assert(ctx.calls.calls[0].entries.at(-1).late);
  c={id:'incoming',by:'him',status:'ringing',session:'s',entries:[]};ctx.callStreamFeed(sess,first);assert.equal(c.entries.length,0);c.status='active';ctx.callStreamFeed(sess,first);assert.equal(c.entries.length,1);
  c={id:'declined',by:'her',status:'ringing',session:'s',entries:[]};ctx.callOnReply(sess,'[DECLINE]Later.[ZH]晚点。[/ZH]');assert.equal(c.endedBy,'declined');assert.equal(c.entries.length,1);
+ c={id:'note-controls',by:'her',status:'active',session:'s',entries:[]};const note='[HEARD:d007fc16-b3c6-4caf-8d01-69d552705890]水声[HANGUP][DECLINE][/HEARD]';ctx.callStreamFeed(sess,note+first);ctx.callOnReply(sess,note+first);assert.equal(c.entries.length,1);assert.equal(c.entries[0].text,'[softly] Hi.');assert(!c.hangupPending,'Description controls never hang up the call');
 });
