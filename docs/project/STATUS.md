@@ -1,3 +1,11 @@
+## 2026-10-31 声音感知服务与小组通话UI已上线，TestFlight44制作中
+
+- 用户结束真实通话并明确“去吧宝宝”后，核实无unfinished call/运行子任务，两次空闲检查及哈希保护通过再更新。功能源码827c0bcbaa4b07652946ea42ff15318ff1d347d3已快进并推main；2026-10-31T08:50:31.503964+00:00实际部署，bridge重载后online。私有备份/root/ayan/backups/call-sound-20261031-085028，保留旧入口/运行模块/协议/相关源码及清单；不改原通话记录/录音或root CLAUDE。
+- 线上入口index-oZy9HHQU.js/index-BjeWdSyl.css；index SHA768fd177a149bcb9bbbb1f5b4d1432a4df079e46e269e56a9bb1d592b7aba25e，bridge SHAae3363d8b1949328e560204803d8693af020e8e72130230ccb462d940fca32e0，native-calls SHA3c166d0a8b97045e5bf7452a0749d799d4ae16e01168725218641e439bed1e28，call-sounds SHAece6a4bb723e59829ee472ddeebc8ad83b2a4ae544328805858e8cea390242c8，全局UI协议SHA53e7eb5f0b9611c74d132f9ad6ea900edc2b103045456c47739fa7763d08ea00。call-stream模块未改变，源码干净。新旧原生接口兼容，43仍可通话；感知开关需要新包。
+- 公网根入口/版本入口和JS/CSS精确SHA一致；Chrome实际公网day/night通过感知开关/去重/通话隔离/打字闭麦、24句→8组与英文默认全展开、原生snapshot/播放状态/新句子在上翻时不追底、回到最新/触摸阅读、通话历史声音note；旧原生43模拟回归通过，pageerror0。首个公网连接超时后重试成功，不把网络超时当功能失败。所有业务请求重定向本地假数据，无生产测试聊天/通话/模型/TTS。
+- 最终无签名Xcode run41182857467/827c0bc成功（实际Apple分类器五类+Swift策略测试）；服务器14项策略/分组/鉴权/私有bridge VM及前端构建通过。正式TestFlight run41186270445，Build44，job124493714661正在Fastlane；尚未核实签名上传/苹果处理，不能说44已经可安装。
+- 本轮不是教程全量：首版Apple本机笑声/呼吸/叹气/吸气/哭声、默认关、只递类别，不收集上传音频片段。YAMNet、水声/震动等后续未做。实际手机识别、后台/蓝牙/听筒表现需要安装新包后验收。公网验证见work/call-sound-20261031/live-hashes.json、live-group-scroll-verification.json、live-legacy-verification.json及截图。
+
 ## 2026-10-31 用户追加：小组气泡、英文展开、上翻不追底（已验证，待一起发布）
 
 - 用户真机反馈逐句气泡过碎，明确改为同轮相邻两三句一组，保持逐句流式显示与英文播放；上翻历史阅读时不能再被正在说话/新消息拉到底。声音感知任务保留，与这轮一起发布。
