@@ -1,8 +1,9 @@
 name: Convert and verify YAMNet
 on:
+  workflow_dispatch:
   push:
     branches: [codex/yamnet-call-20261031]
-    paths: ['tools/yamnet/**', '.github/workflows/yamnet-model.yml']
+    paths: ['tools/yamnet/convert.py', 'tools/yamnet/upstream/**']
 jobs:
   model:
     runs-on: macos-26

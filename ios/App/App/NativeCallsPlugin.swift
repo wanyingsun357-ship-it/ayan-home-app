@@ -152,7 +152,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         let revision = soundRevision, token = soundGeneration, enabled = soundEnabled
         soundSync = Task { @MainActor in
             do {
-                _ = try await self.request("sound-setting", body: ["enabled": enabled, "capturing": wanted, "revision": revision])
+                _ = try await self.request("sound-setting", body: ["enabled": enabled, "capturing": wanted, "revision": revision, "model": "yamnet-v1", "saveClips": true])
                 guard !Task.isCancelled, self.callID == id, self.soundGeneration == token, wanted, self.maySenseSound else { return }
                 // Let playback echo settle before starting a fresh classification window.
                 try await Task.sleep(nanoseconds: 700_000_000)
@@ -160,8 +160,8 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.soundAnalyzer.start(ready: { [weak self] kinds in
                     guard let self = self, self.soundGeneration == token, self.maySenseSound else { return }
                     self.soundKinds = kinds; self.soundListening = true; self.emit("soundState")
-                }, detection: { [weak self] kind, confidence in
-                    self?.reportSound(kind: kind, confidence: confidence, revision: revision, generation: token)
+                }, detection: { [weak self] detection in
+                    self?.reportSound(detection, revision: revision, generation: token)
                 }, failed: { [weak self] in
                     guard let self = self, self.soundGeneration == token else { return }
                     self.soundFailed = true; self.soundSettingKey = ""; self.refreshSoundCapture(); self.emit("soundState")
@@ -172,13 +172,16 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-    private func reportSound(kind: String, confidence: Double, revision: Int, generation: UUID) {
+    private func reportSound(_ detection: CallSoundDetection, revision: Int, generation: UUID) {
         guard maySenseSound, soundListening, soundGeneration == generation, let id = callID, soundRequests.count < 2 else { return }
         let event = UUID()
         soundRequests[event] = Task { @MainActor in
             defer { self.soundRequests[event] = nil }
             guard !Task.isCancelled, self.callID == id, self.soundGeneration == generation else { return }
-            do { _ = try await self.request("sound", body: ["eventId": event.uuidString, "kind": kind, "confidence": confidence, "revision": revision]) }
+            var body: [String: Any] = ["eventId": event.uuidString, "kind": detection.kind, "confidence": detection.confidence, "revision": revision, "classIndex": detection.classIndex, "source": detection.source, "continued": detection.continued]
+            if detection.clip.count >= 32044 { body["clipWav"] = detection.clip.base64EncodedString() }
+            if detection.source == "vocal-heuristic" { body["evidence"] = ["voicedRatio": detection.voicedRatio, "pitchHz": detection.pitchHz, "asrWords": false] }
+            do { _ = try await self.request("sound", body: body) }
             catch {
                 // Drop this observation. If the service restarted or the network
                 // lost a setting, synchronize a new epoch rather than replay it.
@@ -202,7 +205,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         let push = PKPushRegistry(queue: .main); push.delegate = self; push.desiredPushTypes = [.voIP]; registry = push
     }
     func state() -> [String: Any] {
-        var result: [String: Any] = ["supported": true, "deviceId": registrationID, "token": voipToken, "mediaOwned": joined || outgoing, "supportsOutgoing": true, "muted": muted, "supportsSoundSensing": true, "soundEnabled": soundEnabled, "soundListening": soundListening, "soundFailed": soundFailed, "soundCategories": soundKinds]
+        var result: [String: Any] = ["supported": true, "deviceId": registrationID, "token": voipToken, "mediaOwned": joined || outgoing, "supportsOutgoing": true, "muted": muted, "supportsSoundSensing": true, "soundModel": "yamnet-v1", "soundClips": true, "soundRetentionDays": 7, "soundEnabled": soundEnabled, "soundListening": soundListening, "soundFailed": soundFailed, "soundCategories": soundKinds]
         #if DEBUG
         result["environment"] = "sandbox"
         #else
@@ -480,6 +483,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
                     guard let event = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
                     if event["type"] as? String == "error" { throw URLError(.cannotConnectToHost) }
                     if self.muted || self.player != nil || self.loadingAudio { continue }
+                    if self.maySenseSound, let text = event["text"] as? String, ["partial", "final"].contains(event["type"] as? String ?? "") { self.soundAnalyzer.observeASR(text) }
                     if event["type"] as? String == "partial" { self.emit("partial", ["text": event["text"] ?? ""]) }
                     if event["type"] as? String == "final", let text = event["text"] as? String {
                         self.partialFinals += text; self.flushTask?.cancel()

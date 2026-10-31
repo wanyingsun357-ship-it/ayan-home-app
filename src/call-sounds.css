@@ -7,6 +7,8 @@
 .call-sound-tools>button[aria-checked='true'] i::before{transform:translateX(9px);background:#fff}
 .call-sound-note{display:flex;align-self:flex-start;align-items:center;flex-wrap:wrap;gap:7px;max-width:88%;border:1px solid var(--accent);border-radius:15px 15px 15px 5px;padding:8px 12px;font:12px/1.6 var(--sans);color:var(--text-soft);background:var(--g2);opacity:.9}
 .call-sound-label{font-size:10px;letter-spacing:.5px;color:var(--accent);white-space:nowrap}
+.call-sound-note>small{display:block;flex-basis:100%;font-size:10px;opacity:.7}
+.call-sound-tools>span>small{display:block;font-size:9px;opacity:.65}
 .call-latest-slot{position:relative;height:0;flex:none;z-index:5}
 .call-to-latest{position:absolute;right:20px;bottom:8px;min-height:34px;padding:6px 12px;border:1px solid var(--hairline);border-radius:18px;color:var(--text-soft);background:var(--g2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font:11px/1.5 var(--sans);box-shadow:0 2px 12px #3d304614;cursor:pointer}
 :root[data-visual='orange'][data-theme] .call-to-latest{background:#ffffffdf}

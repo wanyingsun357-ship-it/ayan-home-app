@@ -94,7 +94,7 @@ export default function CallOverlay() {
     let stopped=false,dispose
     setupNativeCalls(event=>{
       nativeAvailable.current=event.supported===true;nativeOutgoingAvailable.current=event.supportsOutgoing===true
-      if('supportsSoundSensing' in event)setSoundState({supported:event.supportsSoundSensing===true,enabled:!!event.soundEnabled,listening:!!event.soundListening,failed:!!event.soundFailed})
+      if('supportsSoundSensing' in event)setSoundState({supported:event.supportsSoundSensing===true,enabled:!!event.soundEnabled,listening:!!event.soundListening,failed:!!event.soundFailed,clips:!!event.soundClips})
       if(event.type==='error'){flash(event.message||'通话连接异常');return}
       if(event.type==='partial'){setLive(event.text||'');return}
       if(event.type==='speaking'){setSpeaking({text:event.text||'',zh:event.zh||''});return}
@@ -513,7 +513,7 @@ export default function CallOverlay() {
   const toggleSound = async()=>{
     if(!nativeOwned.current||!soundState.supported||soundChanging)return
     setSoundChanging(true)
-    try{const state=await nativeCalls.sound(!soundState.enabled);setSoundState({supported:state.supportsSoundSensing===true,enabled:!!state.soundEnabled,listening:!!state.soundListening,failed:!!state.soundFailed})}
+    try{const state=await nativeCalls.sound(!soundState.enabled);setSoundState({supported:state.supportsSoundSensing===true,enabled:!!state.soundEnabled,listening:!!state.soundListening,failed:!!state.soundFailed,clips:!!state.soundClips})}
     catch{flash('声音感知未切换，请再试一次')}
     finally{setSoundChanging(false)}
   }
@@ -566,7 +566,7 @@ export default function CallOverlay() {
 
       {warm && phase==='ringing' && <div className="warm-call-invite"><span className="warm-call-mark">☏</span><p>{call?.by==='him' ? call.reason || '他想和你说说话' : '等他接…'}</p></div>}
       {warm && phase==='active' && <div className="ins-call-duration" aria-label="通话时长">{fmt(dur(call))}</div>}
-      {phase==='active'&&<div className="call-sound-tools"><button type="button" role="switch" aria-label="声音感知" aria-checked={soundState.enabled} disabled={!soundState.supported||!nativeOwned.current||soundChanging} onClick={toggleSound}><i aria-hidden="true"/>声音感知</button><span role="status">{!soundState.supported?(isApp()?'更新 App 后可用':'在 iPhone App 中使用'):!soundState.enabled?'已关闭':typing?'打字时暂停':muted?'闭麦时暂停':soundState.failed?'暂不可用，关闭后可重试':speaking?'对方说话时暂停':soundState.listening?'正在感知':'准备感知…'}</span></div>}
+      {phase==='active'&&<div className="call-sound-tools"><button type="button" role="switch" aria-label="声音感知" aria-checked={soundState.enabled} disabled={!soundState.supported||!nativeOwned.current||soundChanging} onClick={toggleSound}><i aria-hidden="true"/>声音感知</button><span role="status">{!soundState.supported?(isApp()?'更新 App 后可用':'在 iPhone App 中使用'):!soundState.enabled?'已关闭':typing?'打字时暂停':muted?'闭麦时暂停':soundState.failed?'暂不可用，关闭后可重试':speaking?'对方说话时暂停':soundState.listening?'正在感知':'准备感知…'}{soundState.clips&&<small>开启后命中片段保存 7 天</small>}</span></div>}
       {warm && phase==='ended' && <button className="warm-call-return" onClick={()=>setPhase('idle')}>回到聊天</button>}
       <div className="call-list" ref={listRef} onScroll={transcriptScroll} onWheel={e=>{if(e.deltaY<0)pauseFollowing()}} onTouchStart={e=>{touchYRef.current=e.touches[0]?.clientY}} onTouchMove={e=>{const y=e.touches[0]?.clientY;if(y!=null&&touchYRef.current!=null&&y-touchYRef.current>3)pauseFollowing();touchYRef.current=y}} onTouchEnd={()=>{touchYRef.current=null}}>
         {callTimeline(history,sounds).map((h, i) => h.sound?<CallSoundNote key={h.rowKey} event={h}/>:(

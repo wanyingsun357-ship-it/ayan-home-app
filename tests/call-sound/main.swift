@@ -1,22 +1,38 @@
 import Foundation
-import SoundAnalysis
 
+func scores(_ pairs: [Int: Double]) -> [Double] { var s = [Double](repeating: 0, count: 521); for (i,v) in pairs { s[i] = v }; return s }
+func observe(_ policy: inout CallSoundPolicy, _ values: [Int: Double], _ time: Double) -> [CallSoundDetection] { policy.observe(CallSoundPolicy.candidates(scores: scores(values)), time: time) }
 var policy = CallSoundPolicy()
-precondition(policy.observe(scores: ["laughter": 0.8], time: 0).isEmpty)
-precondition(policy.observe(scores: ["laughter": 0.8], time: 0.5).first?.kind == "laugh")
-precondition(policy.observe(scores: ["laughter": 0.8], time: 0.5).isEmpty, "Duplicate model window must not count twice")
-precondition(policy.observe(scores: ["laughter": 0.8], time: 1).isEmpty, "Cooldown")
-precondition(policy.observe(scores: ["breathing": 0.4], time: 1.5).isEmpty, "Low confidence")
-precondition(policy.observe(scores: ["breathing": 0.9], time: 2).isEmpty)
-precondition(policy.observe(scores: ["breathing": 0.9], time: 2.5).first?.kind == "breath")
-precondition(policy.observe(scores: ["laughter": 0.9], time: 9).isEmpty, "Discontinuous windows reset consecutive count")
-precondition(policy.observe(scores: ["laughter": 0.9], time: 9.5).first?.kind == "laugh")
-policy = CallSoundPolicy()
-precondition(policy.observe(scores: ["laughter": 0.9], time: 0).isEmpty, "New capture epoch starts fresh")
-precondition(policy.observe(scores: ["dog": 1], time: 0.5).isEmpty, "No unsolicited categories")
-precondition(policy.observe(scores: ["breathing": Double.nan], time: 1).isEmpty)
-let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
-let supported = CallSoundPolicy.supportedKinds(labels: request.knownClassifications)
-precondition(supported.contains("laugh"), "Apple classifier must actually contain a laughter alias")
-precondition(supported.contains("breath"), "Apple classifier must actually contain a breathing alias")
-print("Sound policy passed; actual Apple supported categories: \(supported.joined(separator: ", "))")
+precondition(observe(&policy,[282:0.8],0).isEmpty)
+precondition(observe(&policy,[438:0.8],0.48).first?.kind == "water", "Aliases share consecutive count")
+precondition(observe(&policy,[282:0.8],0.48).isEmpty, "Duplicate model window")
+for i in 2...9 { precondition(observe(&policy,[282:0.8],Double(i)*0.48).isEmpty) }
+precondition(observe(&policy,[282:0.8],4.8).first?.continued == true)
+precondition(observe(&policy,[282:0.8],10).isEmpty, "Gaps reset consecutive windows")
+precondition(observe(&policy,[282:0.8],10.48).first?.continued == false)
+for (kind,classes) in CallSoundPolicy.rules { for (index,threshold) in classes {
+    var p = CallSoundPolicy()
+    precondition(observe(&p,[index:threshold-0.001],0).isEmpty)
+    precondition(observe(&p,[index:threshold],0.48).isEmpty)
+    let hit = observe(&p,[index:threshold],0.96).first
+    precondition(hit?.kind == kind && hit?.classIndex == index, "Whitelist class \(index)")
+} }
+precondition(CallSoundPolicy.candidates(scores: scores([200:1])).isEmpty, "Outside whitelist")
+precondition(CallSoundPolicy.candidates(scores: scores([282:.nan])).isEmpty)
+precondition(!CallSoundASR.hasWords("嗯…啊啊，呜，哼。uh hmm"))
+precondition(CallSoundASR.hasWords("嗯，我在这里"))
+precondition(CallSoundASR.hasWords("I am here"))
+var asr = CallSoundASR(); asr.add("hello", at: 12.4)
+precondition(CallSoundASR.hasWords(asr.text(start: 10, end: 11)), "Delayed ASR blocks a matching old window")
+precondition(asr.text(start: 15, end: 16).isEmpty, "Old ASR does not block later sounds")
+let tone: [Float] = (0..<15600).map { Float(0.03*sin(2*Double.pi*220*Double($0)/16000)) }
+let feature = CallVocalFeatures.measure(tone)
+precondition(feature.voicedRatio > .9 && abs(feature.pitchHz-220) < 8 && feature.bandRatio < .45)
+precondition(feature.infer(scores: scores([0:.3]), text: "")?.kind == "moan")
+precondition(feature.infer(scores: scores([0:.3]), text: "呜")?.kind == "whimper")
+precondition(feature.infer(scores: scores([0:.3]), text: "啊")?.kind == "vocal")
+precondition(feature.infer(scores: scores([0:.3]), text: "我在说话") == nil)
+precondition(feature.infer(scores: scores([517:.9]), text: "") == nil, "Nonhuman tone cannot infer a vocalization")
+let silence = CallVocalFeatures.measure([Float](repeating: 0, count: 15600))
+precondition(silence.infer(scores: scores([0:.9]), text: "") == nil)
+print("YAMNet whitelist, continuous windows, YIN, spectral ratio and delayed ASR policy passed")
