@@ -7,7 +7,7 @@ import {fadeCallTranscript} from '../utils/callTranscript.js'
 import {useCallName} from '../utils/chatLook.js'
 import {useAppearance} from '../utils/appearance.js'
 import PaperAvatar from './PaperAvatar.jsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import PixelCat from './PixelCat.jsx'
 import { createAsrStream, getWarmSocket } from '../utils/asrStream.js'
 import { NAMES } from '../config.js'
@@ -85,6 +85,8 @@ export default function CallOverlay() {
   const nowSegRef = useRef('')   // 正在念的那句(流式)
   const offsetRef = useRef(0)
   const listRef = useRef(null)
+  const followingRef=useRef(true),readingTopRef=useRef(0),lastListRef=useRef(null),touchYRef=useRef(null)
+  const [showLatest,setShowLatest]=useState(false)
   const ringTimer = useRef(null)
   const reconnRef = useRef(0)      // 通话里识别通道自动重连次数
   const nativeOwned=useRef(false),nativeAvailable=useRef(false),nativeOutgoingAvailable=useRef(false),nativeStarting=useRef(false)
@@ -131,7 +133,21 @@ export default function CallOverlay() {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [phase, visible])
-  useEffect(() => { const el = listRef.current; if (el) {el.scrollTop = el.scrollHeight;if(warm)fadeCallTranscript(el)} }, [history, sounds, live, speaking])
+  useLayoutEffect(()=>{followingRef.current=true;readingTopRef.current=0;setShowLatest(false)},[call?.id])
+  useLayoutEffect(()=>{
+    const el=listRef.current;if(!el)return
+    if(followingRef.current)el.scrollTop=el.scrollHeight
+    else if(lastListRef.current!==el)el.scrollTop=readingTopRef.current
+    lastListRef.current=el
+    if(warm)fadeCallTranscript(el)
+  },[history,sounds,live,speaking,min,warm])
+  const pauseFollowing=()=>{const el=listRef.current;if(!el||el.scrollHeight<=el.clientHeight)return;followingRef.current=false;setShowLatest(true)}
+  const transcriptScroll=e=>{
+    const el=e.currentTarget,nearEnd=el.scrollHeight-el.clientHeight-el.scrollTop<40
+    followingRef.current=nearEnd;readingTopRef.current=el.scrollTop;setShowLatest(!nearEnd)
+    if(warm)fadeCallTranscript(el)
+  }
+  const latest=()=>{const el=listRef.current;followingRef.current=true;setShowLatest(false);if(el){el.scrollTop=el.scrollHeight;readingTopRef.current=el.scrollTop;if(warm)fadeCallTranscript(el)}}
 
   // ---- 事件:Chat 顶栏的电话键 ----
   useEffect(() => {
@@ -552,9 +568,9 @@ export default function CallOverlay() {
       {warm && phase==='active' && <div className="ins-call-duration" aria-label="通话时长">{fmt(dur(call))}</div>}
       {phase==='active'&&<div className="call-sound-tools"><button type="button" role="switch" aria-label="声音感知" aria-checked={soundState.enabled} disabled={!soundState.supported||!nativeOwned.current||soundChanging} onClick={toggleSound}><i aria-hidden="true"/>声音感知</button><span role="status">{!soundState.supported?(isApp()?'更新 App 后可用':'在 iPhone App 中使用'):!soundState.enabled?'已关闭':typing?'打字时暂停':muted?'闭麦时暂停':soundState.failed?'暂不可用，关闭后可重试':speaking?'对方说话时暂停':soundState.listening?'正在感知':'准备感知…'}</span></div>}
       {warm && phase==='ended' && <button className="warm-call-return" onClick={()=>setPhase('idle')}>回到聊天</button>}
-      <div className="call-list" ref={listRef} onScroll={warm?e=>fadeCallTranscript(e.currentTarget):undefined}>
+      <div className="call-list" ref={listRef} onScroll={transcriptScroll} onWheel={e=>{if(e.deltaY<0)pauseFollowing()}} onTouchStart={e=>{touchYRef.current=e.touches[0]?.clientY}} onTouchMove={e=>{const y=e.touches[0]?.clientY;if(y!=null&&touchYRef.current!=null&&y-touchYRef.current>3)pauseFollowing();touchYRef.current=y}} onTouchEnd={()=>{touchYRef.current=null}}>
         {callTimeline(history,sounds).map((h, i) => h.sound?<CallSoundNote key={h.rowKey} event={h}/>:(
-          <div key={h.rowKey} className={`call-line ${h.who}`}>
+          <div key={`${call?.id}|${h.rowKey}`} className={`call-line ${h.who}`}>
             <span className="call-who">{h.who === 'him' ? callName : 'You'}</span>
             {h.who==='him'?<CallCaption text={h.text} zh={h.zh} compact={warm}/>:<span className="call-line-t">{h.text}</span>}
           </div>
@@ -571,6 +587,8 @@ export default function CallOverlay() {
         {phase === 'active' && needTap && <button className="call-resume glass2" onClick={startMic}>点一下打开麦克风继续</button>}
         {phase === 'active' && !speaking && !live && !history.length && !needTap && <div className="call-hint">接通了,直接说就行</div>}
       </div>
+
+      {showLatest&&phase==='active'&&<div className="call-latest-slot"><button type="button" className="call-to-latest" aria-label="回到最新通话消息" onClick={latest}>回到最新 <span aria-hidden="true">↓</span></button></div>}
 
       {typing && phase === 'active' && (
         <div className="call-type glass3">

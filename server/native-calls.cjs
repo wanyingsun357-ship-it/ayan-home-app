@@ -36,7 +36,7 @@ function create({dir,authorized,getCalls,view,saveCalls,answer,say,end,audio,sen
   app.get('/api/native-call/state',(req,res)=>{
    res.set('Cache-Control','no-store');const c=authenticate(req,res);if(!c)return;
    // The per-call key grants only this call, not chat history or model access.
-   const data=view(c);data.entries=(c.entries||[]).map(({t,who,text,zh,via})=>({t,who,text,zh,via}));data.speech=c.nativeSpeech||[];
+   const data=view(c);data.entries=(c.entries||[]).map(({t,who,text,zh,via,turnId})=>({t,who,text,zh,via,turnId}));data.speech=c.nativeSpeech||[];
    res.json({call:data,serverNow:Date.now()});
   });
   app.post('/api/native-call/action',(req,res)=>{

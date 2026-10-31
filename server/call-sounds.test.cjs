@@ -38,6 +38,9 @@ test('native endpoints preserve per-call credentials and pass only observation f
   function run(endpoint,body,id=f.c.id){let status=200,result;const res={status(n){status=n;return this},json(v){result=v;return this}};routes.get('POST /api/native-call/'+endpoint)({body:{...body,id},query:{},headers:{authorization:'Bearer '+key.token}},res);return {status,result};}
   assert.equal(run('sound-setting',{enabled:true,capturing:true,revision:1},other.id).status,401);
   assert(run('sound-setting',{enabled:true,capturing:true,revision:1}).result.ok);
+  f.c.entries=[{who:'him',t:'sentence',text:'Hello.',zh:'你好。',turnId:'reply-one',reasoning:'private'}];let nativeState;
+  routes.get('GET /api/native-call/state')({query:{id:f.c.id},headers:{authorization:'Bearer '+key.token}},{set(){return this},json(v){nativeState=v}});
+  assert.equal(nativeState.call.entries[0].turnId,'reply-one');assert.equal(nativeState.call.entries[0].reasoning,undefined);
   assert(run('sound',{...f.event(),text:'UNTRUSTED',recording:'never'}).result.queued);f.advance(1200);assert.equal(f.delivered.length,1);assert(!JSON.stringify(f.delivered).includes('UNTRUSTED'));
   f.c.status='ended';f.c.endedAt=new Date().toISOString();assert.equal(run('sound',f.event()).status,409);
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
