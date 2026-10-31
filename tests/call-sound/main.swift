@@ -1,5 +1,12 @@
 import Foundation
 
+var preference = CallSoundPreference()
+precondition(preference.enabled, "Open microphone defaults to sensing")
+preference.set(false); precondition(!preference.enabled, "Manual pause is available")
+preference.microphone(muted: true); precondition(!preference.enabled)
+preference.microphone(muted: false); precondition(preference.enabled, "Unmuting enables sensing again")
+preference.set(false); preference.beginCall(); precondition(preference.enabled, "Each call starts enabled")
+
 func scores(_ pairs: [Int: Double]) -> [Double] { var s = [Double](repeating: 0, count: 521); for (i,v) in pairs { s[i] = v }; return s }
 func observe(_ policy: inout CallSoundPolicy, _ values: [Int: Double], _ time: Double) -> [CallSoundDetection] { policy.observe(CallSoundPolicy.candidates(scores: scores(values)), time: time) }
 var policy = CallSoundPolicy()

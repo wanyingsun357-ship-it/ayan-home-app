@@ -59,7 +59,7 @@ function create({dir,authorized,getCalls,view,saveCalls,answer,say,end,audio,sen
   app.post('/api/native-call/sound-setting',(req,res)=>{
    const c=authenticate(req,res);if(!c)return;
    if(!sounds)return res.status(503).json({error:'sound_unavailable'});
-   const b=req.body||{};const result=sounds.setting(c,{enabled:b.enabled,capturing:b.capturing,revision:b.revision,model:b.model,saveClips:b.saveClips});
+   const b=req.body||{};const result=sounds.setting(c,{enabled:b.enabled,capturing:b.capturing,revision:b.revision,model:b.model,saveClips:b.saveClips,reason:b.reason,nativeBuild:b.nativeBuild});
    res.status(result.ok?200:409).json(result);
   });
   app.post('/api/native-call/sound',(req,res)=>{
@@ -67,6 +67,12 @@ function create({dir,authorized,getCalls,view,saveCalls,answer,say,end,audio,sen
    if(!sounds)return res.status(503).json({error:'sound_unavailable'});
    const b=req.body||{};const result=sounds.accept(c,{eventId:b.eventId,kind:b.kind,confidence:b.confidence,revision:b.revision,source:b.source,classIndex:b.classIndex,evidence:b.evidence,continued:b.continued,clipWav:b.clipWav});
    res.status(result.ok?200:409).json(result);
+  });
+  app.post('/api/native-call/sound-health',(req,res)=>{
+   const c=authenticate(req,res);if(!c)return;
+   if(!sounds?.health)return res.status(503).json({error:'sound_unavailable'});
+   const b=req.body||{},fields=['revision','samples','windows','rmsDbfs','topClass','topConfidence','waterConfidence','analysisMs','voiceProcessingEnabled','voiceProcessingBypassed'];
+   const result=sounds.health(c,Object.fromEntries(fields.map(k=>[k,b[k]])));res.status(result.ok?200:409).json(result);
   });
   app.post('/api/native-call/audio',async(req,res)=>{
    const c=authenticate(req,res);if(!c)return;

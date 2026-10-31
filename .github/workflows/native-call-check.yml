@@ -1,7 +1,7 @@
 name: Native call compile check
 on:
   push:
-    branches: [codex/native-call-20261025, codex/call-captions-20261025, codex/native-call-repair-20261030, codex/call-sound-20261031, codex/yamnet-call-20261031]
+    branches: [codex/native-call-20261025, codex/call-captions-20261025, codex/native-call-repair-20261030, codex/call-sound-20261031, codex/yamnet-call-20261031, codex/call-sound-fix-20261031]
     paths-ignore: ['tools/yamnet/**', '.github/workflows/yamnet-model.yml']
 jobs:
   compile:

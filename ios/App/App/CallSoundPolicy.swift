@@ -1,5 +1,12 @@
 import Foundation
 
+struct CallSoundPreference {
+    private(set) var enabled = true
+    mutating func beginCall() { enabled = true }
+    mutating func set(_ value: Bool) { enabled = value }
+    mutating func microphone(muted: Bool) { if !muted { enabled = true } }
+}
+
 struct CallSoundDetection {
     var kind: String
     var confidence: Double

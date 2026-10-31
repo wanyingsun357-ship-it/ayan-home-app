@@ -2,6 +2,7 @@
 const crypto=require('node:crypto');
 const {categories:WHITELIST,humanClasses}=require('./sound-whitelist.json');
 const clips=require('./sound-clips.cjs');
+const notes=require('./sound-notes.cjs');
 const LEGACY={laugh:{name:'笑声',threshold:.55},breath:{name:'呼吸声',threshold:.65},sigh:{name:'叹气声',threshold:.55},gasp:{name:'吸气声',threshold:.6},cry:{name:'哭声',threshold:.6}};
 const CATEGORIES=Object.freeze({...WHITELIST,breath:LEGACY.breath});
 // Sound hints are observations, not transcribed speech or inferred feelings.
@@ -11,7 +12,7 @@ function create({getCall,save,publish,deliver,busy,clipStore,now=Date.now,schedu
  const states=new Map();
  function state(c){if(!states.has(c.id))states.set(c.id,{enabled:false,capturing:false,model:null,saveClips:false,revision:-1,epoch:0,pending:new Map(),seen:new Map(),ids:new Set(),turn:null,turnAt:now(),count:0,kinds:new Set(),timer:null});return states.get(c.id);}
  function clear(s){if(s.timer)cancel(s.timer);s.timer=null;s.pending.clear();s.epoch++;}
- function setting(c,{enabled,capturing,revision,model,saveClips}){
+ function setting(c,{enabled,capturing,revision,model,saveClips,reason,nativeBuild}){
   if(c.status!=='active')return {ok:false,error:'call_not_active'};
   const s=state(c);if(!Number.isSafeInteger(revision)||revision<0)return {ok:false,error:'invalid_revision'};
   const selected=model==='yamnet-v1'?'yamnet-v1':null,record=selected!==null&&saveClips===true;
@@ -19,6 +20,8 @@ function create({getCall,save,publish,deliver,busy,clipStore,now=Date.now,schedu
   if(revision!==s.revision)clear(s);
   s.model=selected;s.saveClips=record;
   s.revision=revision;s.enabled=enabled===true;s.capturing=s.enabled&&capturing===true;
+  const reasons=['disabled','listening','analysis_failed','audio_inactive','muted','playback'];
+  c.soundState={enabled:s.enabled,capturing:s.capturing,model:s.model,saveClips:s.saveClips,revision,reason:reasons.includes(reason)?reason:(s.capturing?'listening':s.enabled?'paused':'disabled'),nativeBuild:/^\d{1,4}$/.test(String(nativeBuild||''))?String(nativeBuild):null,updatedAt:new Date(now()).toISOString()};save();
   if(!s.capturing)clear(s);
   return {ok:true,enabled:s.enabled,capturing:s.capturing,saveClips:s.saveClips,retentionDays:s.saveClips?7:0};
  }
@@ -53,10 +56,10 @@ function create({getCall,save,publish,deliver,busy,clipStore,now=Date.now,schedu
   if(busy()){arm(c,s,300);return;}
   turn(c,s);const chosen=[...s.pending.values()].filter(e=>!s.kinds.has(e.kind)&&now()-(s.seen.get(e.kind)??-Infinity)>=8000).slice(0,Math.max(0,2-s.count));
   s.pending.clear();if(!chosen.length)return;
-  const names=chosen.map(e=>e.name),event={id:crypto.randomUUID(),t:new Date(now()).toISOString(),kinds:chosen.map(e=>e.kind),names,text:'听到了'+chosen.map(e=>e.name+(e.continued?'，还在继续':'')).join('、')};
+  const names=chosen.map(e=>e.name),event={id:crypto.randomUUID(),t:new Date(now()).toISOString(),kinds:chosen.map(e=>e.kind),names,continued:chosen.some(e=>e.continued),descriptionPending:true,text:'听到了'+chosen.map(e=>e.name+(e.continued?'，还在继续':'')).join('、')};
   const saved=[];
   for(const e of chosen)if(e.clip&&clipStore){try{const recording=clipStore.save(e.clip,{callId:c.id,eventId:e.eventId,kind:e.kind});saved.push({...recording,kind:e.kind});}catch{event.clipFailed=true;}}
-  if(saved.length){event.clips=saved;event.description=saved.map(r=>CATEGORIES[r.kind].name+'：'+clips.describe(r.metrics)).join('；');event.text+='（'+event.description+'）';}
+  if(saved.length){event.clips=saved;event.measurements=saved.map(r=>({kind:r.kind,...r.metrics}));}
   // deliver() performs the existing same-session enqueue synchronously and
   // returns false if no target is available. Never label undelivered hints sent.
   let delivered=false;try{delivered=deliver(c,event)!==false;}catch{}finally{if(!delivered)for(const r of saved)try{clipStore.remove(r.id)}catch{}}
@@ -64,7 +67,23 @@ function create({getCall,save,publish,deliver,busy,clipStore,now=Date.now,schedu
   for(const e of chosen){s.seen.set(e.kind,now());s.kinds.add(e.kind);}s.count+=chosen.length;
   (c.sounds||=[]).push(event);c.sounds=c.sounds.slice(-100);save();publish(c,event);
  }
- function close(c){const s=states.get(c.id);if(s)clear(s);states.delete(c.id);}
- return {setting,accept,close,flush};
+ function describe(c,source){
+  for(const item of notes.extract(source)){
+   const event=(c.sounds||[]).find(e=>e.id===item.id&&e.descriptionPending===true);
+   if(!event||now()-Date.parse(event.t)>120000)continue;
+   event.description=item.text;event.descriptionSource='model';event.descriptionPending=false;save();publish(c,event);
+  }
+ }
+ function health(c,data){
+  const s=state(c);if(c.status!=='active'||!s.capturing||data?.revision!==s.revision)return {ok:false,error:'sound_paused'};
+  const fields={samples:[0,1000000000],windows:[0,1000000],rmsDbfs:[-120,0],topClass:[0,520],topConfidence:[0,1],waterConfidence:[0,1],analysisMs:[0,10000]};const diagnostic={revision:s.revision,at:new Date(now()).toISOString()};
+  for(const [key,[lo,hi]]of Object.entries(fields)){const value=data[key];if(typeof value!=='number'||!Number.isFinite(value)||value<lo||value>hi)return {ok:false,error:'invalid_health'};diagnostic[key]=value;}
+  if(!Number.isInteger(diagnostic.topClass)||!Number.isInteger(diagnostic.samples)||!Number.isInteger(diagnostic.windows))return {ok:false,error:'invalid_health'};
+  if(c.soundDiagnostics&&now()-Date.parse(c.soundDiagnostics.at)<4000)return {ok:true,limited:true};
+  diagnostic.voiceProcessingEnabled=data.voiceProcessingEnabled===true;diagnostic.voiceProcessingBypassed=data.voiceProcessingBypassed===true;
+  c.soundDiagnostics=diagnostic;save();return {ok:true};
+ }
+ function close(c){const s=states.get(c.id);if(s)clear(s);states.delete(c.id);if(c.soundState)c.soundState.capturing=false;}
+ return {setting,accept,close,flush,describe,health};
 }
 module.exports={create,CATEGORIES};

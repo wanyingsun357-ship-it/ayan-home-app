@@ -27,13 +27,6 @@ function metrics(b){
  if(pitches.length>=5){const median=a=>a.sort((a,b)=>a-b)[Math.floor(a.length/2)];pitchHz=round(median(pitches.map(p=>p.hz)));const k=Math.max(1,Math.floor(pitches.length/3)),first=median(pitches.slice(0,k).map(p=>p.hz)),last=median(pitches.slice(-k).map(p=>p.hz));pitchTrend=last/first>1.15?'rising':last/first<.87?'falling':'steady';}
  return {duration:round(n/16000),activeDuration:round(active*.02),rmsDbfs:db(Math.sqrt(sum/n)),peakDbfs:db(peak),onsetsPerSecond:round(onsets/(n/16000)),pitchHz,pitchTrend};
 }
-function describe(m){
- const parts=[m.rmsDbfs<-32?'声音较轻':m.rmsDbfs>-15?'声音较响':'音量适中'];
- if(m.activeDuration>=.4)parts.push('片段中约'+m.activeDuration.toFixed(1)+'秒有声');
- if(m.onsetsPerSecond>=1.5)parts.push('能量起伏约每秒'+m.onsetsPerSecond.toFixed(1)+'次');
- if(m.pitchTrend==='rising')parts.push('音调上扬');if(m.pitchTrend==='falling')parts.push('音调降低');
- return parts.join('，');
-}
 function create({dir,now=Date.now,interval=setInterval}){
  if(!path.isAbsolute(dir)||dir.split(path.sep).includes('public'))throw Error('private_clip_directory_required');
  fs.mkdirSync(dir,{recursive:true,mode:0o700});fs.chmodSync(dir,0o700);
@@ -64,4 +57,4 @@ function create({dir,now=Date.now,interval=setInterval}){
  function remove(id){if(!/^[a-f0-9-]{36}$/.test(id))return;for(const ext of ['.wav','.json'])try{fs.unlinkSync(path.join(dir,id+ext))}catch(e){if(e.code!=='ENOENT')throw e;}}
  return {save,remove,sweep,close:()=>{clearInterval(timer);clearTimeout(expiryTimer)}};
 }
-module.exports={create,decode,metrics,describe,TTL};
+module.exports={create,decode,metrics,TTL};

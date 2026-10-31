@@ -122,7 +122,8 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
     private var systemTitle = ""
     private var endingRemotely = false
     private let soundAnalyzer = CallSoundAnalyzer()
-    private var soundEnabled = UserDefaults.standard.bool(forKey: "call-sound-enabled-v1")
+    private var soundPreference = CallSoundPreference()
+    private var soundEnabled: Bool { soundPreference.enabled }
     private var soundListening = false
     private var soundFailed = false
     private var soundKinds: [String] = []
@@ -131,10 +132,11 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
     private var soundGeneration = UUID()
     private var soundSync: Task<Void, Never>?
     private var soundRequests: [UUID: Task<Void, Never>] = [:]
+    private var soundHealthRequest: Task<Void, Never>?
+    private var soundHealthID: UUID?
 
     func setSoundEnabled(_ enabled: Bool) {
-        soundEnabled = enabled; soundFailed = false
-        UserDefaults.standard.set(enabled, forKey: "call-sound-enabled-v1")
+        soundPreference.set(enabled); soundFailed = false
         soundSettingKey = ""; refreshSoundCapture(); emit("soundState")
     }
     private var maySenseSound: Bool { soundEnabled && !soundFailed && joined && audioActive && !muted && player == nil && !loadingAudio }
@@ -142,17 +144,24 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         soundGeneration = UUID(); soundListening = false; soundAnalyzer.stop()
         soundSync?.cancel(); soundSync = nil
         for task in soundRequests.values { task.cancel() }; soundRequests.removeAll()
+        soundHealthRequest?.cancel(); soundHealthRequest = nil; soundHealthID = nil
     }
     private func refreshSoundCapture() {
+        if let input = engine?.inputNode, input.isVoiceProcessingEnabled, input.isVoiceProcessingBypassed != soundEnabled {
+            // Keep environmental sounds in the shared mic tap. Playback/mute
+            // still send silence to ASR and invalidate the sensing epoch.
+            input.isVoiceProcessingBypassed = soundEnabled
+        }
         let wanted = maySenseSound
         guard joined, let id = callID else { stopSoundCapture(); soundSettingKey = ""; return }
-        let key = "\(id)|\(soundEnabled)|\(wanted)"
+        let reason = !soundEnabled ? "disabled" : soundFailed ? "analysis_failed" : !audioActive ? "audio_inactive" : muted ? "muted" : (player != nil || loadingAudio) ? "playback" : "listening"
+        let key = "\(id)|\(soundEnabled)|\(wanted)|\(reason)"
         guard key != soundSettingKey else { return }
         stopSoundCapture(); soundSettingKey = key; soundRevision += 1
         let revision = soundRevision, token = soundGeneration, enabled = soundEnabled
         soundSync = Task { @MainActor in
             do {
-                _ = try await self.request("sound-setting", body: ["enabled": enabled, "capturing": wanted, "revision": revision, "model": "yamnet-v1", "saveClips": true])
+                _ = try await self.request("sound-setting", body: ["enabled": enabled, "capturing": wanted, "revision": revision, "model": "yamnet-v1", "saveClips": true, "reason": reason, "nativeBuild": Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"])
                 guard !Task.isCancelled, self.callID == id, self.soundGeneration == token, wanted, self.maySenseSound else { return }
                 // Let playback echo settle before starting a fresh classification window.
                 try await Task.sleep(nanoseconds: 700_000_000)
@@ -165,11 +174,25 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
                 }, failed: { [weak self] in
                     guard let self = self, self.soundGeneration == token else { return }
                     self.soundFailed = true; self.soundSettingKey = ""; self.refreshSoundCapture(); self.emit("soundState")
+                }, health: { [weak self] data in
+                    self?.reportSoundHealth(data, revision: revision, generation: token)
                 })
             } catch {
                 guard !Task.isCancelled, self.callID == id, self.soundGeneration == token else { return }
                 self.soundSettingKey = ""; self.emit("soundState") // next state poll can retry
             }
+        }
+    }
+    private func reportSoundHealth(_ data: [String: Any], revision: Int, generation: UUID) {
+        guard maySenseSound, soundListening, soundGeneration == generation, let id = callID, soundHealthRequest == nil else { return }
+        let requestID = UUID(); soundHealthID = requestID
+        var body = data; body["revision"] = revision
+        body["voiceProcessingEnabled"] = engine?.inputNode.isVoiceProcessingEnabled ?? false
+        body["voiceProcessingBypassed"] = engine?.inputNode.isVoiceProcessingBypassed ?? false
+        soundHealthRequest = Task { @MainActor in
+            defer { if self.soundHealthID == requestID { self.soundHealthRequest = nil; self.soundHealthID = nil } }
+            guard !Task.isCancelled, self.callID == id, self.soundGeneration == generation else { return }
+            _ = try? await self.request("sound-health", body: body)
         }
     }
     private func reportSound(_ detection: CallSoundDetection, revision: Int, generation: UUID) {
@@ -260,6 +283,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         log.notice("VoIP push: rejected invalid or conflicting conversation")
     }
     private func adoptIncoming(_ value: [String: Any]) {
+        soundPreference.beginCall()
         stopSoundCapture(); soundSettingKey = ""; soundFailed = false
         info = value; outgoing = false; joined = false; muted = false; played.removeAll(); playQueue.removeAll()
         systemTitle = "晏白邀请你语音通话"
@@ -286,6 +310,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         guard validInfo(value), let raw = value["uuid"] as? String, let id = UUID(uuidString: raw), call["by"] as? String == "her" else { throw URLError(.badServerResponse) }
         if callID == value["callId"] as? String, outgoing { return }
         guard info == nil else { throw URLError(.cannotConnectToHost) }
+        soundPreference.beginCall()
         stopSoundCapture(); soundSettingKey = ""; soundFailed = false
         info = value; currentCall = call; outgoing = true; joined = false; muted = false; played.removeAll(); playQueue.removeAll()
         let handle = Handle(type: .generic, value: "晏白", displayName: "晏白：呼叫中")
@@ -377,7 +402,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
                 } catch { join.fail(); self.finish(reason: .failed) }
             }
         } else if let mute = action as? MuteConversationAction {
-            muted = mute.isMuted; partialFinals = ""; flushTask?.cancel(); refreshSoundCapture(); mute.fulfill(); emit("state")
+            muted = mute.isMuted; soundPreference.microphone(muted: muted); if !muted { soundFailed = false }; partialFinals = ""; flushTask?.cancel(); refreshSoundCapture(); mute.fulfill(); emit("state")
         } else if let ending = action as? EndConversationAction {
             let decline = !joined && !outgoing
             Task { @MainActor in
@@ -456,6 +481,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         guard joined, audioActive, engine == nil else { return }
         let engine = AVAudioEngine(), input = engine.inputNode
         try? input.setVoiceProcessingEnabled(true)
+        if input.isVoiceProcessingEnabled { input.isVoiceProcessingBypassed = soundEnabled }
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw URLError(.cannotDecodeContentData) }
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in

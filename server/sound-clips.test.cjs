@@ -34,7 +34,7 @@ test('audio only persists for a consented, delivered current-epoch hit; pause, d
   assert.equal(api.accept(c,hit(1)).error,'sound_paused');setting(1);api.accept(c,hit(1));setting(2,{capturing:false});api.flush(c.id);assert.equal(fs.readdirSync(dir).length,0);
   setting(3);api.accept(c,hit(3));clock+=13000;api.flush(c.id);assert.equal(fs.readdirSync(dir).length,0);
   api.accept(c,hit(3));canDeliver=false;api.flush(c.id);assert.equal(fs.readdirSync(dir).length,0);
-  canDeliver=true;const accepted=hit(3);assert(api.accept(c,accepted).queued);api.flush(c.id);assert.equal(fs.readdirSync(dir).length,2);assert.equal(c.sounds[0].clips[0].metrics.duration,3.5);assert(c.sounds[0].description.includes('声音较轻'));assert(!JSON.stringify(c).includes('RIFF'));assert(!JSON.stringify(c).includes('clipWav'));
+  canDeliver=true;const accepted=hit(3);assert(api.accept(c,accepted).queued);api.flush(c.id);assert.equal(fs.readdirSync(dir).length,2);assert.equal(c.sounds[0].clips[0].metrics.duration,3.5);assert.equal(c.sounds[0].description,undefined);assert.equal(c.sounds[0].measurements[0].duration,3.5);assert(c.sounds[0].descriptionPending);assert(!JSON.stringify(c).includes('RIFF'));assert(!JSON.stringify(c).includes('clipWav'));
   assert(api.accept(c,accepted).duplicate);assert(api.accept(c,hit(3)).limited);api.flush(c.id);assert.equal(fs.readdirSync(dir).length,2);
   c.entries.push({who:'him',turnId:'next'});clock+=8100;setting(4,{saveClips:false});api.accept(c,hit(4));api.flush(c.id);assert.equal(fs.readdirSync(dir).length,2,'category-only requests do not persist audio');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}

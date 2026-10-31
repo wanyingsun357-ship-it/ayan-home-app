@@ -3,6 +3,7 @@
 // Keep the existing entryTime audio API so installed native clients can consume
 // sentences before the model's result event without another native build.
 const crypto=require('node:crypto');
+const {strip:stripSoundNotes}=require('./sound-notes.cjs');
 const clean=s=>String(s||'').replace(/\[\/?(?:ANSWER|DECLINE|HANGUP|VOICE)\]/gi,'').trim();
 function sentences(s,locale){
  return [...new Intl.Segmenter(locale,{granularity:'sentence'}).segment(s)].map(x=>x.segment.trim()).filter(Boolean);
@@ -15,7 +16,7 @@ function pair(text,zh){
  return en.length>1&&en.length===cn.length?en.map((text,i)=>({text,zh:cn[i]})):[{text,zh}];
 }
 function chunks(full,final=false){
- const source=String(full||''),out=[];let at=0,m;
+ const source=stripSoundNotes(full),out=[];let at=0,m;
  const re=/\[ZH\]([\s\S]*?)\[\/ZH\]/gi;
  while((m=re.exec(source))){out.push(...pair(source.slice(at,m.index),m[1]));at=re.lastIndex;}
  if(final){
@@ -46,4 +47,4 @@ function create({save,publish,prefetch,clock=Date.now}){
  function reset(c){if(c.stream)c.stream={turnId:c.stream.turnId,issued:c.stream.issued||{}};}
  return {feed,reset};
 }
-module.exports={chunks,create};
+module.exports={chunks,create,stripSoundNotes};
