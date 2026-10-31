@@ -56,8 +56,8 @@ def forward(waveform):
         magnitude = tf.sqrt(re*re + im*im)
         patch = tf.math.log(tf.matmul(magnitude, mel) + tf.constant(0.001, tf.float32))
         patch = tf.expand_dims(patch, 0)
+    logits = network(patch, training=False)[0]
     with tf.name_scope('head_float32'):
-        logits = network(patch, training=False)[0]
         z = tf.exp(-tf.abs(logits))
         probabilities = tf.where(logits >= 0, 1/(1+z), z/(1+z))
     return tf.identity(probabilities, name='scores')
@@ -67,7 +67,7 @@ model = ct.convert([concrete], source='tensorflow', convert_to='mlprogram',
     inputs=[ct.TensorType(name='waveform', shape=(15600,), dtype=np.float32)],
     outputs=[ct.TensorType(dtype=np.float32)],
     minimum_deployment_target=ct.target.iOS16,
-    compute_precision=ct.transform.FP16ComputePrecision(op_selector=lambda op: op.op_type in ['conv', 'batch_norm', 'relu', 'avg_pool', 'max_pool'] and 'frontend_float32' not in op.name and 'head_float32' not in op.name),
+    compute_precision=ct.transform.FP16ComputePrecision(op_selector=lambda op: 'frontend_float32' not in op.name and 'head_float32' not in op.name and not any(name in op.name.lower() for name in ['dense', 'strided_slice', 'identity'])),
     compute_units=ct.ComputeUnit.CPU_ONLY)
 model.author = 'TensorFlow Authors; fixed-patch Core ML conversion for Entangled Home'
 model.license = 'Apache-2.0'
@@ -77,6 +77,10 @@ model.user_defined_metadata['frontend_precision'] = 'float32 real DFT; no comple
 model.user_defined_metadata['weights_sha256'] = digest(weights)
 ops = model._mil_program.functions['main'].operations
 frontend = [op for op in ops if 'frontend_float32' in op.name and op.op_type in ['matmul', 'mul', 'sqrt', 'log']]
+conv = [op for op in ops if op.op_type == 'conv']
+conv_precision = {'fp16': sum(out.dtype == ct.converters.mil.mil.types.fp16 for op in conv for out in op.outputs), 'fp32': sum(out.dtype == ct.converters.mil.mil.types.fp32 for op in conv for out in op.outputs)}
+print('CONV_PRECISION', conv_precision, flush=True)
+assert conv_precision['fp16'] > 0 and conv_precision['fp32'] == 0, 'CNN must actually retain float16 convolution'
 assert frontend, 'Must identify the exported spectral frontend'
 print('FRONTEND_TYPES', [(op.name, str(out.dtype)) for op in frontend for out in op.outputs], flush=True)
 assert all(out.dtype == ct.converters.mil.mil.types.fp32 for op in frontend for out in op.outputs), 'Spectral frontend lost float32'
@@ -120,7 +124,7 @@ out=ROOT/'ios/App/App/YAMNet.mlpackage'
 model.save(str(out))
 report={'source_commit':SOURCE_COMMIT,'weights_url':'https://storage.googleapis.com/audioset/yamnet.h5','weights_sha256':digest(weights),
     'tensorflow':tf.__version__,'coremltools':ct.__version__,'input_samples':15600,'sample_rate':16000,'hop_samples':7680,'classes':521,
-    'frontend_precision':'float32','network_precision':'float16','output_name':next(iter(prediction.keys())),
+    'frontend_precision':'float32','network_precision':{'convolutions':conv_precision,'probability_head':'float32'},'output_name':next(iter(prediction.keys())),
     'validation':results,'all_pass':True,'model_files':{str(f.relative_to(out)):digest(f) for f in out.rglob('*') if f.is_file()}}
 (ROOT/'ios/App/App/YAMNet-validation.json').write_text(json.dumps(report,indent=2)+'\n')
 (ROOT/'ios/App/App/YAMNet-labels.json').write_text(json.dumps([r['display_name'] for r in labels],ensure_ascii=False)+'\n')
