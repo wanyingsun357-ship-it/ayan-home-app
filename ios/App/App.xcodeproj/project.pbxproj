@@ -19,6 +19,8 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		A11D0A5E0B0C0D0E0F101112 /* AudioSessionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11D0A5E0B0C0D0E0F101113 /* AudioSessionPlugin.swift */; };
 		A11D0A5E0B0C0D0E0F101122 /* NativeCallsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11D0A5E0B0C0D0E0F101123 /* NativeCallsPlugin.swift */; };
+		A11D0A5E0B0C0D0E0F101132 /* CallSoundPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11D0A5E0B0C0D0E0F101133 /* CallSoundPolicy.swift */; };
+		A11D0A5E0B0C0D0E0F101134 /* CallSoundAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11D0A5E0B0C0D0E0F101135 /* CallSoundAnalyzer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +38,8 @@
 		A11D0A5E0B0C0D0E0F101113 /* AudioSessionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionPlugin.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		A11D0A5E0B0C0D0E0F101123 /* NativeCallsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCallsPlugin.swift; sourceTree = "<group>"; };
+		A11D0A5E0B0C0D0E0F101133 /* CallSoundPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallSoundPolicy.swift; sourceTree = "<group>"; };
+		A11D0A5E0B0C0D0E0F101135 /* CallSoundAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallSoundAnalyzer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +75,8 @@
 			isa = PBXGroup;
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
+				A11D0A5E0B0C0D0E0F101133 /* CallSoundPolicy.swift */,
+				A11D0A5E0B0C0D0E0F101135 /* CallSoundAnalyzer.swift */,
 				A11D0A5E0B0C0D0E0F101123 /* NativeCallsPlugin.swift */,
 				A11D0A5E0B0C0D0E0F101113 /* AudioSessionPlugin.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
@@ -170,6 +176,8 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				A11D0A5E0B0C0D0E0F101132 /* CallSoundPolicy.swift in Sources */,
+				A11D0A5E0B0C0D0E0F101134 /* CallSoundAnalyzer.swift in Sources */,
 				A11D0A5E0B0C0D0E0F101122 /* NativeCallsPlugin.swift in Sources */,
 				A11D0A5E0B0C0D0E0F101112 /* AudioSessionPlugin.swift in Sources */,
 			);

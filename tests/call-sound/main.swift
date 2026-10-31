@@ -1,0 +1,22 @@
+import Foundation
+import SoundAnalysis
+
+var policy = CallSoundPolicy()
+precondition(policy.observe(scores: ["laughter": 0.8], time: 0).isEmpty)
+precondition(policy.observe(scores: ["laughter": 0.8], time: 0.5).first?.kind == "laugh")
+precondition(policy.observe(scores: ["laughter": 0.8], time: 0.5).isEmpty, "Duplicate model window must not count twice")
+precondition(policy.observe(scores: ["laughter": 0.8], time: 1).isEmpty, "Cooldown")
+precondition(policy.observe(scores: ["breathing": 0.4], time: 1.5).isEmpty, "Low confidence")
+precondition(policy.observe(scores: ["breathing": 0.9], time: 2).isEmpty)
+precondition(policy.observe(scores: ["breathing": 0.9], time: 2.5).first?.kind == "breath")
+precondition(policy.observe(scores: ["laughter": 0.9], time: 9).isEmpty, "Discontinuous windows reset consecutive count")
+precondition(policy.observe(scores: ["laughter": 0.9], time: 9.5).first?.kind == "laugh")
+policy = CallSoundPolicy()
+precondition(policy.observe(scores: ["laughter": 0.9], time: 0).isEmpty, "New capture epoch starts fresh")
+precondition(policy.observe(scores: ["dog": 1], time: 0.5).isEmpty, "No unsolicited categories")
+precondition(policy.observe(scores: ["breathing": Double.nan], time: 1).isEmpty)
+let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
+let supported = CallSoundPolicy.supportedKinds(labels: request.knownClassifications)
+precondition(supported.contains("laugh"), "Apple classifier must actually contain a laughter alias")
+precondition(supported.contains("breath"), "Apple classifier must actually contain a breathing alias")
+print("Sound policy passed; actual Apple supported categories: \(supported.joined(separator: ", "))")
