@@ -33,6 +33,9 @@ features = tf.keras.Input(shape=(96, 64), name='mel_patch')
 scores, _ = yamnet.yamnet(features, p)
 network = tf.keras.Model(features, scores)
 network.set_weights(reference.get_weights())
+# Export logits and a stable exp-based sigmoid. Core ML native sigmoid may
+# saturate tiny float32 probabilities to zero even with a float32 head.
+network = tf.keras.Model(features, network.layers[-2].output)
 
 # One 0.975s patch = 96 periodic-Hann STFT frames of length 400, hop 160.
 # Use real matrix multiplications instead of complex FFT; retain the complete
@@ -53,13 +56,18 @@ def forward(waveform):
         magnitude = tf.sqrt(re*re + im*im)
         patch = tf.math.log(tf.matmul(magnitude, mel) + tf.constant(0.001, tf.float32))
         patch = tf.expand_dims(patch, 0)
-    return tf.identity(network(patch, training=False)[0], name='scores')
+    with tf.name_scope('head_float32'):
+        logits = network(patch, training=False)[0]
+        z = tf.exp(-tf.abs(logits))
+        probabilities = tf.where(logits >= 0, 1/(1+z), z/(1+z))
+    return tf.identity(probabilities, name='scores')
 
 concrete = forward.get_concrete_function()
 model = ct.convert([concrete], source='tensorflow', convert_to='mlprogram',
     inputs=[ct.TensorType(name='waveform', shape=(15600,), dtype=np.float32)],
+    outputs=[ct.TensorType(dtype=np.float32)],
     minimum_deployment_target=ct.target.iOS16,
-    compute_precision=ct.transform.FP16ComputePrecision(op_selector=lambda op: 'frontend_float32' not in op.name and not any(name in op.name.lower() for name in ['dense', 'sigmoid', 'classifier'])),
+    compute_precision=ct.transform.FP16ComputePrecision(op_selector=lambda op: op.op_type in ['conv', 'batch_norm', 'relu', 'avg_pool', 'max_pool'] and 'frontend_float32' not in op.name and 'head_float32' not in op.name),
     compute_units=ct.ComputeUnit.CPU_ONLY)
 model.author = 'TensorFlow Authors; fixed-patch Core ML conversion for Entangled Home'
 model.license = 'Apache-2.0'
