@@ -1,3 +1,10 @@
+## 2026-10-31 自写声音描述与环境声采集修复已上线，TestFlight46制作中
+
+- 功能源码f70094ad468037ad0bd2b329873d2fb267e30725于2026-10-31T11:02:07.281791+00:00实际上线并推main。最终无签名Xcode run41194936762/job124519114895成功（含开麦跟随偏好、实际PCM/WAV/health/取消和模型编译）；正式TestFlight run41195165369为Build46，尚待签名上传/苹果处理核实。
+- 两次无unfinished call/bridge回复子任务检查与23项源码哈希/运行基线保护通过后，定点更新sound-notes/call-sounds/native-call/call-stream/clip模块、bridge窄补丁、全局UI协议及新JS入口；白名单和YAMNet权重SHA不变，不改用户历史/录音/uploads/made。备份/root/ayan/backups/call-sound-fix-20261031-110204，7天私有目录保持，发布核实0个文件。入口index-orxVBc1m.js/index-DzqTWcl9.css；index SHAfe16b3df4197eb593bebb8f89a51f0787681692279ed1c53c63cd47620663517，bridge SHAb7429b4f559f8e48567be192922fc2eb3ae0469181f221917a510f3e78103ca2，sound-notes SHAcdf12837744ff0cb3bc99fe47251306625e296d0e800247c0b3f0aa3f569209b，sound服务SHA049a03ce21d6474862bdb41a630036ce2f9d5daf809f04192fe44dd8243874f4，native-call SHAe626cf0537a05519359edc1e9364e18d464374712c8b5b0c3f09a592a4ec7c84，stream SHA43c31daf479b019f78f73b86db012f1964ea663987b255709090137f43048e12，全局协议SHA021b79f35df0939085602bb5576d2eecf54791685a7d8058bb0038e1aa732832。
+- 公网根/版本入口及全部五个JS/CSS逐项SHA一致；Chrome日夜模拟默认开/手动暂停/重新开麦恢复、同一卡自写描述替换/陈旧快照不覆盖/旧模板隐藏、历史、23句组泡与英文默认展开/上翻不追底、旧原生兼容通过，pageerror0。全部业务API转本地假数据，WebSocket/EventSource/native/mic模拟，无生产测试消息/电话/ASR/TTS/模型。此为模型输出协议和UI模拟验证，没有为了验收额外调用真实Codex/Claude。
+- 描述/去模板/协议/诊断服务已上线；开麦自动启用、绕过上行通话降噪、模型预热和手机端health需要46。用户45的真实水龙头测试没有持久化命中，但过往无分数/队列计数，根因仍未证实；新原生采集改动需用户更新后复测水声/回声/后台/路由，不能声称已真机证明水声修好。
+
 ## 2026-10-31 声音描述/默认开麦感知/水声采集修复候选
 
 - 用户补充作者截图，明确“听到了”的自然描述应由当前通话对方自己写；同时确认已装45且水龙头测试显示正在感知，要求开麦默认感知。只读核实最近Codex电话确无持久化sound事件/命中片段，但45未记录采集分数和服务器递送计数，无法据此确认没有收到、被降噪过滤还是队列取消/超时；不能把Codex不支持或降噪根因当结论。
