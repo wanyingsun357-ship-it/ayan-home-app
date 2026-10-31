@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('fs'),path=require('path'),crypto=require('crypto');
-function create({dir,authorized,getCalls,view,saveCalls,answer,say,end,audio,sendPush}){
+function create({dir,authorized,getCalls,view,saveCalls,answer,say,end,audio,sendPush,sounds}){
  const file=path.join(dir,'native-push.json');let devices=[];
  try{devices=JSON.parse(fs.readFileSync(file,'utf8')).devices||[];}catch{}
  const save=()=>{const tmp=file+'.tmp';fs.writeFileSync(tmp,JSON.stringify({devices}),{mode:0o600});fs.renameSync(tmp,file);};
@@ -55,6 +55,18 @@ function create({dir,authorized,getCalls,view,saveCalls,answer,say,end,audio,sen
   app.post('/api/native-call/say',(req,res)=>{
    const c=authenticate(req,res);if(!c)return;
    return say(c.id,String(req.body.text||'').slice(0,4000),res);
+  });
+  app.post('/api/native-call/sound-setting',(req,res)=>{
+   const c=authenticate(req,res);if(!c)return;
+   if(!sounds)return res.status(503).json({error:'sound_unavailable'});
+   const b=req.body||{};const result=sounds.setting(c,{enabled:b.enabled,capturing:b.capturing,revision:b.revision});
+   res.status(result.ok?200:409).json(result);
+  });
+  app.post('/api/native-call/sound',(req,res)=>{
+   const c=authenticate(req,res);if(!c)return;
+   if(!sounds)return res.status(503).json({error:'sound_unavailable'});
+   const b=req.body||{};const result=sounds.accept(c,{eventId:b.eventId,kind:b.kind,confidence:b.confidence,revision:b.revision});
+   res.status(result.ok?200:409).json(result);
   });
   app.post('/api/native-call/audio',async(req,res)=>{
    const c=authenticate(req,res);if(!c)return;

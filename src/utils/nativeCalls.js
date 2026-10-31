@@ -23,6 +23,7 @@ export const nativeCalls={
   end:()=>plugin.end(),
   muted:(muted)=>plugin.setMuted({muted}),
   speaker:(on)=>plugin.setSpeaker({on}),
+  sound:(enabled)=>plugin.setSoundEnabled({enabled}),
   state:()=>plugin.getState(),
 }
 

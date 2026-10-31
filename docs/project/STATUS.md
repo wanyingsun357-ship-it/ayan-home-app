@@ -1,3 +1,13 @@
+## 2026-10-31 声音感知第一版（本地与原生编译通过，待整体验证发布）
+
+- 用户确认先接ai-hears-your-body教程的声音感知闭环，基础版独立开关、默认关、闭麦/打字停。采用教程也支持的Apple SoundAnalysis本机分类，首批笑声/呼吸/叹气/吸气/哭声；非YAMNet全类别，水声/震动/自定义呻吟判断等尚未做。无音频片段采集/上传/保存或7天留存。
+- 原生与现有ASR共用16k PCM；独立有界utility队列、1秒窗/0.5重叠、两连续窗+4秒本地冷却。根据实际knownClassifications启用别名；native compile run41180633148/ef169ce无签名Xcode通过，真实苹果分类器核实五类均存在，Swift策略测试通过。仅编译和分类类别检查，不声称手机实录准确率已验收。随后仅拆开ASR socket为空时的感知入口，待最终提交再次编译。
+- native提供supportsSoundSensing/setSoundEnabled，UserDefaults保存首次默认关的开关。闭麦/打字/对方播放/系统音频停用/关开关/挂断均取消旧分析generation和请求；播放后短暂等待再重开。新声音请求沿原逐通话token接口，setting revision防乱序开关和旧观测复活，仍保持原生43麦克风接管/英文配音/PushKit规则。
+- 新server/call-sounds模块白名单/置信门槛、1.2秒合并、同类8秒冷却、每轮最多2类（按turnId而非每句）、40秒无回复换轮；忙时等候，12秒过期，暂停/结束清队列。只把类别观察送到对应通话的原会话，独立call.sounds及SSE，不伪装成她的转写/情绪/操作请求。真实bridge仅定点窄补丁，native-calls增加两个沿用通话鉴权接口。
+- 网页日夜独立开关及暂停状态、轻线“听到了♡”提示；native状态与SSE按id去重/跨通话隔离、同历史保留、上移同模糊，句数/普通气泡和英文默认展开保持。旧原生43显示更新后可用，浏览器只提示App使用，不伪造支持。新native必须安装新TestFlight。
+- 本地构建、7项server策略/鉴权/真实bridge VM、5项逐句和原生鉴权旧测试通过；Chrome日夜开关/同句note去重/跨call排除/闭麦与打字暂停/typed ack/不抢网页mic或TTS/历史note通过；逐句播放、Moments/历史/Thinking、原版日夜回归通过。业务均为本地假接口，无生产测试聊天/通话/配音/模型。实际iPhone识别、后台/听筒/蓝牙表现待新包真机反馈。
+- 本地独立work/call-sound-20261031/app，远端分支codex/call-sound-20261031基线6d37cd831e67cb99a24b4f88f1e6cac9873a7876；当前正式环境仍上一轮逐句版，尚未部署感知后端/UI或签名新包。发布需先哈希保护备份/空闲重载服务，再主分支签名TestFlight并核实分发。不要把第一版写成教程全部实现。
+
 ## 2026-10-31 通话逐句流式与字号修复已发布
 
 - 功能提交ea9452390a92b32234c0c2126801f026b78d5bd3，主分支已推送；2026-10-31T07:02:28.682188+00:00实际上线。入口index-DeFPWsZK.js/index-BK_XpUW9.css，index SHAc359fb35da9868eb5ab26cc11c516f19f8cd3852db4397468290b70813fe701c。回滚备份/root/ayan/backups/call-stream-20261031-070225，含原运行bridge/全局协议/旧入口/相关源码与清单。

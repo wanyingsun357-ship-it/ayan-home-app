@@ -495,8 +495,9 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
     private func sendPCM(_ data: Data) {
-        guard joined, audioActive, let socket = socket else { return }
+        guard joined, audioActive else { return }
         if maySenseSound && soundListening { soundAnalyzer.feed(data) }
+        guard let socket = socket else { return }
         pcm.append((muted || player != nil || loadingAudio) ? Data(repeating: 0, count: data.count) : data)
         if pcm.count > 12 { pcm.removeFirst(pcm.count - 12) }
         guard !sendingPCM else { return }; sendingPCM = true
