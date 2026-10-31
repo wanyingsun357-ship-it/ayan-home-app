@@ -15,6 +15,11 @@
 .call-caption.compact .call-caption-translation{clear:both;font:12px/1.8 Arial,sans-serif;opacity:.76;padding-top:7px;white-space:pre-wrap;overflow-wrap:anywhere}
 :root[data-visual='orange'][data-theme] .call .call-line{align-self:flex-start;width:fit-content;max-width:88%;text-align:left}
 :root[data-visual='orange'][data-theme] .call .call-line.her{align-self:flex-end;text-align:left}
+/* Do not inherit the old six-second enlarged outgoing-caption animation. */
+:root[data-visual='orange'][data-theme] .call .call-line.her:last-of-type{animation:none;font-size:14px}
+:root[data-visual='orange'][data-theme] .call .call-line-t{font:14px/1.7 Arial,sans-serif}
+:root[data-visual='orange'][data-theme] .call .call-btn.hang>span{width:50px;height:50px}
+:root[data-visual='orange'][data-theme] .call .call-btn.hang>span>svg{width:21px;height:19px;stroke-width:1.35}
 :root[data-visual='orange'][data-theme] .call .call-type textarea::placeholder{color:var(--text-dim);opacity:.8}
 :root[data-visual='orange'][data-theme] .call.call-history{height:var(--app-viewport-height,calc(100dvh - var(--kb,0px)));bottom:auto;z-index:180;padding-top:calc(10px + var(--app-safe-top,env(safe-area-inset-top,0px)));padding-bottom:max(16px,var(--app-safe-bottom,env(safe-area-inset-bottom,0px)));backdrop-filter:none;-webkit-backdrop-filter:none}
 :root[data-visual='orange'][data-theme] .call-history-head{display:flex;align-items:center;gap:10px;padding:0 14px 20px;flex:none;background:none;border:0;color:var(--text)}

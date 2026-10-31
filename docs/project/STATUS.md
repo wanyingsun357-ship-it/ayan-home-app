@@ -1,3 +1,11 @@
+## 2026-10-30 通话逐句流式与字号修复（验证通过，待发布）
+
+- 用户反馈自己的通话/历史气泡先变大再缩小、挂断过大、英文希望默认展开、字幕等整轮成大段。定位orange-polish旧warm-call-settle的6秒字号动画；紫色双方正文固定14px，自己的气泡禁用此旧动画，真实/演示/历史一致；挂断圆面50px、细听筒21×19px。英文默认展开，末尾小上箭头折叠、下箭头再展开，原版details行为不改。
+- 真实运行bridge先流英文seg、最后仅存整轮entry；上轮紫色只呈现entry，Build43也只读取entries，形成等待整轮。新server/call-stream.cjs在每个中英短句对完整时立即持久化为entry并SSE发布/预热英文TTS，原生原有1.2秒state轮询与entryTime音频接口即可逐句消费，无需新Swift/TestFlight。CALL_RULES与UI协议明确一句英文紧跟自己的ZH翻译/一对一行，中文上、英文下默认展开，声音仍英文。
+- 累计流重送/重置同slot+英文只提交一次；不同句位或下一轮相同话仍保留；时间戳单调避免同毫秒身份碰撞。最终补余句/附加reasoning但不重复整段，reply-done与轮询兜底保证排队播放完再按him挂断。历史沿用同一组分句，不重写老记录。若模型一段中英句数不同则保留成组避免猜翻译；真机延迟仍受模型/1.2秒轮询/逐句合成影响。
+- 验证：本地构建；5项解析/逐字符边界语义/重连不重播/原生旧协议逐句音频及通话鉴权/真实bridge函数隔离VM用例；原有native authorization测试；Chrome无减少动态day/night真实字号及50px按钮、英文默认/开合/typed mute、逐句在final前出现与顺序英文TTS/最后挂断、历史/Thinking/Moments及原版日夜回归，pageerror0。所有业务API/音频为本地假接口，没有发生产测试聊天/电话/模型/TTS。
+- 独立work/call-stream-20261030/app，基线35fb53cc611cb47b793e6909560e223a84cc6cf8。仅3个前端文件、新通话模块/测试/窄integration patch/说明及项目文档；运行bridge定点补丁与全局UI协议需要空闲时哈希保护备份后重载。尚未发布，不把本地模拟当作真机验收。
+
 ## 2026-10-30 Moments/通话展示修复已上线
 
 - 功能源码d048cbbae258a361d073e2da542ef39c9147cf10，从dc806c2干净基线快进并推送；2026-10-30 17:25:45 UTC静态上线。入口index-dt4v2ggJ.js/index-6PCRFTFN.css，index SHA30bf1b2b683e1d46068874d50dec5d57d4824cedd82af05f689a9d0a00a37f8e。私有回滚备份/root/ayan/backups/moments-call-20261030-172544。

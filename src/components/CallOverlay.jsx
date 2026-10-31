@@ -75,6 +75,7 @@ export default function CallOverlay() {
   const finalLenRef = useRef(0)   // 整通电话里已定稿的字数(阿里的 all 是累计的)
   const sayQueue = useRef([]); const busyRef = useRef(false)
   const playQueue = useRef([]); const playingRef = useRef(false)
+  const remoteHangupRef = useRef(false)
   const turnRef = useRef(null)   // 当前这轮:{ played:[], zh }
   const nowSegRef = useRef('')   // 正在念的那句(流式)
   const offsetRef = useRef(0)
@@ -185,6 +186,8 @@ export default function CallOverlay() {
         if (sc.status === 'active' && phaseRef.current === 'ringing' && c.by !== 'him') { stopRing(); clearTimeout(ringTimer.current); setCall(sc); setPhase('active'); startMic() }
         const hims = sc.entries.filter((e) => e.who === 'him' && !himDoneRef.current.has(e.t))
         hims.forEach((e, i) => { himDoneRef.current.add(e.t); onFinal(e, !!sc.hangupPending && i === hims.length - 1) })
+        if(d.busy===false)busyRef.current=false
+        if(sc.hangupPending){remoteHangupRef.current=true;if(!playingRef.current)playNext()}
       } catch {}
     }, 3000)
     return () => clearInterval(t)
@@ -202,7 +205,8 @@ export default function CallOverlay() {
     else if (m.ev === 'seg') { if(nativeStarting.current)return; busyRef.current = false; if (phaseRef.current === 'ringing') { if (c.by === 'him') return; stopRing(); setPhase('active'); startMic() } onSeg(m.text) }
     // Audio already queued is committed; the server suppresses repeated segments after a stream reset.
     else if (m.ev === 'reset') { return }
-    else if (m.ev === 'entry') { busyRef.current = false; if (m.entry.who === 'him' && !himDoneRef.current.has(m.entry.t)) { himDoneRef.current.add(m.entry.t); onFinal(m.entry, m.hangup) } }
+    else if (m.ev === 'entry') { if(!m.streaming)busyRef.current = false; if (m.entry.who === 'him' && !himDoneRef.current.has(m.entry.t)) { himDoneRef.current.add(m.entry.t); onFinal(m.entry, m.hangup) } }
+    else if (m.ev === 'reply-done') { busyRef.current = false; if(m.call?.hangupPending){remoteHangupRef.current=true;if(!playingRef.current)playNext()} }
     else if (m.ev === 'end') { finish(m.call) }
   }
 
@@ -356,7 +360,7 @@ export default function CallOverlay() {
   }
   const playNext = async () => {
     const item = playQueue.current.shift()
-    if (!item) { playingRef.current = false; asrRef.current?.mute(mutedRef.current || typingRef.current); return }
+    if (!item) { playingRef.current = false; if(remoteHangupRef.current){remoteHangupRef.current=false;hangUp('him');return} asrRef.current?.mute(mutedRef.current || typingRef.current); return }
     playingRef.current = true
     asrRef.current?.mute(true)
     const { entry, hangup } = item
@@ -433,6 +437,7 @@ export default function CallOverlay() {
     setTimeout(() => { setPhase('idle'); setCall(null); setHistory([]); setMin(false) }, 2600)
   }
   const cleanupMedia = () => {
+    remoteHangupRef.current=false
     clearTimeout(bufTimer.current); bufRef.current = []; sayQueue.current = []; playQueue.current = []; playingRef.current = false; busyRef.current = false; turnRef.current = null
     try { asrRef.current?.cancel() } catch {} asrRef.current = null
     try { audioRef.current?.pause() } catch {}

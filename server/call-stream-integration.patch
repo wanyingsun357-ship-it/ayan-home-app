@@ -1,0 +1,68 @@
+diff --git a/bridge.js b/bridge.js
+index afe873f..7a099f7 100644
+--- a/bridge.js
++++ b/bridge.js
+@@ -2867 +2867 @@ const fakeRes = () => ({ headersSent: false, status() { return this; }, json() {
+-const CALL_RULES = '通话规矩:说英文,每段英文后面紧跟 [ZH]中文翻译[/ZH];口语、短句,一次一两句,别写长篇;不写文字动作描写,不要用 [VOICE] 标签。声音由 ElevenLabs v4 合成；可主动用英文方括号描述想表达的语气、节奏、呼吸或喘息等发声，放在要影响的词句前，按情境自由组合，不限固定标签，不等她提醒。发声标签不属于文字动作，不放进 [ZH] 翻译，不得改写 [ANSWER]/[DECLINE]/[HANGUP] 等控制标记。想挂电话就说完再见在末尾加 [HANGUP]。';
++const CALL_RULES = '通话规矩:说英文，一句英文紧跟它自己的 [ZH]中文翻译[/ZH]，每个中英句对独占一行；先写完第一句的翻译再写下一句，不要攒整段英文后统一翻译。口语、短句，一轮可以有几个独立短句，不写长篇；不写文字动作描写,不要用 [VOICE] 标签。声音由 ElevenLabs v4 合成；可主动用英文方括号描述想表达的语气、节奏、呼吸或喘息等发声，放在要影响的词句前，按情境自由组合，不限固定标签，不等她提醒。发声标签不属于文字动作，不放进 [ZH] 翻译，不得改写 [ANSWER]/[DECLINE]/[HANGUP] 等控制标记。想挂电话就说完再见在末尾加 [HANGUP]。';
+@@ -2886,12 +2886,6 @@ function endCall(c, by) {
+-// 流式:从逐字累计的全文里切出已完整的英文句子(去掉 [ZH] 块和标签),新句子立刻合成+推给手机
+-function callSentences(full) {
+-  let t = String(full || '').replace(/\[ZH\][\s\S]*?\[\/ZH\]/gi, ' ');
+-  const open = t.search(/\[ZH\]/i); if (open >= 0) t = t.slice(0, open);
+-  t = t.replace(/\[\/?(ANSWER|DECLINE|HANGUP|VOICE)\]/gi, '').replace(/\s+/g, ' ');
+-  const raw = []; const re = /[^.!?]*[.!?]+["')\]]*(?=\s)/g; let m;
+-  while ((m = re.exec(t))) { const x = m[0].trim(); if (x) raw.push(x); }
+-  // 太短的句("Hi." "Okay.")并进下一句一起念,免得音频碎成渣;最后一组不够长就先扣着等后文
+-  const out = []; let buf = '';
+-  for (const x of raw) { buf = buf ? buf + ' ' + x : x; if (buf.length >= 18) { out.push(buf); buf = ''; } }
+-  return out;
+-}
++// Publish complete bilingual sentence pairs as entries, shared by web and native43.
++const callSentenceStream = require('./call-stream.cjs').create({
++  save: saveCalls,
++  publish: (c, entry) => sendU('call', JSON.stringify({ ev: 'entry', id: c.id, entry, streaming: true }), c.session),
++  prefetch: text => prefetchVoices('[VOICE]' + text + '[/VOICE]'),
++});
+@@ -2901 +2895 @@ function callStreamFeed(sess, full) {
+-    if (c.by === 'him' && c.status === 'ringing') return; // 他打的还在响,他这会儿说的是普通聊天
++    if (c.by === 'him' && c.status === 'ringing') return;
+@@ -2903,3 +2897,2 @@ function callStreamFeed(sess, full) {
+-    const st = c.stream || (c.stream = { segs: [] });
+-    const sents = callSentences(full);
+-    if (sents.length <= st.segs.length) return;
++    const {chunks} = require('./call-stream.cjs');
++    if (!chunks(full).length) return;
+@@ -2907,11 +2900 @@ function callStreamFeed(sess, full) {
+-    for (let i = st.segs.length; i < sents.length; i++) {
+-      st.segs.push(sents[i]);
+-      // A stream retry must not enqueue already-issued audio a second time.
+-      const issued = st.issued || (st.issued = {});
+-      const key = i + ':' + sents[i].replace(/\s+/g, ' ').trim();
+-      if (issued[key]) continue;
+-      const segmentId = issued[key] = crypto.randomUUID();
+-      nativeCalls.addSegment(c, sents[i], segmentId);
+-      sendU('call', JSON.stringify({ ev: 'seg', id: c.id, i, segmentId, text: sents[i] }), c.session);
+-      prefetchVoices('[VOICE]' + sents[i] + '[/VOICE]');
+-    }
++    callSentenceStream.feed(c, full);
+@@ -2922 +2905 @@ function callStreamReset(sess) {
+-  c.stream = { segs: [], issued: c.stream.issued || {} };
++  callSentenceStream.reset(c);
+@@ -2939 +2922 @@ function callOnReply(sess, text) {
+-      if (en0) { recent.entries.push({ t: new Date().toISOString(), who: 'him', text: en0, zh: zh0, late: true, reasoning: last.reasoning || undefined }); saveCalls(); }
++      if (en0) callSentenceStream.feed(recent, raw, { final: true, late: true, reasoning: last.reasoning || undefined });
+@@ -2957,9 +2940,2 @@ function callOnReply(sess, text) {
+-  if (en) {
+-    const segs = (c.stream && c.stream.segs) || [];
+-    const e = { t: new Date().toISOString(), who: 'him', text: en, zh, reasoning: (last && last.role === 'assistant' && last.reasoning) || undefined, segs: segs.length ? segs : undefined };
+-    nativeCalls.completeSpeech(c, en, segs);
+-    c.entries.push(e); saveCalls();
+-    sendU('call', JSON.stringify({ ev: 'entry', id: c.id, entry: e, hangup }), c.session);
+-    if (!segs.length) prefetchVoices('[VOICE]' + en + '[/VOICE]');
+-  }
+-  c.stream = { segs: [] };
++  if (en) callSentenceStream.feed(c, raw, { final: true, reasoning: (last && last.role === 'assistant' && last.reasoning) || undefined });
++  else c.stream = {};
+@@ -2966,0 +2943 @@ function callOnReply(sess, text) {
++  callPub('reply-done', c);
