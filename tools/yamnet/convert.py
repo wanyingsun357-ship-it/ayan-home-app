@@ -59,7 +59,7 @@ concrete = forward.get_concrete_function()
 model = ct.convert([concrete], source='tensorflow', convert_to='mlprogram',
     inputs=[ct.TensorType(name='waveform', shape=(15600,), dtype=np.float32)],
     minimum_deployment_target=ct.target.iOS16,
-    compute_precision=ct.transform.FP16ComputePrecision(op_selector=lambda op: 'frontend_float32' not in op.name),
+    compute_precision=ct.transform.FP16ComputePrecision(op_selector=lambda op: 'frontend_float32' not in op.name and not any(name in op.name.lower() for name in ['dense', 'sigmoid', 'classifier'])),
     compute_units=ct.ComputeUnit.CPU_ONLY)
 model.author = 'TensorFlow Authors; fixed-patch Core ML conversion for Entangled Home'
 model.license = 'Apache-2.0'
