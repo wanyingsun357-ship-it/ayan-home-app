@@ -1,3 +1,11 @@
+## 2026-10-31 完整YAMNet声音服务与网页已上线，TestFlight45签名中
+
+- 功能源码c1394f7229d2d71348746b564a71e7db36061ea6于2026-10-31T10:02:21.476950+00:00实际部署，主分支已推送。最终原生无签名run41190705690/job124506745230成功，包含实际PCM窗/WAV/取消、YIN/延迟ASR及最终9.57MB模型编译；正式TestFlight run41191100786/job124507887593（Build45）已进入Fastlane beta，尚未核实上传与苹果处理，不能据此说45已可安装。
+- 发布前两次确认无unfinished call和bridge回复子任务，37个源码文件SHA/主分支干净状态/运行基线保护通过；只定点更新bridge、native-call/sound模块、全局UI协议和新哈希静态入口，旧历史/录音/uploads/made不改。备份/root/ayan/backups/yamnet-call-20261031-100218。私有命中目录/var/lib/entangled-call-sounds为0700、启动时0文件，位于公开目录及项目备份之外。
+- 线上入口index-Cz_ZMMJ3.js/index-DzqTWcl9.css，index SHAe7b08ba3f20242466d547b0154e0e464f4b344809ab1024715b1c0379b7025fc；bridge SHA108097551719034974e386bf11460ef161be89e3e76ce5f3e7a83464217385df；native-call SHA734455412eef68e21bcc01a9feb06e59587429bd93843f6fd42b30994bc0a45c；sound模块SHA66e45878c98d763daf051770e945994076d694f578f5018d2d08776fe548793d；clip模块SHAf05bf47d00a9f2adabea4f4cfcdd0881aedd728aef0215826e53887c036d55e6；白名单SHA2e29ab094f125a59f8befd40ea9895374de6ef16aba23dbbca48542599bfae34；全局UI协议SHAa5c541c7ba8724feb9c37ba934dd1d20bba7eda0f1e06d40be06404d08b4c046。call-stream模块未改、bridge在线，源码和运行收据一致。
+- 公网根入口/版本入口及全部五个JS/CSS精确SHA通过；Chrome公网day/night新模型能力模拟、7天提示/声学描述/持续标记/去重/闭麦打字暂停、24句8组与英文展开/上翻不追底/回到最新、旧原生兼容均通过，pageerror0。最初无网络权限的浏览器启动失败后用正规网络许可验证成功，不混淆为线上故障。所有业务API转本地假数据，WebSocket/EventSource/native/mic模拟，无生产测试消息/电话/推送/ASR/TTS/模型。
+- 新功能须安装45；旧44仍Apple五类、不上传片段，43仍正常原生通话。真实iPhone识别准确率和后台/蓝牙/听筒/耗电需新包实测校准，不把离线音频或模拟原生当真机验收。证据在work/yamnet-call-20261031的release.json、deployment-receipt.json、live-hashes和live-*-verification.json。
+
 ## 2026-10-31 教程完整声音方案候选：YAMNet＋白名单＋辅助人声＋命中片段
 
 - 用户明确要求完整采用ai-hears-your-body教程，包括模型/白名单；另明确选择命中时上传最近约3.5秒声音、自有服务器保存7天后自动删除。不是继续把Apple五类首版当教程全量。线上目前仍37b2bfc/原生1.0(44)，本条只记录候选，尚未部署/上传45。
