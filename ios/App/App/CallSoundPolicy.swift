@@ -60,10 +60,15 @@ struct CallSoundPolicy {
             previous[kind] = (time, count, lastInRun)
             if count >= 2 && time - (emitted[kind] ?? -.infinity) >= 4 {
                 candidate.continued = lastInRun != nil
-                emitted[kind] = time; previous[kind] = (time, count, time); result.append(candidate)
+                result.append(candidate)
             }
         }
-        return Array(result.sorted { $0.confidence > $1.confidence }.prefix(2))
+        let chosen = Array(result.sorted { $0.confidence > $1.confidence }.prefix(2))
+        for item in chosen {
+            emitted[item.kind] = time
+            if let prev = previous[item.kind] { previous[item.kind] = (prev.time, prev.count, time) }
+        }
+        return chosen
     }
 }
 

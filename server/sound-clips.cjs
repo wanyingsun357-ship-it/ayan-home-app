@@ -37,12 +37,19 @@ function describe(m){
 function create({dir,now=Date.now,interval=setInterval}){
  if(!path.isAbsolute(dir)||dir.split(path.sep).includes('public'))throw Error('private_clip_directory_required');
  fs.mkdirSync(dir,{recursive:true,mode:0o700});fs.chmodSync(dir,0o700);
+ let expiryTimer,earliest=Infinity;
+ function armExpiry(at){
+  if(at>=earliest)return;earliest=at;clearTimeout(expiryTimer);
+  expiryTimer=setTimeout(()=>{earliest=Infinity;sweep();},Math.max(1,at-now()));expiryTimer.unref?.();
+ }
  function sweep(){
+  let next=Infinity;
   for(const name of fs.readdirSync(dir))if(/^[a-f0-9-]{36}\.(wav|json)$/.test(name)){
    const file=path.join(dir,name),stem=file.replace(/\.(wav|json)$/,'');
-   let expired=true;try{const info=JSON.parse(fs.readFileSync(stem+'.json','utf8'));expired=!Number.isFinite(info.createdAt)||info.createdAt>now()||now()-info.createdAt>=TTL;}catch{}
+   let expired=true;try{const info=JSON.parse(fs.readFileSync(stem+'.json','utf8'));expired=!Number.isFinite(info.createdAt)||info.createdAt>now()||now()-info.createdAt>=TTL;if(!expired)next=Math.min(next,info.createdAt+TTL);}catch{}
    if(expired){for(const ext of ['.wav','.json'])try{fs.unlinkSync(stem+ext)}catch(e){if(e.code!=='ENOENT')throw e;}}
   }
+  clearTimeout(expiryTimer);earliest=Infinity;if(Number.isFinite(next))armExpiry(next);
  }
  sweep();const timer=interval(sweep,15*60*1000);timer?.unref?.();
  function save(buffer,{callId,eventId,kind}){
@@ -51,9 +58,10 @@ function create({dir,now=Date.now,interval=setInterval}){
    fs.writeFileSync(file+'.wav',buffer,{mode:0o600,flag:'wx'});
    fs.writeFileSync(file+'.json',JSON.stringify({id,callId,eventId,kind,createdAt,expiresAt:createdAt+TTL,metrics:measurement}),{mode:0o600,flag:'wx'});
   }catch(e){for(const ext of ['.wav','.json'])try{fs.unlinkSync(file+ext)}catch{}throw e;}
+  armExpiry(createdAt+TTL);
   return {id,expiresAt:new Date(createdAt+TTL).toISOString(),metrics:measurement};
  }
  function remove(id){if(!/^[a-f0-9-]{36}$/.test(id))return;for(const ext of ['.wav','.json'])try{fs.unlinkSync(path.join(dir,id+ext))}catch(e){if(e.code!=='ENOENT')throw e;}}
- return {save,remove,sweep,close:()=>clearInterval(timer)};
+ return {save,remove,sweep,close:()=>{clearInterval(timer);clearTimeout(expiryTimer)}};
 }
 module.exports={create,decode,metrics,describe,TTL};

@@ -537,6 +537,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
     private func stopMic() {
+        soundAnalyzer.setASRAvailable(false)
         socketGeneration = UUID(); socket?.cancel(with: .goingAway, reason: nil); socket = nil
         stopSoundCapture(); soundSettingKey = ""
         engine?.inputNode.removeTap(onBus: 0); engine?.stop(); engine = nil; pcm.removeAll(); flushTask?.cancel()
