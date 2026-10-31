@@ -9,7 +9,13 @@
   "hop_samples": 7680,
   "classes": 521,
   "frontend_precision": "float32",
-  "network_precision": "float16",
+  "network_precision": {
+    "convolutions": {
+      "fp16": 27,
+      "fp32": 0
+    },
+    "probability_head": "float32"
+  },
   "output_name": "Identity",
   "validation": [
     {
@@ -55,7 +61,7 @@
     {
       "fixture": "tone_220",
       "dft_max_abs_error": 0.00021910667419433594,
-      "coreml_max_abs_error": 0.0001761913299560547,
+      "coreml_max_abs_error": 0.0071974992752075195,
       "top5_same": true,
       "reference_top5": [
         495,
@@ -75,7 +81,7 @@
     {
       "fixture": "noise",
       "dft_max_abs_error": 3.0100345611572266e-06,
-      "coreml_max_abs_error": 3.7848949432373047e-06,
+      "coreml_max_abs_error": 0.0029285848140716553,
       "top5_same": true,
       "reference_top5": [
         514,
@@ -95,7 +101,7 @@
     {
       "fixture": "miaow_16k_0",
       "dft_max_abs_error": 3.129243850708008e-06,
-      "coreml_max_abs_error": 3.039836883544922e-06,
+      "coreml_max_abs_error": 0.0008307779207825661,
       "top5_same": true,
       "reference_top5": [
         0,
@@ -115,7 +121,7 @@
     {
       "fixture": "miaow_16k_8000",
       "dft_max_abs_error": 2.3543834686279297e-05,
-      "coreml_max_abs_error": 9.268522262573242e-05,
+      "coreml_max_abs_error": 0.0017147660255432129,
       "top5_same": true,
       "reference_top5": [
         76,
@@ -135,7 +141,7 @@
     {
       "fixture": "miaow_16k_16000",
       "dft_max_abs_error": 2.473592758178711e-05,
-      "coreml_max_abs_error": 0.00010013580322265625,
+      "coreml_max_abs_error": 0.0026532411575317383,
       "top5_same": true,
       "reference_top5": [
         67,
@@ -155,7 +161,7 @@
     {
       "fixture": "speech_whistling2_0",
       "dft_max_abs_error": 2.3655593395233154e-06,
-      "coreml_max_abs_error": 9.804964065551758e-05,
+      "coreml_max_abs_error": 0.0008136220276355743,
       "top5_same": true,
       "reference_top5": [
         0,
@@ -175,7 +181,7 @@
     {
       "fixture": "speech_whistling2_8000",
       "dft_max_abs_error": 3.501772880554199e-07,
-      "coreml_max_abs_error": 9.995698928833008e-05,
+      "coreml_max_abs_error": 0.00027219951152801514,
       "top5_same": true,
       "reference_top5": [
         0,
@@ -195,7 +201,7 @@
     {
       "fixture": "speech_whistling2_16000",
       "dft_max_abs_error": 2.568960189819336e-05,
-      "coreml_max_abs_error": 2.7686357498168945e-05,
+      "coreml_max_abs_error": 0.009020775556564331,
       "top5_same": true,
       "reference_top5": [
         106,
@@ -215,8 +221,8 @@
   ],
   "all_pass": true,
   "model_files": {
-    "Manifest.json": "f104f3b9ccd3569e3459414cb5ff2884b9672e646a984c21c73c28c097a11af4",
-    "Data/com.apple.CoreML/model.mlmodel": "6ad50924afb10d487b2a0e5f7596f6f4812dce849ed90296aa452fcff0212075",
-    "Data/com.apple.CoreML/weights/weight.bin": "3bbc57668dc26012f022b6a16a540abfb11482bf60e431e97236843ee98f648a"
+    "Manifest.json": "f004bd3c54db91cf528bc41bf88fcce1d54410d43a597b91f67ac34cad3e9a6f",
+    "Data/com.apple.CoreML/model.mlmodel": "6043e2be12d05de36e20d3a32ef7ec45ee6391f194a047f7c2a5c41606458e32",
+    "Data/com.apple.CoreML/weights/weight.bin": "f7e9bc326887c98c9d8005fc326e129d497c59208ff3b6994976366e9d604f42"
   }
 }
