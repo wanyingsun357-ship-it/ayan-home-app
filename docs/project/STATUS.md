@@ -1,3 +1,11 @@
+## 2026-10-31 通话逐句流式与字号修复已发布
+
+- 功能提交ea9452390a92b32234c0c2126801f026b78d5bd3，主分支已推送；2026-10-31T07:02:28.682188+00:00实际上线。入口index-DeFPWsZK.js/index-BK_XpUW9.css，index SHAc359fb35da9868eb5ab26cc11c516f19f8cd3852db4397468290b70813fe701c。回滚备份/root/ayan/backups/call-stream-20261031-070225，含原运行bridge/全局协议/旧入口/相关源码与清单。
+- 运行bridge SHA24db582b03fe106ce3065fb5f40181ff4cb5954597abbc5d891edce5619ca87e；新call-stream模块SHA7a3c8d173613257c650b41fb21c66ada588c50dd1f5f6ef1c644ddcd9aa9762f；全局UI协议SHA9754a41994e5be7f9b03a0214e45fa10624dd7301a9a8992d82c2e4979ecee7d。更新前两次检查无进行中电话、无bridge子进程，随后定点更新并重载bridge，服务online；未改root CLAUDE、Swift/原生模块/用户历史，TestFlight仍1.0(43)。
+- 公网根入口与版本入口、JS/CSS精确SHA匹配。本地与服务器5项逐句/重播/同句不同轮/逐字符边界/旧native43鉴权音频/真实bridge隔离VM测试通过；实际公网Chrome日夜原生UI模拟、固定14px/50px挂断/英文默认展开及折叠、打字闭麦与ack、通话历史、Moments和Thinking复验pageerror0。所有业务接口均重定向本地假数据，未发生产测试聊天/通话/TTS/模型。
+- 真机下一通电话开始逐句中英entry；原生依旧按1.2秒state轮询取句、逐句等待配音，不承诺逐字中文字幕或零延迟。原始历史不拆写，历史界面固定字号/默认英文同样生效。若模型把不等数量中英句放一组会保留成组，避免猜译；实际设备听感/网络重连仍需用户反馈。
+- 当前独立目录work/call-stream-20261030，公网验证见live-hashes.json、live-native-verification.json、live-history-verification.json及截图。后续从最新main继续，不使用4178旧预览回盖。
+
 ## 2026-10-30 通话逐句流式与字号修复（验证通过，待发布）
 
 - 用户反馈自己的通话/历史气泡先变大再缩小、挂断过大、英文希望默认展开、字幕等整轮成大段。定位orange-polish旧warm-call-settle的6秒字号动画；紫色双方正文固定14px，自己的气泡禁用此旧动画，真实/演示/历史一致；挂断圆面50px、细听筒21×19px。英文默认展开，末尾小上箭头折叠、下箭头再展开，原版details行为不改。
