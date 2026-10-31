@@ -179,7 +179,12 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
             defer { self.soundRequests[event] = nil }
             guard !Task.isCancelled, self.callID == id, self.soundGeneration == generation else { return }
             do { _ = try await self.request("sound", body: ["eventId": event.uuidString, "kind": kind, "confidence": confidence, "revision": revision]) }
-            catch { /* A stale or paused observation is discarded, never replayed later. */ }
+            catch {
+                // Drop this observation. If the service restarted or the network
+                // lost a setting, synchronize a new epoch rather than replay it.
+                guard !Task.isCancelled, self.callID == id, self.soundGeneration == generation, self.maySenseSound else { return }
+                self.soundSettingKey = ""; self.refreshSoundCapture(); self.emit("soundState")
+            }
         }
     }
     private var registrationID: String {
