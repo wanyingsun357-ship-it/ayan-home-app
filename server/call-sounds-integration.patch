@@ -1,26 +1,10 @@
 diff --git a/bridge.js b/bridge.js
-index 7a099f7..66a48b1 100644
+index 66a48b1..3c27e83 100644
 --- a/bridge.js
 +++ b/bridge.js
-@@ -20,0 +21 @@ const nativeCalls = require('./native-calls.cjs').create({
-+  sounds: { setting: (c, event) => callSounds.setting(c, event), accept: (c, event) => callSounds.accept(c, event) },
-@@ -2861 +2862 @@ const activeCall = () => calls.calls.find((c) => c.status === 'ringing' || c.sta
--const callView = (c) => c && ({ id: c.id, session: c.session, status: c.status, by: c.by, startedAt: c.startedAt, answeredAt: c.answeredAt, endedAt: c.endedAt, endedBy: c.endedBy, entries: c.entries, hangupPending: !!c.hangupPending, reason: c.reason || '' });
-+const callView = (c) => c && ({ id: c.id, session: c.session, status: c.status, by: c.by, startedAt: c.startedAt, answeredAt: c.answeredAt, endedAt: c.endedAt, endedBy: c.endedBy, entries: c.entries, sounds: c.sounds || [], hangupPending: !!c.hangupPending, reason: c.reason || '' });
-@@ -2870,0 +2872 @@ function endCall(c, by) {
-+  callSounds.close(c);
-@@ -2885,0 +2888,14 @@ function endCall(c, by) {
-+// Local sound observations use the same conversation, bounded independently of ASR.
-+const callSounds = require('./call-sounds.cjs').create({
-+  getCall: id => calls.calls.find(c => c.id === id), save: saveCalls,
-+  busy: () => isProcessing || wakeBusy || compactBusy,
-+  publish: (c, event) => sendU('call', JSON.stringify({ ev: 'sound', id: c.id, event }), c.session),
-+  deliver: (c, event) => {
-+    const sess = store.sessions.find(s => s.id === c.session);
-+    if (!sess || c.status !== 'active') return false;
-+    const text = '〔' + event.text + '〕';
-+    const prompt = '(通话中的声音提示：' + text + '。这是手机本地声音分类的观察，可能有误；不是她说出口的话，也不代表已确认的情绪、身体状态或操作请求。根据对话自然回应即可。' + CALL_RULES + ')';
-+    pushUserAndSend(text, fakeRes(), sess, c.model || sess.selectedChatModel || sess.chatModel, undefined, undefined, { prompt, callId: c.id });
-+    return true;
-+  },
-+});
+@@ -2888,4 +2888,5 @@ function endCall(c, by) {
+ // Local sound observations use the same conversation, bounded independently of ASR.
+ const callSounds = require('./call-sounds.cjs').create({
++  clipStore: require('./sound-clips.cjs').create({ dir: '/var/lib/entangled-call-sounds' }),
+   getCall: id => calls.calls.find(c => c.id === id), save: saveCalls,
+   busy: () => isProcessing || wakeBusy || compactBusy,

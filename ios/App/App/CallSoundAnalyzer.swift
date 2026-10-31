@@ -11,6 +11,9 @@ final class CallSoundAnalyzer {
     private var queued = 0
     // All remaining mutable state belongs to queue.
     private var model: MLModel?
+    private let predictOverride: (([Float]) throws -> [Double])?
+    private var asrAvailable = false
+    init(predict: (([Float]) throws -> [Double])? = nil) { predictOverride = predict }
     private var samples: [Float] = []
     private var total = 0
     private var nextWindow = 15600
@@ -21,6 +24,7 @@ final class CallSoundAnalyzer {
         var features: CallVocalFeatures
         var clip: Data
         var end: Double
+        var asrReady: Bool
     }
     private var windows: [UUID: Window] = [:]
     private var detection: ((CallSoundDetection) -> Void)?
@@ -42,12 +46,15 @@ final class CallSoundAnalyzer {
         queue.async {
             guard self.current(token) else { return }
             do {
-                if self.model == nil {
+                if self.model == nil && self.predictOverride == nil {
                     guard let url = Bundle.main.url(forResource: "YAMNet", withExtension: "mlmodelc") else { throw URLError(.fileDoesNotExist) }
                     let config = MLModelConfiguration(); config.computeUnits = .all
                     self.model = try MLModel(contentsOf: url, configuration: config)
                 }
-                guard let input = self.model?.modelDescription.inputDescriptionsByName["waveform"], input.multiArrayConstraint?.shape == [15600], self.current(token) else { throw URLError(.cannotDecodeContentData) }
+                if self.predictOverride == nil {
+                    guard let input = self.model?.modelDescription.inputDescriptionsByName["waveform"], input.multiArrayConstraint?.shape == [15600] else { throw URLError(.cannotDecodeContentData) }
+                }
+                guard self.current(token) else { return }
                 self.detection = detection; self.failure = failed
                 self.lock.lock(); if self.generation == token { self.accepting = true }; self.lock.unlock()
                 DispatchQueue.main.async { if self.current(token) { ready(CallSoundPolicy.rules.keys.sorted()) } }
@@ -58,6 +65,9 @@ final class CallSoundAnalyzer {
         lock.lock(); let token = generation, enabled = accepting; lock.unlock()
         guard enabled else { return }; let at = ProcessInfo.processInfo.systemUptime
         queue.async { if self.current(token) { self.asr.add(text, at: at) } }
+    }
+    func setASRAvailable(_ ready: Bool) {
+        queue.async { self.asrAvailable = ready; if !ready { self.asr = CallSoundASR() } }
     }
     func feed(_ data: Data) {
         lock.lock()
@@ -70,7 +80,7 @@ final class CallSoundAnalyzer {
         let receivedAt = ProcessInfo.processInfo.systemUptime
         queue.async {
             defer { self.lock.lock(); self.queued -= 1; self.lock.unlock() }
-            guard self.current(token), let model = self.model else { return }
+            guard self.current(token) else { return }
             do {
                 let count = data.count / 2
                 guard count > 0, count <= 16000, data.count % 2 == 0 else { throw URLError(.badServerResponse) }
@@ -84,19 +94,25 @@ final class CallSoundAnalyzer {
                     let tail = self.total-self.nextWindow, endIndex = self.samples.count-tail, startIndex = endIndex-15600
                     guard startIndex >= 0 else { throw URLError(.cannotDecodeContentData) }
                     let patch = Array(self.samples[startIndex..<endIndex])
-                    let input = try MLMultiArray(shape: [15600], dataType: .float32)
-                    let pointer = input.dataPointer.bindMemory(to: Float.self, capacity: 15600)
-                    for i in 0..<15600 { pointer[i] = patch[i] }
-                    let provider = try MLDictionaryFeatureProvider(dictionary: ["waveform": MLFeatureValue(multiArray: input)])
-                    let output = try model.prediction(from: provider)
-                    guard let name = output.featureNames.first, let values = output.featureValue(for: name)?.multiArrayValue, values.count == 521 else { throw URLError(.cannotParseResponse) }
-                    let scores = (0..<521).map { values[$0].doubleValue }
+                    let scores: [Double]
+                    if let predict = self.predictOverride { scores = try predict(patch) }
+                    else {
+                        guard let model = self.model else { throw URLError(.fileDoesNotExist) }
+                        let input = try MLMultiArray(shape: [15600], dataType: .float32)
+                        let pointer = input.dataPointer.bindMemory(to: Float.self, capacity: 15600)
+                        for i in 0..<15600 { pointer[i] = patch[i] }
+                        let provider = try MLDictionaryFeatureProvider(dictionary: ["waveform": MLFeatureValue(multiArray: input)])
+                        let output = try model.prediction(from: provider)
+                        guard let name = output.featureNames.first, let values = output.featureValue(for: name)?.multiArrayValue, values.count == 521 else { throw URLError(.cannotParseResponse) }
+                        scores = (0..<521).map { values[$0].doubleValue }
+                    }
+                    guard scores.count == 521 else { throw URLError(.cannotParseResponse) }
                     guard scores.allSatisfy({ $0.isFinite && $0 >= 0 && $0 <= 1 }) else { throw URLError(.cannotParseResponse) }
                     let features = CallVocalFeatures.measure(patch)
                     let end = receivedAt - Double(tail)/16000
                     let clipStart = max(0,endIndex-56000)
                     let clip = Self.wav(Array(self.samples[clipStart..<endIndex]))
-                    let id = UUID(); self.windows[id] = Window(scores: scores, features: features, clip: clip, end: end)
+                    let id = UUID(); self.windows[id] = Window(scores: scores, features: features, clip: clip, end: end, asrReady: self.asrAvailable)
                     guard self.windows.count <= 8 else { throw URLError(.resourceUnavailable) }
                     // ASR may arrive after the sound. Wait 1.5s before deciding
                     // that a pitched human vocalization contained no real words.
@@ -110,7 +126,7 @@ final class CallSoundAnalyzer {
         guard current(token), let window = windows.removeValue(forKey: id) else { return }
         var candidates = CallSoundPolicy.candidates(scores: window.scores)
         let text = asr.text(start: window.end-0.975, end: window.end)
-        if let inferred = window.features.infer(scores: window.scores, text: text), candidates[inferred.kind] == nil { candidates[inferred.kind] = inferred }
+        if window.asrReady && asrAvailable, let inferred = window.features.infer(scores: window.scores, text: text), candidates[inferred.kind] == nil { candidates[inferred.kind] = inferred }
         for var item in policy.observe(candidates, time: window.end) {
             item.clip = window.clip; let callback = detection
             DispatchQueue.main.async { if self.current(token) { callback?(item) } }

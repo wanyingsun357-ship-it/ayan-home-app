@@ -24,6 +24,8 @@ jobs:
           node tools/yamnet/generate-rules.cjs --check
           swiftc -O ios/App/App/CallSoundPolicy.swift ios/App/App/CallVocalFeatures.swift tests/call-sound/main.swift -o /tmp/call-sound-policy
           /tmp/call-sound-policy
+          swiftc -O ios/App/App/CallSoundPolicy.swift ios/App/App/CallVocalFeatures.swift ios/App/App/CallSoundAnalyzer.swift tests/call-sound-analyzer/main.swift -framework CoreML -o /tmp/call-sound-analyzer
+          /tmp/call-sound-analyzer
       - name: Web and Capacitor
         run: |
           npm ci

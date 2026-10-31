@@ -471,6 +471,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     private func connectASR() {
         guard joined, audioActive else { return }
+        soundAnalyzer.setASRAvailable(false)
         socket?.cancel(with: .goingAway, reason: nil); socketGeneration = UUID(); let generation = socketGeneration
         let ws = URLSession.shared.webSocketTask(with: URL(string: "wss://entangledforever.com/ws/asr")!); socket = ws; ws.resume()
         Task { @MainActor in
@@ -481,6 +482,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
                     let data: Data
                     switch message { case .string(let s): data = Data(s.utf8); case .data(let d): data = d; @unknown default: continue }
                     guard let event = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+                    if event["type"] as? String == "ready" { self.soundAnalyzer.setASRAvailable(true) }
                     if event["type"] as? String == "error" { throw URLError(.cannotConnectToHost) }
                     if self.muted || self.player != nil || self.loadingAudio { continue }
                     if self.maySenseSound, let text = event["text"] as? String, ["partial", "final"].contains(event["type"] as? String ?? "") { self.soundAnalyzer.observeASR(text) }
@@ -497,6 +499,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             } catch {
                 guard self.joined, self.audioActive, generation == self.socketGeneration else { return }
+                self.soundAnalyzer.setASRAvailable(false)
                 self.emit("connection", ["message": "识别正在重连"])
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 if generation == self.socketGeneration { self.connectASR() }
