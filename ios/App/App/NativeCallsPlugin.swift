@@ -340,7 +340,7 @@ public class NativeCallsPlugin: CAPPlugin, CAPBridgedPlugin {
         do { try beginMic() } catch { emit("error", ["message": "麦克风未能启动"]) }
         pumpAudio()
     }
-    func conversationManager(_ manager: ConversationManager, didDeactivate audioSession: AVAudioSession) { audioActive = false; refreshSoundCapture(); stopMic() }
+    func conversationManager(_ manager: ConversationManager, didDeactivate audioSession: AVAudioSession) { audioActive = false; stopMic(); refreshSoundCapture() }
     func conversationManager(_ manager: ConversationManager, perform action: ConversationAction) {
         guard action.conversationUUID == uuid else { action.fail(); return }
         if let starting = action as? StartConversationAction {
